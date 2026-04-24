@@ -1,7 +1,17 @@
 import { useMDXComponents } from '../mdx-components';
+import { sanityFetch } from '../sanity/client';
 
-export default function Home() {
+export default async function Home() {
   const MDX = useMDXComponents();
+
+  const posts = await sanityFetch({
+    query: `*[_type == "post"] | order(publishedAt desc)[0...3] {
+      title,
+      slug
+    }`
+  });
+
+  const recentPosts = Array.isArray(posts) ? posts : [];
 
   return (
     <article className="prose prose-invert">
@@ -9,11 +19,17 @@ export default function Home() {
       <br />
       <MDX.p>This is my portfolio, blog, and personal website.</MDX.p>
 
-      <MDX.h2>Examples</MDX.h2>
+      <MDX.h2>Recent Posts</MDX.h2>
       <MDX.ul>
-        <MDX.li><MDX.a href="/blog/5-tiny-cli-tricks">5 Tiny CLI Tricks You (Probably) Didn’t Know</MDX.a></MDX.li>
-        <MDX.li><MDX.a href="/blog/6-sneaky-javascript-patterns">6 Sneaky JavaScript Patterns to Cut Boilerplate</MDX.a></MDX.li>
-        <MDX.li><MDX.a href="/blog/6-css-patterns">6 CSS Patterns to Cut Boilerplate</MDX.a></MDX.li>
+        {recentPosts.length > 0 ? (
+          recentPosts.map((post: any) => (
+            <MDX.li key={post.slug.current}>
+              <MDX.a href={`/blog/${post.slug.current}`}>{post.title}</MDX.a>
+            </MDX.li>
+          ))
+        ) : (
+          <MDX.li>No posts published yet.</MDX.li>
+        )}
       </MDX.ul>
 
       <MDX.h2>Features</MDX.h2>
