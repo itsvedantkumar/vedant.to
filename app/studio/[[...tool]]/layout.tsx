@@ -9,12 +9,10 @@
 
 export { viewport } from 'next-sanity/studio';
 
-export default function StudioLayout() {
+export default function StudioLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body>
-        <div id="sanity" />
-      </body>
-    </html>
+    <div id="sanity">
+      {children}
+    </div>
   )
 }

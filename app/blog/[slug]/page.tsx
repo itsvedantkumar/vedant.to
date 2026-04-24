@@ -59,6 +59,9 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
             style={{ width: '100%', height: 'auto', borderRadius: '0.5rem', marginTop: '2rem', marginBottom: '2rem' }}
           />
         );
+      },
+      code: ({ value }: any) => {
+        return mdxComponents.code ? mdxComponents.code({ children: value.code } as any) : <code>{value.code}</code>;
       }
     },
     marks: {
@@ -68,7 +71,10 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
           return mdxComponents.a ? mdxComponents.a({ href, children } as any) : <a href={href}>{children}</a>;
         }
         return mdxComponents.a ? mdxComponents.a({ href, target: '_blank', rel: 'noopener noreferrer', children } as any) : <a href={href} target="_blank" rel="noopener noreferrer">{children}</a>;
-      }
+      },
+      strong: ({ children }: any) => mdxComponents.strong ? mdxComponents.strong({ children } as any) : <strong>{children}</strong>,
+      em: ({ children }: any) => mdxComponents.em ? mdxComponents.em({ children } as any) : <em>{children}</em>,
+      code: ({ children }: any) => mdxComponents.code ? mdxComponents.code({ children } as any) : <code>{children}</code>,
     },
     block: {
       h1: ({ children }: any) => mdxComponents.h1 ? mdxComponents.h1({ children } as any) : <h1>{children}</h1>,

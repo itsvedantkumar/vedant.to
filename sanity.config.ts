@@ -1,5 +1,6 @@
 import { defineConfig } from 'sanity';
 import { structureTool } from 'sanity/structure';
+import { codeInput } from '@sanity/code-input';
 import { author } from './sanity/schemas/author';
 import { post } from './sanity/schemas/post';
 
@@ -11,5 +12,5 @@ export default defineConfig({
   schema: {
     types: [author, post],
   },
-  plugins: [structureTool()],
+  plugins: [structureTool(), codeInput()],
 });

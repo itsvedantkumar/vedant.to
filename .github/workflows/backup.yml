@@ -2,7 +2,7 @@ name: Weekly Codebase & Sanity Content Backup
 
 on:
   schedule:
-    - cron: '0 0 * * 0' # Run at midnight every Sunday
+    - cron: '0 0 * * *' # Run at midnight every day
   workflow_dispatch: # Allow manual trigger
 
 jobs:

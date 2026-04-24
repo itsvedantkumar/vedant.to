@@ -60,6 +60,7 @@ export const post = {
       type: 'array',
       of: [
         { type: 'block' },
+        { type: 'code' },
         {
           type: 'image',
           fields: [
