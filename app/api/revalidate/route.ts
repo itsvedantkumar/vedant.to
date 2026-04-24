@@ -3,6 +3,11 @@ import { NextResponse } from 'next/server';
 
 export async function POST(req: Request) {
   try {
+    const secret = req.headers.get('authorization');
+    if (secret !== `Bearer ${process.env.SANITY_WEBHOOK_SECRET}`) {
+      return NextResponse.json({ message: 'Invalid authorization' }, { status: 401 });
+    }
+
     const body = await req.json();
 
     // Revalidate the blog list and sitemap anytime a post is published/deleted
