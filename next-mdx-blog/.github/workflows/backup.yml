@@ -1,0 +1,40 @@
+name: Weekly Codebase & Sanity Content Backup
+
+on:
+  schedule:
+    - cron: '0 0 * * 0' # Run at midnight every Sunday
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetch all history for all tags and branches
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Sanity CLI
+        run: npm install -g @sanity/cli
+
+      - name: Export Sanity Dataset
+        env:
+          SANITY_AUTH_TOKEN: ${{ secrets.SANITY_AUTH_TOKEN }}
+          NEXT_PUBLIC_SANITY_PROJECT_ID: ${{ secrets.NEXT_PUBLIC_SANITY_PROJECT_ID }}
+          NEXT_PUBLIC_SANITY_DATASET: ${{ secrets.NEXT_PUBLIC_SANITY_DATASET }}
+        run: |
+          mkdir -p backups
+          # Authenticate and export data using sanity CLI.
+          sanity dataset export $NEXT_PUBLIC_SANITY_DATASET backups/sanity-export-$(date +%Y-%m-%d).tar.gz --project $NEXT_PUBLIC_SANITY_PROJECT_ID --token $SANITY_AUTH_TOKEN
+
+      - name: Upload Backup Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sanity-backup-${{ github.run_id }}
+          path: backups/*.tar.gz
+          retention-days: 90
