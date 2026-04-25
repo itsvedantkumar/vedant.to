@@ -1,23 +1,36 @@
-name: Weekly Codebase & Sanity Content Backup
+name: Deploy to Vercel and Backup Data
 
 on:
+  push:
+    branches:
+      - main
   schedule:
-    - cron: '0 0 * * *' # Run at midnight every day
+    - cron: '0 0 * * *' # Run daily backups
   workflow_dispatch: # Allow manual trigger
 
 jobs:
-  backup:
+  deploy-and-backup:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Fetch all history for all tags and branches
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Deploy to Vercel
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        run: npx vercel deploy --prod --token ${{ secrets.VERCEL_TOKEN }}
 
       - name: Install Sanity CLI
         run: npm install -g @sanity/cli
@@ -29,8 +42,7 @@ jobs:
           NEXT_PUBLIC_SANITY_DATASET: ${{ secrets.NEXT_PUBLIC_SANITY_DATASET }}
         run: |
           mkdir -p backups
-          # Authenticate and export data using sanity CLI.
-          sanity dataset export $NEXT_PUBLIC_SANITY_DATASET backups/sanity-export-$(date +%Y-%m-%d).tar.gz --project $NEXT_PUBLIC_SANITY_PROJECT_ID --token $SANITY_AUTH_TOKEN
+          npx sanity dataset export $NEXT_PUBLIC_SANITY_DATASET backups/sanity-export-$(date +%Y-%m-%d).tar.gz --project $NEXT_PUBLIC_SANITY_PROJECT_ID
 
       - name: Upload Backup Artifact
         uses: actions/upload-artifact@v4

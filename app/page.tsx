@@ -1,56 +1,41 @@
-'use client';
-
-import { useEffect, useRef, useState } from 'react';
+import { Suspense } from 'react';
 import { useMDXComponents } from '../mdx-components';
 import { client } from '../sanity/client';
-import { Mascot, MascotRef } from './components/Mascot';
+import { MascotWrapper } from './components/MascotWrapper';
+import Link from 'next/link';
 
-export default function Home() {
+export const revalidate = 60; // revalidate at most every minute
+
+export default async function Home() {
   const MDX = useMDXComponents();
-  const mascotRef = useRef<MascotRef>(null);
 
-  const [recentPosts, setRecentPosts] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    async function fetchPosts() {
-      mascotRef.current?.setState('thinking');
-      try {
-        const posts = await client.fetch(
-          `*[_type == "post"] | order(publishedAt desc)[0...3] { title, slug }`
-        );
-        setRecentPosts(Array.isArray(posts) ? posts : []);
-        mascotRef.current?.setState('success');
-      } catch (err) {
-        console.error(err);
-        mascotRef.current?.setState('error');
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchPosts();
-  }, []);
+  let recentPosts = [];
+  try {
+    const posts = await client.fetch(
+      `*[_type == "post"] | order(publishedAt desc)[0...3] { title, slug }`
+    );
+    recentPosts = Array.isArray(posts) ? posts : [];
+  } catch (err) {
+    console.error(err);
+  }
 
   return (
-    <article className="prose prose-invert relative flex flex-col">
-      <div
-        className="w-full flex flex-col items-start justify-start cursor-default"
-        onMouseEnter={() => mascotRef.current?.setState('playing')}
-      >
+    <section>
+      <div className="w-full flex flex-col items-start justify-start cursor-default -mb-4">
         <MDX.h1>Vedant</MDX.h1>
-        <Mascot ref={mascotRef} />
+        <Suspense fallback={<div className="h-[65px]" />}>
+          <MascotWrapper />
+        </Suspense>
       </div>
 
       <MDX.p>This is my portfolio, blog, and personal website.</MDX.p>
 
       <MDX.h2>Recent Posts</MDX.h2>
       <MDX.ul>
-        {loading ? (
-          <MDX.li>Loading latest thoughts...</MDX.li>
-        ) : recentPosts.length > 0 ? (
+        {recentPosts.length > 0 ? (
           recentPosts.map((post: any) => (
             <MDX.li key={post.slug.current}>
-              <MDX.a href={`/blog/${post.slug.current}`}>{post.title}</MDX.a>
+              <Link href={`/blog/${post.slug.current}`} className="text-blue-500 hover:text-blue-700 dark:text-gray-400 hover:dark:text-gray-300 dark:underline dark:underline-offset-2 dark:decoration-gray-800">{post.title}</Link>
             </MDX.li>
           ))
         ) : (
@@ -75,6 +60,6 @@ export default function Home() {
         <MDX.li>Sanity CMS</MDX.li>
         <MDX.li>Vercel / Cloudflare</MDX.li>
       </MDX.ul>
-    </article>
+    </section>
   );
 }

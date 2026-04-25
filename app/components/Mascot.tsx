@@ -60,19 +60,19 @@ const FRAMES: Record<MascotState, { text: string[]; duration: number }> = {
     ]
   },
   playing: {
-    duration: 180,
+    duration: 100,
     text: [
-      '(•_•)\n /|\\\n / \\   o',
-      '( •_•) \n /|\\   o\n / \\    ',
-      '(  •_•)\n /|\\  o \n / \\    ',
-      '(   •_•)\n /|\\ o  \n / \\    ',
-      '(    •_•)\n /|\\o   \n / \\    ',
-      '(    •_•)o\n /|\\    \n / \\    ',
-      '(    •‿•)o\n /|\\    \n / \\    ',
-      '(   •_•)\n /|\\ o  \n / \\    ',
-      '(  •_•)\n /|\\  o \n / \\    ',
-      '( •_•)\n /|\\   o\n / \\    ',
-      '(•_•)\n /|\\\n / \\   o'
+      '(•_•)  \n /|\\   \n / \\  o',
+      '( •_•) \n /|\\   \n / \\ o ',
+      '(  •_•)\n /|\\   \n / \\o  ',
+      '(   •_•)\n /|\\  \n / \\o ',
+      '(    •_•)\n /|\\ \n / \\o',
+      '(    •_•)\n /|\\o \n / \\ ',
+      '(    •‿•)\n /|\\o \n / \\ ',
+      '(   •_•)\n /|\\  \n / \\o ',
+      '(  •_•)\n /|\\   \n / \\o  ',
+      '( •_•) \n /|\\   \n / \\ o ',
+      '(•_•)  \n /|\\   \n / \\  o'
     ]
   }
 };
@@ -176,7 +176,7 @@ export const Mascot = forwardRef<MascotRef>((props, ref) => {
   return (
     <pre
       ref={preRef}
-      className="font-mono text-[13px] leading-tight text-gray-800 dark:text-neutral-400 opacity-90 transition-opacity duration-100 mb-6 mt-2 !bg-transparent !p-0 !border-0"
+      className="font-mono text-[13px] leading-tight text-gray-800 dark:text-neutral-400 opacity-90 transition-opacity duration-100 mt-2 mb-2 !bg-transparent !p-0 !border-0"
       style={{
         width: '180px',
         height: '65px',
