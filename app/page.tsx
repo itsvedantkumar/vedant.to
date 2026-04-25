@@ -1,27 +1,54 @@
+'use client';
+
+import { useEffect, useRef, useState } from 'react';
 import { useMDXComponents } from '../mdx-components';
-import { sanityFetch } from '../sanity/client';
+import { client } from '../sanity/client';
+import { Mascot, MascotRef } from './components/Mascot';
 
-export default async function Home() {
+export default function Home() {
   const MDX = useMDXComponents();
+  const mascotRef = useRef<MascotRef>(null);
 
-  const posts = await sanityFetch({
-    query: `*[_type == "post"] | order(publishedAt desc)[0...3] {
-      title,
-      slug
-    }`
-  });
+  const [recentPosts, setRecentPosts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const recentPosts = Array.isArray(posts) ? posts : [];
+  useEffect(() => {
+    async function fetchPosts() {
+      mascotRef.current?.setState('thinking');
+      try {
+        const posts = await client.fetch(
+          `*[_type == "post"] | order(publishedAt desc)[0...3] { title, slug }`
+        );
+        setRecentPosts(Array.isArray(posts) ? posts : []);
+        mascotRef.current?.setState('success');
+      } catch (err) {
+        console.error(err);
+        mascotRef.current?.setState('error');
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchPosts();
+  }, []);
 
   return (
-    <article className="prose prose-invert">
-      <MDX.h1>Vedant</MDX.h1>
-      <br />
+    <article className="prose prose-invert relative flex flex-col">
+      <div
+        className="w-full flex flex-col items-center justify-center cursor-default"
+        onMouseEnter={() => mascotRef.current?.setState('hover')}
+        onMouseLeave={() => mascotRef.current?.setState('idle')}
+      >
+        <MDX.h1>Vedant</MDX.h1>
+        <Mascot ref={mascotRef} />
+      </div>
+
       <MDX.p>This is my portfolio, blog, and personal website.</MDX.p>
 
       <MDX.h2>Recent Posts</MDX.h2>
       <MDX.ul>
-        {recentPosts.length > 0 ? (
+        {loading ? (
+          <MDX.li>Loading latest thoughts...</MDX.li>
+        ) : recentPosts.length > 0 ? (
           recentPosts.map((post: any) => (
             <MDX.li key={post.slug.current}>
               <MDX.a href={`/blog/${post.slug.current}`}>{post.title}</MDX.a>
