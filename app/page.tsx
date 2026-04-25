@@ -34,9 +34,8 @@ export default function Home() {
   return (
     <article className="prose prose-invert relative flex flex-col">
       <div
-        className="w-full flex flex-col items-center justify-center cursor-default"
-        onMouseEnter={() => mascotRef.current?.setState('hover')}
-        onMouseLeave={() => mascotRef.current?.setState('idle')}
+        className="w-full flex flex-col items-start justify-start cursor-default"
+        onMouseEnter={() => mascotRef.current?.setState('playing')}
       >
         <MDX.h1>Vedant</MDX.h1>
         <Mascot ref={mascotRef} />

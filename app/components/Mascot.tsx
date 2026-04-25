@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
 
-type MascotState = 'intro' | 'idle' | 'thinking' | 'success' | 'error' | 'hover';
+type MascotState = 'intro' | 'idle' | 'thinking' | 'success' | 'error' | 'hover' | 'playing';
 
 export interface MascotRef {
   setState: (newState: MascotState) => void;
@@ -57,6 +57,22 @@ const FRAMES: Record<MascotState, { text: string[]; duration: number }> = {
     text: [
       '(•_•)\n /|\\\n / \\',
       '(¬‿¬)\n /|\\\n / \\'
+    ]
+  },
+  playing: {
+    duration: 180,
+    text: [
+      '(•_•)\n /|\\\n / \\   o',
+      '( •_•) \n /|\\   o\n / \\    ',
+      '(  •_•)\n /|\\  o \n / \\    ',
+      '(   •_•)\n /|\\ o  \n / \\    ',
+      '(    •_•)\n /|\\o   \n / \\    ',
+      '(    •_•)o\n /|\\    \n / \\    ',
+      '(    •‿•)o\n /|\\    \n / \\    ',
+      '(   •_•)\n /|\\ o  \n / \\    ',
+      '(  •_•)\n /|\\  o \n / \\    ',
+      '( •_•)\n /|\\   o\n / \\    ',
+      '(•_•)\n /|\\\n / \\   o'
     ]
   }
 };
@@ -141,6 +157,10 @@ export const Mascot = forwardRef<MascotRef>((props, ref) => {
           setCurrentState('idle');
           return;
         }
+        if (currentState === 'playing' && loopCountRef.current >= 1) {
+          setCurrentState('idle');
+          return;
+        }
       }
 
       timeoutRef.current = setTimeout(tick, config.duration);
@@ -156,22 +176,15 @@ export const Mascot = forwardRef<MascotRef>((props, ref) => {
   return (
     <pre
       ref={preRef}
-      className="font-mono text-[13px] leading-tight text-gray-800 dark:text-neutral-400 opacity-90 transition-opacity duration-100 my-6 !bg-transparent !p-0 !m-0 !border-0"
+      className="font-mono text-[13px] leading-tight text-gray-800 dark:text-neutral-400 opacity-90 transition-opacity duration-100 mb-6 mt-2 !bg-transparent !p-0 !border-0"
       style={{
-        width: '120px',
+        width: '180px',
         height: '65px',
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'center',
+        justifyContent: 'flex-start',
         whiteSpace: 'pre',
-        margin: '1rem auto',
         overflow: 'hidden'
-      }}
-      onMouseEnter={() => {
-        if (currentState === 'idle') setCurrentState('hover');
-      }}
-      onMouseLeave={() => {
-        if (currentState === 'hover') setCurrentState('idle');
       }}
     />
   );
