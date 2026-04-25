@@ -21,7 +21,7 @@ The personal blog and portfolio of Vedant, engineered for maximum performance, s
 
 This blog does not use local Markdown files. All content is managed via the Headless CMS.
 
-1. **Access the Dashboard**: Navigate to `vedant.to/studio` (or `/studio` locally).
+1. **Access the Dashboard**: Navigate to `vedant.to/write` (or `/write` locally).
 2. **Log In**: Authenticate using the Sanity account linked to your Project ID.
 3. **Author Content**:
    - Click on the **Post** schema to create a new article.

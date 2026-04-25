@@ -53,7 +53,7 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
         }
         return (
           <img
-            src={urlFor(value).url()}
+            src={urlFor(value).auto('format').fit('max').url()}
             alt={value.alt || ' '}
             loading="lazy"
             style={{ width: '100%', height: 'auto', borderRadius: '0.5rem', marginTop: '2rem', marginBottom: '2rem' }}
@@ -77,20 +77,20 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
       code: ({ children }: any) => mdxComponents.code ? mdxComponents.code({ children } as any) : <code>{children}</code>,
     },
     block: {
-      h1: ({ children }: any) => mdxComponents.h1 ? mdxComponents.h1({ children } as any) : <h1>{children}</h1>,
-      h2: ({ children }: any) => mdxComponents.h2 ? mdxComponents.h2({ children } as any) : <h2>{children}</h2>,
-      h3: ({ children }: any) => mdxComponents.h3 ? mdxComponents.h3({ children } as any) : <h3>{children}</h3>,
-      h4: ({ children }: any) => mdxComponents.h4 ? mdxComponents.h4({ children } as any) : <h4>{children}</h4>,
-      normal: ({ children }: any) => mdxComponents.p ? mdxComponents.p({ children } as any) : <p>{children}</p>,
-      blockquote: ({ children }: any) => mdxComponents.blockquote ? mdxComponents.blockquote({ children } as any) : <blockquote>{children}</blockquote>
+      h1: ({ children }: any) => mdxComponents.h1 ? mdxComponents.h1({ children } as any) : <h1 className="font-semibold text-2xl mb-8 tracking-tighter">{children}</h1>,
+      h2: ({ children }: any) => mdxComponents.h2 ? mdxComponents.h2({ children } as any) : <h2 className="font-medium text-xl mb-4 tracking-tighter">{children}</h2>,
+      h3: ({ children }: any) => mdxComponents.h3 ? mdxComponents.h3({ children } as any) : <h3 className="font-medium text-lg mb-4 tracking-tighter">{children}</h3>,
+      h4: ({ children }: any) => mdxComponents.h4 ? mdxComponents.h4({ children } as any) : <h4 className="font-medium mb-4 tracking-tighter">{children}</h4>,
+      normal: ({ children }: any) => mdxComponents.p ? mdxComponents.p({ children } as any) : <p className="mb-4">{children}</p>,
+      blockquote: ({ children }: any) => mdxComponents.blockquote ? mdxComponents.blockquote({ children } as any) : <blockquote className="border-l-4 border-neutral-300 dark:border-neutral-700 pl-4 italic my-4">{children}</blockquote>
     },
     list: {
-      bullet: ({ children }: any) => mdxComponents.ul ? mdxComponents.ul({ children } as any) : <ul>{children}</ul>,
-      number: ({ children }: any) => mdxComponents.ol ? mdxComponents.ol({ children } as any) : <ol>{children}</ol>
+      bullet: ({ children }: any) => mdxComponents.ul ? mdxComponents.ul({ children } as any) : <ul className="list-disc pl-6 mb-4">{children}</ul>,
+      number: ({ children }: any) => mdxComponents.ol ? mdxComponents.ol({ children } as any) : <ol className="list-decimal pl-6 mb-4">{children}</ol>
     },
     listItem: {
-      bullet: ({ children }: any) => mdxComponents.li ? mdxComponents.li({ children } as any) : <li>{children}</li>,
-      number: ({ children }: any) => mdxComponents.li ? mdxComponents.li({ children } as any) : <li>{children}</li>
+      bullet: ({ children }: any) => mdxComponents.li ? mdxComponents.li({ children } as any) : <li className="mb-1">{children}</li>,
+      number: ({ children }: any) => mdxComponents.li ? mdxComponents.li({ children } as any) : <li className="mb-1">{children}</li>
     }
   };
 
