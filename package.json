@@ -11,11 +11,8 @@
     "@sanity/client": "^7.22.0",
     "@sanity/code-input": "^4.1.4",
     "@sanity/image-url": "^2.1.1",
-    "@sanity/vision": "^3.0.0",
-    "@vercel/analytics": "^2.0.1",
     "@vercel/og": "^0.11.1",
     "autoprefixer": "^10.5.0",
-    "framer-motion": "^12.38.0",
     "next": "14.2",
     "next-sanity": "^9.0.0",
     "react": "18.3",
@@ -30,6 +27,7 @@
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "postcss": "^8.5.10",
+    "postcss-load-config": "^6.0.1",
     "tailwindcss": "^3.4.19",
     "typescript": "^5.9.3"
   }

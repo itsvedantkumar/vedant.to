@@ -1,5 +1,5 @@
 import { createClient } from 'next-sanity';
-import imageUrlBuilder from '@sanity/image-url';
+import * as imageUrlBuilderModule from '@sanity/image-url';
 
 export const client = createClient({
   projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID || 'dummy-project-id', // Replace with real ID in Vercel
@@ -8,7 +8,9 @@ export const client = createClient({
   useCdn: true,
 });
 
-const builder = imageUrlBuilder(client);
+// Avoid using the deprecated default export.
+const createImageUrlBuilder = (imageUrlBuilderModule as any).createImageUrlBuilder || imageUrlBuilderModule.default;
+const builder = createImageUrlBuilder(client);
 
 export function urlFor(source: any) {
   return builder.image(source);
