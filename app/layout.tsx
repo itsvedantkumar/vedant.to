@@ -51,6 +51,8 @@ function Navbar() {
   );
 }
 
+import AsciiArt from './components/AsciiArt';
+
 function Footer() {
   const links = [
     { name: '@vedant', url: 'https://x.com/vedant' },
@@ -60,7 +62,8 @@ function Footer() {
   ];
 
   return (
-    <footer className="mt-12 text-center">
+    <footer className="mt-12 text-center overflow-x-hidden">
+      <AsciiArt />
       <div className="flex justify-center space-x-4 tracking-tight">
         {links.map((link) => (
           <a
