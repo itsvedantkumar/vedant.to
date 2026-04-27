@@ -2,6 +2,7 @@ import './globals.css';
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import { Analytics } from '@vercel/analytics/react';
+import AsciiArt from './components/AsciiArt';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -50,8 +51,6 @@ function Navbar() {
     </nav>
   );
 }
-
-import AsciiArt from './components/AsciiArt';
 
 function Footer() {
   const links = [

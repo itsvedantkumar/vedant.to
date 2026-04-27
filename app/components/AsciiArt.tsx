@@ -11,7 +11,7 @@ export default function AsciiArt() {
     \\_/    \\_______/ \\_______/ \\_______/|__/  |__/   \\___/   `;
 
   return (
-    <pre className="font-mono text-[8px] sm:text-[10px] leading-none mb-4 mx-auto w-fit text-gray-400 dark:text-gray-500 overflow-hidden text-left">
+    <pre className="font-mono text-[8px] sm:text-[10px] leading-none mb-4 mx-auto w-fit text-gray-500 dark:text-white overflow-hidden text-left">
       {ascii.split('').map((char, i) => {
         if (char === '$') {
           return (
