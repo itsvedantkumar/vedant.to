@@ -1,17 +1,17 @@
 import React from 'react';
 
 export default function AsciiArt() {
-  const ascii = `                           /$$                       /$$
+  const ascii = String.raw`                           /$$                       /$$
                           | $$                      | $$
  /$$    /$$ /$$$$$$   /$$$$$$$  /$$$$$$  /$$$$$$$  /$$$$$$
 |  $$  /$$//$$__  $$ /$$__  $$ |____  $$| $$__  $$|_  $$_/
- \\  $$/$$/| $$$$$$$$| $$  | $$  /$$$$$$$| $$  \\ $$  | $$
-  \\  $$$/ | $$_____/| $$  | $$ /$$__  $$| $$  | $$  | $$ /$$
-   \\  $/  |  $$$$$$$|  $$$$$$$|  $$$$$$$| $$  | $$  |  $$$$/
-    \\_/    \\_______/ \\_______/ \\_______/|__/  |__/   \\___/   `;
+ \  $$/$$/| $$$$$$$$| $$  | $$  /$$$$$$$| $$  \ $$  | $$
+  \  $$$/ | $$_____/| $$  | $$ /$$__  $$| $$  | $$  | $$ /$$
+   \  $/  |  $$$$$$$|  $$$$$$$|  $$$$$$$| $$  | $$  |  $$$$/
+    \_/    \_______/ \_______/ \_______/|__/  |__/   \___/   `;
 
   return (
-    <pre className="font-mono text-[8px] sm:text-[10px] leading-none mb-4 mx-auto w-fit text-gray-500 dark:text-white overflow-hidden text-left">
+    <pre aria-hidden="true" className="font-mono text-[8px] sm:text-[10px] leading-none mb-4 mx-auto w-fit text-gray-500 dark:text-white overflow-hidden text-left bg-transparent !bg-transparent">
       {ascii.split('').map((char, i) => {
         if (char === '$') {
           return (
