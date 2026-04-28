@@ -11,7 +11,7 @@ export default function AsciiArt() {
     \_/    \_______/ \_______/ \_______/|__/  |__/   \___/   `;
 
   return (
-    <pre aria-hidden="true" className="font-mono text-[8px] sm:text-[10px] leading-none mb-4 mx-auto w-fit text-gray-500 dark:text-white overflow-hidden text-left bg-transparent !bg-transparent">
+    <div className="whitespace-pre font-mono text-[8px] sm:text-[10px] leading-none mb-4 mx-auto w-fit text-gray-500 dark:text-white overflow-hidden text-left">
       {ascii.split('').map((char, i) => {
         if (char === '$') {
           return (
@@ -23,6 +23,6 @@ export default function AsciiArt() {
         }
         return <span key={i}>{char}</span>;
       })}
-    </pre>
+    </div>
   );
 }
