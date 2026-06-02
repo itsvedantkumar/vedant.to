@@ -1,21 +1,12 @@
-import type { Metadata } from 'next';
 import Link from 'next/link';
 import { reader } from '../../lib/reader';
+import { createMetadata } from '../../lib/metadata';
 
-export const metadata: Metadata = {
+export const metadata = createMetadata({
   title: 'Blog',
   description: 'Writing on building products, software engineering, and ideas worth sharing.',
-  openGraph: {
-    title: 'Blog | Vedant',
-    description: 'Writing on building products, software engineering, and ideas worth sharing.',
-    url: 'https://vedant.to/blog',
-  },
-  twitter: {
-    card: 'summary',
-    title: 'Blog | Vedant',
-    description: 'Writing on building products, software engineering, and ideas worth sharing.',
-  },
-};
+  path: '/blog',
+});
 
 export const revalidate = false;
 

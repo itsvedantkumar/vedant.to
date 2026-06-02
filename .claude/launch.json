@@ -1,0 +1,14 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "dev",
+      "runtimeExecutable": "/private/tmp/node-v22.13.1-darwin-arm64/bin/node",
+      "runtimeArgs": ["/private/tmp/node-v22.13.1-darwin-arm64/bin/npm", "run", "dev"],
+      "env": {
+        "PATH": "/private/tmp/node-v22.13.1-darwin-arm64/bin:/usr/local/bin:/usr/bin:/bin"
+      },
+      "port": 3000
+    }
+  ]
+}

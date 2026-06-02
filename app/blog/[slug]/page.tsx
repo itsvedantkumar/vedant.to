@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import { DocumentRenderer } from '@keystatic/core/renderer';
 import { reader } from '../../../lib/reader';
 import { renderers } from '../../../lib/renderers';
+import { createMetadata } from '../../../lib/metadata';
 
 export const revalidate = false;
 
@@ -20,26 +21,12 @@ export async function generateMetadata({
 
   if (!post || !post.publishedAt) return {};
 
-  const ogImage = `https://vedant.to/api/og?title=${encodeURIComponent(post.title)}`;
-
-  return {
+  return createMetadata({
     title: post.title,
-    description: post.excerpt ?? undefined,
-    openGraph: {
-      title: post.title,
-      description: post.excerpt ?? undefined,
-      type: 'article',
-      publishedTime: post.publishedAt,
-      url: `https://vedant.to/blog/${slug}`,
-      images: [{ url: ogImage, width: 1200, height: 630 }],
-    },
-    twitter: {
-      card: 'summary_large_image',
-      title: post.title,
-      description: post.excerpt ?? undefined,
-      images: [ogImage],
-    },
-  };
+    description: post.excerpt ?? post.title,
+    path: `/blog/${slug}`,
+    publishedAt: post.publishedAt,
+  });
 }
 
 export default async function BlogPost({

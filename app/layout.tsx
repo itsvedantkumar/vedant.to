@@ -13,9 +13,6 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://vedant.to'),
-  alternates: {
-    canonical: '/',
-  },
   title: {
     default: 'Vedant',
     template: '%s | Vedant',
@@ -25,15 +22,14 @@ export const metadata: Metadata = {
     siteName: 'Vedant',
     locale: 'en_US',
     type: 'website',
+    images: [{ url: 'https://vedant.to/api/og?title=Vedant', width: 1200, height: 630 }],
   },
   twitter: {
     card: 'summary_large_image',
     creator: '@itsvedantkumar',
+    images: ['https://vedant.to/api/og?title=Vedant'],
   },
-  robots: {
-    index: true,
-    follow: true,
-  },
+  robots: { index: true, follow: true },
 };
 
 export default function RootLayout({
