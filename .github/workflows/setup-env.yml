@@ -1,0 +1,38 @@
+name: Setup Vercel Env Vars
+
+on:
+  workflow_dispatch:
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    steps:
+      - name: Set Keystatic env vars on Vercel
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          set_env() {
+            local key=$1
+            local value=$2
+            curl -s -X POST \
+              "https://api.vercel.com/v10/projects/$VERCEL_PROJECT_ID/env" \
+              -H "Authorization: Bearer $VERCEL_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d "{\"key\":\"$key\",\"value\":\"$value\",\"type\":\"encrypted\",\"target\":[\"production\",\"preview\"]}" \
+              | python3 -c "import sys,json; r=json.load(sys.stdin); print('OK:', r.get('key','?'), '|', r.get('error',{}).get('message',''))"
+          }
+
+          set_env "KEYSTATIC_GITHUB_CLIENT_ID"     "0v23liiSxTR0KyeXh7K4"
+          set_env "KEYSTATIC_GITHUB_CLIENT_SECRET"  "dc2456458e0ad053ef5733b86b899b9f622a2a4b"
+          set_env "KEYSTATIC_SECRET"                "d53d37cd14fab1066fbfc47b7c42d51ada8313b8bdeb0a2de23994e0f295ec60"
+          set_env "KEYSTATIC_AUTH_PASSWORD"         "50216fae185dfccefc4981515dd9b8f3"
+
+      - name: Trigger redeploy
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+        run: npx vercel deploy --prod --token $VERCEL_TOKEN --yes
