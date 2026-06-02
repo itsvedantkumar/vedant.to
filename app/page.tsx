@@ -28,42 +28,47 @@ export default async function Home() {
         </Suspense>
       </div>
 
-      <MDX.p>This is my portfolio, blog, and personal website.</MDX.p>
+      <MDX.p>
+        This is my portfolio, blog, and personal website — a place where I
+        write about the things I build and the ideas I'm chewing on.
+      </MDX.p>
 
       <MDX.h2>Recent Posts</MDX.h2>
-      <MDX.ul>
-        {recentPosts.length > 0 ? (
-          recentPosts.map(({ slug, entry }) => (
-            <MDX.li key={slug}>
-              <Link
-                href={`/blog/${slug}`}
-                className="text-blue-500 hover:text-blue-700 dark:text-gray-400 hover:dark:text-gray-300 dark:underline dark:underline-offset-2 dark:decoration-gray-800"
-              >
-                {entry.title}
-              </Link>
-            </MDX.li>
-          ))
-        ) : (
-          <MDX.li>No posts published yet.</MDX.li>
-        )}
-      </MDX.ul>
+      {recentPosts.length > 0 ? (
+        <div className="space-y-1">
+          {recentPosts.map(({ slug, entry }) => (
+            <Link
+              key={slug}
+              href={`/blog/${slug}`}
+              className="flex flex-col space-y-1 mb-3 transition-opacity duration-200 hover:opacity-80"
+            >
+              <div className="w-full flex flex-col md:flex-row md:items-center md:space-x-3">
+                <p className="text-gray-500 dark:text-gray-400 w-[110px] tabular-nums text-sm shrink-0">
+                  {new Date(entry.publishedAt!).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                  })}
+                </p>
+                <p className="text-gray-900 dark:text-gray-100 tracking-tight">
+                  {entry.title}
+                </p>
+              </div>
+            </Link>
+          ))}
+        </div>
+      ) : (
+        <MDX.p>No posts published yet.</MDX.p>
+      )}
 
-      <MDX.h2>Features</MDX.h2>
-      <MDX.ul>
-        <MDX.li>Visual CMS via Keystatic (editor at /keystatic)</MDX.li>
-        <MDX.li>Programmatic SEO &amp; OG Images</MDX.li>
-        <MDX.li>Light/dark mode</MDX.li>
-        <MDX.li>Deployed on Vercel</MDX.li>
-        <MDX.li>Zero UI degradation</MDX.li>
-      </MDX.ul>
-
-      <MDX.h2>Stack</MDX.h2>
-      <MDX.ul>
-        <MDX.li>Next.js / React</MDX.li>
-        <MDX.li>Tailwind CSS</MDX.li>
-        <MDX.li>Keystatic CMS</MDX.li>
-        <MDX.li>Vercel</MDX.li>
-      </MDX.ul>
+      <MDX.p>
+        <Link
+          href="/blog"
+          className="text-blue-500 hover:text-blue-600 transition-colors duration-200"
+        >
+          View all posts →
+        </Link>
+      </MDX.p>
     </section>
   );
 }

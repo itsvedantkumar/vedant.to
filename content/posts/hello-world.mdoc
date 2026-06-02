@@ -1,0 +1,30 @@
+---
+title: Hello World
+publishedAt: '2026-06-02'
+excerpt: >-
+  The first post on my new Keystatic-powered blog — a quick tour of how it's
+  built.
+---
+Welcome to my blog. This site is built with **Next.js**, styled with **Tailwind CSS**, and powered by [Keystatic](https://keystatic.com) — a Git-based CMS that stores every post as a file right here in the repository.
+
+## Why this setup
+
+There's no external database and no third-party CMS to log into. Content lives as plain files next to the code, which means:
+
+- Everything is version-controlled and reviewable in a pull request
+- The whole site builds to static HTML and deploys to the edge
+- I can edit posts visually at `/keystatic`, or just open the files in my editor
+
+## Writing code
+
+Code blocks are syntax-highlighted with `sugar-high`:
+
+```ts
+function greet(name: string): string {
+  return `Hello, ${name}!`;
+}
+
+console.log(greet('world'));
+```
+
+More to come soon.

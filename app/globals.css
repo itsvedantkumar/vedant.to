@@ -52,7 +52,7 @@ code {
   font-size: 14px;
   padding: 0.2em 0.4em;
   border-radius: 0.3em;
-  background-color: var(--color-gray-100);
+  background-color: #f3f4f6; /* gray-100 */
 }
 
 pre code {
@@ -78,11 +78,11 @@ code:not(pre code) span {
     font-size: 14px;
     padding: 0.2em 0.4em;
     border-radius: 0.3em;
-    background-color: var(--color-zinc-800);
+    background-color: #27272a; /* zinc-800 */
   }
 
   code:not(pre code) span {
-    color: var(--color-zinc-100) !important;
+    color: #f4f4f5 !important; /* zinc-100 */
   }
 }
 
@@ -91,7 +91,7 @@ pre code span {
 }
 
 hr {
-  color: var(--color-gray-200);
+  color: #e5e7eb; /* gray-200 */
 }
 
 /* Remove Safari input shadow on mobile */

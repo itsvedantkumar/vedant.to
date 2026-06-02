@@ -13,10 +13,9 @@ export const renderers = {
     italic: ({ children }: { children: React.ReactNode }) => (
       <em className="font-medium">{children}</em>
     ),
-    code: ({ children }: { children: string }) => {
-      const codeHTML = highlight(children);
-      return <code dangerouslySetInnerHTML={{ __html: codeHTML }} />;
-    },
+    // Inline code is a mark: children is a ReactNode (text), not a raw string.
+    // sugar-high is only for code BLOCKS, so render inline code plainly.
+    code: ({ children }: { children: React.ReactNode }) => <code>{children}</code>,
     link: ({ href, children }: { href: string; children: React.ReactNode }) => {
       if (href.startsWith('/') || href.startsWith('#')) {
         return (
@@ -74,7 +73,8 @@ export const renderers = {
         </Tag>
       );
     },
-    code: ({ children, language }: { children: string; language: string | null }) => {
+    // Code blocks receive a raw string + language — highlight with sugar-high.
+    code: ({ children, language }: { children: string; language?: string }) => {
       const codeHTML = highlight(children);
       return (
         <pre>
@@ -97,13 +97,13 @@ export const renderers = {
       title,
     }: {
       src: string;
-      alt: string | null | undefined;
-      title: string | null | undefined;
+      alt: string;
+      title?: string;
     }) => (
       <img
         src={src}
-        alt={alt ?? ''}
-        title={title ?? undefined}
+        alt={alt}
+        title={title}
         loading="lazy"
         style={{
           width: '100%',
@@ -114,24 +114,28 @@ export const renderers = {
         }}
       />
     ),
+    // `list` receives an array of list-item elements and must wrap each in <li> itself.
     list: ({
       type,
       children,
     }: {
       type: 'ordered' | 'unordered';
-      children: React.ReactNode;
-    }) =>
-      type === 'ordered' ? (
+      children: React.ReactElement[];
+    }) => {
+      const items = children.map((child, i) => (
+        <li key={i} className="pl-1">
+          {child}
+        </li>
+      ));
+      return type === 'ordered' ? (
         <ol className="text-gray-800 dark:text-zinc-300 list-decimal pl-5 space-y-2">
-          {children}
+          {items}
         </ol>
       ) : (
         <ul className="text-gray-800 dark:text-zinc-300 list-disc pl-5 space-y-1">
-          {children}
+          {items}
         </ul>
-      ),
-    listItem: ({ children }: { children: React.ReactNode }) => (
-      <li className="pl-1">{children}</li>
-    ),
+      );
+    },
   },
 };
