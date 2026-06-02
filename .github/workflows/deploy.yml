@@ -21,14 +21,17 @@ jobs:
 
       - run: npm ci
 
-      - name: Pull Vercel env vars and build
+      - name: Build
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-        run: |
-          npx vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
-          npx vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+          # Placeholder values so the Keystatic route handler doesn't throw during
+          # the build. Server env vars are read at runtime from Vercel, not baked in.
+          KEYSTATIC_GITHUB_CLIENT_ID: build-placeholder
+          KEYSTATIC_GITHUB_CLIENT_SECRET: build-placeholder
+          KEYSTATIC_SECRET: build-placeholder-secret-min-32-chars-long
+        run: npx vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
 
       - name: Deploy to Vercel
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
