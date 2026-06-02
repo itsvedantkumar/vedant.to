@@ -22,20 +22,18 @@ jobs:
       - run: npm ci
 
       - name: Build
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        # Placeholder secrets let the Keystatic route handler pass without throwing.
+        # These are NOT baked into the bundle — server env vars are read at runtime
+        # from Vercel's configured environment variables.
         env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-          # Placeholder values so the Keystatic route handler doesn't throw during
-          # the build. Server env vars are read at runtime from Vercel, not baked in.
           KEYSTATIC_GITHUB_CLIENT_ID: build-placeholder
           KEYSTATIC_GITHUB_CLIENT_SECRET: build-placeholder
-          KEYSTATIC_SECRET: build-placeholder-secret-min-32-chars-long
-        run: npx vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+          KEYSTATIC_SECRET: build-placeholder-secret-minimum-32-chars
+        run: npm run build
 
       - name: Deploy to Vercel
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-        run: npx vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
+        run: npx vercel deploy --prod --token ${{ secrets.VERCEL_TOKEN }} --yes
