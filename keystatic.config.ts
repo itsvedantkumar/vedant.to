@@ -1,9 +1,16 @@
 import { config, fields, collection } from '@keystatic/core';
 
 export default config({
-  storage: {
-    kind: 'local',
-  },
+  // GitHub mode when env vars present (production/Vercel); local mode otherwise
+  storage: process.env.KEYSTATIC_GITHUB_CLIENT_ID
+    ? {
+        kind: 'github' as const,
+        repo: {
+          owner: 'itsvedantkumar',
+          name: 'vedant.to',
+        },
+      }
+    : { kind: 'local' as const },
   ui: {
     brand: {
       name: 'vedant.to',
