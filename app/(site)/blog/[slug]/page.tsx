@@ -1,8 +1,9 @@
 import { notFound } from 'next/navigation';
 import { DocumentRenderer } from '@keystatic/core/renderer';
-import { reader } from '../../../lib/reader';
-import { renderers } from '../../../lib/renderers';
-import { createMetadata } from '../../../lib/metadata';
+import { reader } from '@/lib/reader';
+import { renderers } from '@/lib/renderers';
+import { createMetadata } from '@/lib/metadata';
+import { getReadingTime } from '@/lib/reading-time';
 
 export const revalidate = false;
 
@@ -41,19 +42,23 @@ export default async function BlogPost({
 
   const content = await post.content();
 
+  const mins = getReadingTime(slug);
+
   return (
     <section>
       <h1 className="font-medium pt-12 mb-0">{post.title}</h1>
-      <div className="flex justify-between items-center mt-2 mb-8 text-sm">
+      <div className="flex items-center gap-3 mt-2 mb-8 text-sm text-neutral-500 dark:text-neutral-400">
         {post.publishedAt && (
-          <p className="text-sm text-neutral-600 dark:text-neutral-400">
+          <span>
             {new Date(post.publishedAt).toLocaleDateString('en-US', {
               year: 'numeric',
               month: 'long',
               day: 'numeric',
             })}
-          </p>
+          </span>
         )}
+        <span aria-hidden>·</span>
+        <span>{mins} min read</span>
       </div>
       <article>
         {/* renderers cast needed: our renderer map is a superset of the core type */}

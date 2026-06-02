@@ -1,6 +1,6 @@
 import Link from 'next/link';
-import { reader } from '../../lib/reader';
-import { createMetadata } from '../../lib/metadata';
+import { reader } from '@/lib/reader';
+import { createMetadata } from '@/lib/metadata';
 
 export const metadata = createMetadata({
   title: 'Blog',

@@ -1,7 +1,8 @@
 const links = [
   { name: 'github', url: 'https://github.com/itsvedantkumar' },
-  { name: '@itsvedantkumar', url: 'https://x.com/itsvedantkumar' },
+  { name: 'x', url: 'https://x.com/itsvedantkumar' },
   { name: 'linkedin', url: 'https://www.linkedin.com/in/itsvedantkumar' },
+  { name: 'rss', url: '/rss.xml' },
 ];
 
 export default function SiteLayout({

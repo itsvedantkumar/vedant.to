@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { reader } from '../lib/reader';
+import { reader } from '@/lib/reader';
 
 export const revalidate = false;
 

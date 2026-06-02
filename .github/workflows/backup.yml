@@ -1,0 +1,34 @@
+name: Daily Content Backup
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create dated snapshot tag
+        run: |
+          TAG="backup/$(date +%Y-%m-%d)"
+          git tag "$TAG" || echo "Tag $TAG already exists, skipping"
+          git push origin "$TAG" || echo "Tag push skipped"
+
+      - name: Zip content directory
+        run: zip -r content-backup.zip content/
+
+      - name: Upload content snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: content-${{ github.run_id }}-${{ github.run_attempt }}
+          path: content-backup.zip
+          retention-days: 90
+          if-no-files-found: error
