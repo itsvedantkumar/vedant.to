@@ -137,5 +137,29 @@ export const renderers = {
         </ul>
       );
     },
+    table: ({ children }: { children: React.ReactNode }) => (
+      <div className="overflow-x-auto my-6">
+        <table className="w-full text-sm border-collapse text-gray-800 dark:text-zinc-300">
+          {children}
+        </table>
+      </div>
+    ),
+    table_head: ({ children }: { children: React.ReactNode }) => (
+      <thead className="border-b border-gray-200 dark:border-zinc-700">{children}</thead>
+    ),
+    table_body: ({ children }: { children: React.ReactNode }) => (
+      <tbody>{children}</tbody>
+    ),
+    table_row: ({ children }: { children: React.ReactNode }) => (
+      <tr className="border-b border-gray-100 dark:border-zinc-800">{children}</tr>
+    ),
+    table_cell: ({ children, header }: { children: React.ReactNode; header?: boolean }) =>
+      header ? (
+        <th className="py-2 pr-4 text-left font-medium text-gray-900 dark:text-zinc-100">
+          {children}
+        </th>
+      ) : (
+        <td className="py-2 pr-4">{children}</td>
+      ),
   },
 };

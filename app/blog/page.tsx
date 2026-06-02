@@ -1,5 +1,21 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { reader } from '../../lib/reader';
+
+export const metadata: Metadata = {
+  title: 'Blog',
+  description: 'Writing on building products, software engineering, and ideas worth sharing.',
+  openGraph: {
+    title: 'Blog | Vedant',
+    description: 'Writing on building products, software engineering, and ideas worth sharing.',
+    url: 'https://vedant.to/blog',
+  },
+  twitter: {
+    card: 'summary',
+    title: 'Blog | Vedant',
+    description: 'Writing on building products, software engineering, and ideas worth sharing.',
+  },
+};
 
 export const revalidate = false;
 

@@ -18,7 +18,9 @@ export async function generateMetadata({
   const { slug } = await params;
   const post = await reader.collections.posts.read(slug);
 
-  if (!post) return {};
+  if (!post || !post.publishedAt) return {};
+
+  const ogImage = `https://vedant.to/api/og?title=${encodeURIComponent(post.title)}`;
 
   return {
     title: post.title,
@@ -27,13 +29,15 @@ export async function generateMetadata({
       title: post.title,
       description: post.excerpt ?? undefined,
       type: 'article',
-      publishedTime: post.publishedAt ?? undefined,
+      publishedTime: post.publishedAt,
       url: `https://vedant.to/blog/${slug}`,
-      images: [
-        {
-          url: `https://vedant.to/api/og?title=${encodeURIComponent(post.title)}`,
-        },
-      ],
+      images: [{ url: ogImage, width: 1200, height: 630 }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: post.title,
+      description: post.excerpt ?? undefined,
+      images: [ogImage],
     },
   };
 }
@@ -46,7 +50,7 @@ export default async function BlogPost({
   const { slug } = await params;
   const post = await reader.collections.posts.read(slug);
 
-  if (!post) notFound();
+  if (!post || !post.publishedAt) notFound();
 
   const content = await post.content();
 
@@ -65,7 +69,8 @@ export default async function BlogPost({
         )}
       </div>
       <article>
-        <DocumentRenderer document={content} renderers={renderers as any} />
+        {/* renderers cast needed: our renderer map is a superset of the core type */}
+        <DocumentRenderer document={content} renderers={renderers as unknown as Parameters<typeof DocumentRenderer>[0]['renderers']} />
       </article>
     </section>
   );

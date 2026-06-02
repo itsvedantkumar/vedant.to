@@ -37,7 +37,6 @@
     ".next/dev/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules",
-    "app/n/ai/*.tsx"
+    "node_modules"
   ]
 }

@@ -12,9 +12,12 @@ export default async function sitemap() {
       lastModified: new Date(entry.publishedAt!).toISOString(),
     }));
 
-  const staticRoutes = ['', '/blog'].map((route) => ({
+  const staticRoutes = [
+    { route: '', lastModified: '2026-06-02' },
+    { route: '/blog', lastModified: '2026-06-02' },
+  ].map(({ route, lastModified }) => ({
     url: `${SITE_URL}${route}`,
-    lastModified: new Date().toISOString(),
+    lastModified,
   }));
 
   return [...staticRoutes, ...blogPosts];

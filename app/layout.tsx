@@ -1,9 +1,15 @@
 import './globals.css';
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import { Analytics } from '@vercel/analytics/react';
 
 const inter = Inter({ subsets: ['latin'] });
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  themeColor: '#09090b',
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://vedant.to'),
@@ -14,7 +20,20 @@ export const metadata: Metadata = {
     default: 'Vedant',
     template: '%s | Vedant',
   },
-  description: 'My portfolio, blog, and personal website.',
+  description: 'Builder, writer, curious person. Writing about products, software, and ideas.',
+  openGraph: {
+    siteName: 'Vedant',
+    locale: 'en_US',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    creator: '@itsvedantkumar',
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 export default function RootLayout({
