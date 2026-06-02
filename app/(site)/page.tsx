@@ -15,7 +15,7 @@ export default async function Home() {
     .slice(0, 3);
 
   return (
-    <section className="space-y-8 pt-16">
+    <section className="space-y-8">
       <div>
         <h1 className="font-medium text-2xl tracking-tight mb-2">Vedant</h1>
         <p className="text-gray-600 dark:text-zinc-400">

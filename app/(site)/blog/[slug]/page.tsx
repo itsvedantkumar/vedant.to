@@ -46,7 +46,7 @@ export default async function BlogPost({
 
   return (
     <section>
-      <h1 className="font-medium pt-12 mb-0">{post.title}</h1>
+      <h1 className="font-medium mb-0">{post.title}</h1>
       <div className="flex items-center gap-3 mt-2 mb-8 text-sm text-neutral-500 dark:text-neutral-400">
         {post.publishedAt && (
           <span>

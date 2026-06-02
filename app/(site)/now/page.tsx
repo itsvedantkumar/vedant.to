@@ -8,7 +8,7 @@ export const metadata = createMetadata({
 
 export default function NowPage() {
   return (
-    <section className="space-y-8 pt-12">
+    <section className="space-y-8">
       <div>
         <h1 className="font-medium text-2xl tracking-tight mb-1">Now</h1>
         <p className="text-gray-500 dark:text-zinc-500 text-sm">Last updated June 2026</p>
