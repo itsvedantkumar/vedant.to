@@ -1,14 +1,9 @@
-import { Suspense } from 'react';
 import Link from 'next/link';
-import { useMDXComponents } from '../mdx-components';
-import { MascotWrapper } from './components/MascotWrapper';
 import { reader } from '../lib/reader';
 
 export const revalidate = false;
 
 export default async function Home() {
-  const MDX = useMDXComponents();
-
   const allPosts = await reader.collections.posts.all();
   const recentPosts = allPosts
     .filter((p) => p.entry.publishedAt)
@@ -20,55 +15,50 @@ export default async function Home() {
     .slice(0, 3);
 
   return (
-    <section>
-      <div className="w-full flex flex-col items-start justify-start cursor-default -mb-4">
-        <MDX.h1>Vedant</MDX.h1>
-        <Suspense fallback={<div className="h-[65px]" />}>
-          <MascotWrapper />
-        </Suspense>
+    <section className="space-y-8">
+      <div>
+        <h1 className="font-medium text-2xl tracking-tight mb-2">Vedant</h1>
+        <p className="text-gray-600 dark:text-zinc-400">
+          Builder, writer, curious person. This is my corner of the internet
+          where I share what I&apos;m building and thinking about.
+        </p>
       </div>
 
-      <MDX.p>
-        This is my portfolio, blog, and personal website — a place where I
-        write about the things I build and the ideas I'm chewing on.
-      </MDX.p>
-
-      <MDX.h2>Recent Posts</MDX.h2>
-      {recentPosts.length > 0 ? (
-        <div className="space-y-1">
-          {recentPosts.map(({ slug, entry }) => (
-            <Link
-              key={slug}
-              href={`/blog/${slug}`}
-              className="flex flex-col space-y-1 mb-3 transition-opacity duration-200 hover:opacity-80"
-            >
-              <div className="w-full flex flex-col md:flex-row md:items-center md:space-x-3">
-                <p className="text-gray-500 dark:text-gray-400 w-[110px] tabular-nums text-sm shrink-0">
+      <div>
+        <h2 className="font-medium text-gray-800 dark:text-zinc-200 mb-4">
+          Recent Posts
+        </h2>
+        {recentPosts.length > 0 ? (
+          <div className="space-y-3">
+            {recentPosts.map(({ slug, entry }) => (
+              <Link
+                key={slug}
+                href={`/blog/${slug}`}
+                className="flex flex-col md:flex-row md:items-center md:gap-4 group"
+              >
+                <span className="text-gray-400 dark:text-gray-500 tabular-nums text-sm w-[100px] shrink-0">
                   {new Date(entry.publishedAt!).toLocaleDateString('en-US', {
                     year: 'numeric',
                     month: 'short',
                     day: 'numeric',
                   })}
-                </p>
-                <p className="text-gray-900 dark:text-gray-100 tracking-tight">
+                </span>
+                <span className="text-gray-900 dark:text-gray-100 group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors duration-150">
                   {entry.title}
-                </p>
-              </div>
-            </Link>
-          ))}
-        </div>
-      ) : (
-        <MDX.p>No posts published yet.</MDX.p>
-      )}
-
-      <MDX.p>
+                </span>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <p className="text-gray-500 dark:text-gray-400">No posts yet.</p>
+        )}
         <Link
           href="/blog"
-          className="text-blue-500 hover:text-blue-600 transition-colors duration-200"
+          className="inline-block mt-4 text-sm text-blue-500 hover:text-blue-600 transition-colors duration-150"
         >
-          View all posts →
+          All posts →
         </Link>
-      </MDX.p>
+      </div>
     </section>
   );
 }
