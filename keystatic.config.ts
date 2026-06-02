@@ -1,16 +1,16 @@
 import { config, fields, collection } from '@keystatic/core';
 
 export default config({
-  // GitHub mode when env vars present (production/Vercel); local mode otherwise
-  storage: process.env.KEYSTATIC_GITHUB_CLIENT_ID
-    ? {
+  // local mode in development; GitHub mode in production (client sees NODE_ENV, not KEYSTATIC_GITHUB_CLIENT_ID)
+  storage: process.env.NODE_ENV === 'development'
+    ? { kind: 'local' as const }
+    : {
         kind: 'github' as const,
         repo: {
           owner: 'itsvedantkumar',
           name: 'vedant.to',
         },
-      }
-    : { kind: 'local' as const },
+      },
   ui: {
     brand: {
       name: 'vedant.to',
