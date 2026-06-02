@@ -1,6 +1,15 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   pageExtensions: ['ts', 'tsx'],
+  async redirects() {
+    return [
+      {
+        source: '/cal',
+        destination: 'https://calendar.app.google/nB6tr8kyTD2mwkCa8',
+        permanent: false,
+      },
+    ];
+  },
   async headers() {
     return [
       {

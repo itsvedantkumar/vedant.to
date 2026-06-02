@@ -19,8 +19,10 @@ export default async function Home() {
       <div>
         <h1 className="font-medium text-2xl tracking-tight mb-2">Vedant</h1>
         <p className="text-gray-600 dark:text-zinc-400">
-          Builder, writer, curious person. This is my corner of the internet
-          where I share what I&apos;m building and thinking about.
+          I love watching movies, listening to music, and absorbing culture + working my ass off
+        </p>
+        <p className="text-gray-600 dark:text-zinc-400 mt-1">
+          My greatest fear in life is being mediocre
         </p>
       </div>
 
