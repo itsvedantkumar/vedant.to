@@ -1,37 +1,41 @@
 import Link from 'next/link';
-import { sanityFetch } from '../../sanity/client';
+import { reader } from '../../lib/reader';
+
+export const revalidate = false;
 
 export default async function BlogPage() {
-  const posts = await sanityFetch({
-    query: `*[_type == "post"] | order(publishedAt desc) {
-      _id,
-      title,
-      slug,
-      publishedAt
-    }`
-  });
+  const posts = await reader.collections.posts.all();
 
-  const safePosts = Array.isArray(posts) ? posts : [];
+  const sortedPosts = posts
+    .filter((p) => p.entry.publishedAt)
+    .sort(
+      (a, b) =>
+        new Date(b.entry.publishedAt!).getTime() -
+        new Date(a.entry.publishedAt!).getTime()
+    );
 
   return (
     <div>
       <h1 className="font-semibold text-2xl mb-8 tracking-tighter">Blog</h1>
-      {safePosts.map((post: any) => (
+      {sortedPosts.length === 0 && (
+        <p className="text-gray-500 dark:text-gray-400">No posts yet.</p>
+      )}
+      {sortedPosts.map(({ slug, entry }) => (
         <Link
-          key={post._id}
+          key={slug}
           className="flex flex-col space-y-1 mb-4"
-          href={`/blog/${post.slug.current}`}
+          href={`/blog/${slug}`}
         >
           <div className="w-full flex flex-col md:flex-row space-x-0 md:space-x-2">
             <p className="text-gray-500 dark:text-gray-400 w-[100px] tabular-nums">
-              {new Date(post.publishedAt).toLocaleDateString('en-US', {
+              {new Date(entry.publishedAt!).toLocaleDateString('en-US', {
                 year: 'numeric',
                 month: 'short',
-                day: 'numeric'
+                day: 'numeric',
               })}
             </p>
             <p className="text-gray-900 dark:text-gray-100 tracking-tight">
-              {post.title}
+              {entry.title}
             </p>
           </div>
         </Link>

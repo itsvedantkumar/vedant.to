@@ -1,26 +1,21 @@
-import { sanityFetch } from '../sanity/client';
+import { reader } from '../lib/reader';
 
 const SITE_URL = 'https://vedant.to';
 
 export default async function sitemap() {
-  const posts = await sanityFetch({
-    query: `*[_type == "post"] {
-      slug,
-      publishedAt
-    }`
-  });
+  const posts = await reader.collections.posts.all();
 
-  const safePosts = Array.isArray(posts) ? posts : [];
+  const blogPosts = posts
+    .filter((p) => p.entry.publishedAt)
+    .map(({ slug, entry }) => ({
+      url: `${SITE_URL}/blog/${slug}`,
+      lastModified: new Date(entry.publishedAt!).toISOString(),
+    }));
 
-  const blogPosts = safePosts.map((post: any) => ({
-    url: `${SITE_URL}/blog/${post.slug.current}`,
-    lastModified: new Date(post.publishedAt).toISOString()
-  }));
-
-  const routes = ['', '/blog'].map((route) => ({
+  const staticRoutes = ['', '/blog'].map((route) => ({
     url: `${SITE_URL}${route}`,
-    lastModified: new Date().toISOString()
+    lastModified: new Date().toISOString(),
   }));
 
-  return [...routes, ...blogPosts];
+  return [...staticRoutes, ...blogPosts];
 }

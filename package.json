@@ -7,18 +7,13 @@
     "start": "next start"
   },
   "dependencies": {
-    "@portabletext/react": "^3.0.11",
-    "@sanity/client": "^7.22.0",
-    "@sanity/code-input": "^4.1.4",
-    "@sanity/image-url": "^2.1.1",
+    "@keystatic/core": "^0.5.38",
+    "@keystatic/next": "^5.0.2",
     "@vercel/og": "^0.11.1",
     "autoprefixer": "^10.5.0",
     "next": "14.2",
-    "next-sanity": "^9.0.0",
     "react": "18.3",
     "react-dom": "18.3",
-    "sanity": "^3.0.0",
-    "styled-components": "^6.1.11",
     "sugar-high": "^0.9.3"
   },
   "devDependencies": {

@@ -1,23 +1,23 @@
 import { Suspense } from 'react';
-import { useMDXComponents } from '../mdx-components';
-import { client } from '../sanity/client';
-import { MascotWrapper } from './components/MascotWrapper';
 import Link from 'next/link';
+import { useMDXComponents } from '../mdx-components';
+import { MascotWrapper } from './components/MascotWrapper';
+import { reader } from '../lib/reader';
 
-export const revalidate = 60; // revalidate at most every minute
+export const revalidate = false;
 
 export default async function Home() {
   const MDX = useMDXComponents();
 
-  let recentPosts = [];
-  try {
-    const posts = await client.fetch(
-      `*[_type == "post"] | order(publishedAt desc)[0...3] { title, slug }`
-    );
-    recentPosts = Array.isArray(posts) ? posts : [];
-  } catch (err) {
-    console.error(err);
-  }
+  const allPosts = await reader.collections.posts.all();
+  const recentPosts = allPosts
+    .filter((p) => p.entry.publishedAt)
+    .sort(
+      (a, b) =>
+        new Date(b.entry.publishedAt!).getTime() -
+        new Date(a.entry.publishedAt!).getTime()
+    )
+    .slice(0, 3);
 
   return (
     <section>
@@ -33,9 +33,14 @@ export default async function Home() {
       <MDX.h2>Recent Posts</MDX.h2>
       <MDX.ul>
         {recentPosts.length > 0 ? (
-          recentPosts.map((post: any) => (
-            <MDX.li key={post.slug.current}>
-              <Link href={`/blog/${post.slug.current}`} className="text-blue-500 hover:text-blue-700 dark:text-gray-400 hover:dark:text-gray-300 dark:underline dark:underline-offset-2 dark:decoration-gray-800">{post.title}</Link>
+          recentPosts.map(({ slug, entry }) => (
+            <MDX.li key={slug}>
+              <Link
+                href={`/blog/${slug}`}
+                className="text-blue-500 hover:text-blue-700 dark:text-gray-400 hover:dark:text-gray-300 dark:underline dark:underline-offset-2 dark:decoration-gray-800"
+              >
+                {entry.title}
+              </Link>
             </MDX.li>
           ))
         ) : (
@@ -45,11 +50,10 @@ export default async function Home() {
 
       <MDX.h2>Features</MDX.h2>
       <MDX.ul>
-        <MDX.li>Full Headless CMS via Sanity.io</MDX.li>
-        <MDX.li>Programmatic SEO & OG Images</MDX.li>
-        <MDX.li>Automated Daily Backups</MDX.li>
+        <MDX.li>Visual CMS via Keystatic (editor at /keystatic)</MDX.li>
+        <MDX.li>Programmatic SEO &amp; OG Images</MDX.li>
         <MDX.li>Light/dark mode</MDX.li>
-        <MDX.li>Edge-cached via Cloudflare</MDX.li>
+        <MDX.li>Deployed on Vercel</MDX.li>
         <MDX.li>Zero UI degradation</MDX.li>
       </MDX.ul>
 
@@ -57,8 +61,8 @@ export default async function Home() {
       <MDX.ul>
         <MDX.li>Next.js / React</MDX.li>
         <MDX.li>Tailwind CSS</MDX.li>
-        <MDX.li>Sanity CMS</MDX.li>
-        <MDX.li>Vercel / Cloudflare</MDX.li>
+        <MDX.li>Keystatic CMS</MDX.li>
+        <MDX.li>Vercel</MDX.li>
       </MDX.ul>
     </section>
   );
