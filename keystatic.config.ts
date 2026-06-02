@@ -41,7 +41,14 @@ export default config({
         }),
         content: fields.document({
           label: 'Content',
-          formatting: true,
+          formatting: {
+            headingLevels: [2, 3, 4],
+            inlineMarks: true,
+            listTypes: true,
+            blockTypes: true,
+            alignment: true,
+            softBreaks: true,
+          },
           dividers: true,
           links: true,
           images: {

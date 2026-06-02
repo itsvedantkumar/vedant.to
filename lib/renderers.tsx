@@ -41,7 +41,7 @@ export const renderers = {
       textAlign: 'center' | 'end' | undefined;
     }) => (
       <p
-        className="text-gray-800 dark:text-zinc-300 leading-snug"
+        className="text-gray-800 dark:text-zinc-300 leading-relaxed mb-4"
         style={textAlign ? { textAlign } : undefined}
       >
         {children}
@@ -56,13 +56,15 @@ export const renderers = {
       children: React.ReactNode;
       textAlign: 'center' | 'end' | undefined;
     }) => {
+      // h1 is reserved for the page title; content should start at h2.
+      // h1 here is a graceful fallback styled identically to h2.
       const classMap: Record<number, string> = {
-        1: 'font-medium pt-12 mb-0',
-        2: 'text-gray-800 dark:text-zinc-200 font-medium mt-8 mb-3',
-        3: 'text-gray-800 dark:text-zinc-200 font-medium mt-8 mb-3',
-        4: 'font-medium',
-        5: 'font-medium',
-        6: 'font-medium',
+        1: 'text-xl font-medium tracking-tight text-gray-900 dark:text-zinc-100 mt-10 mb-3',
+        2: 'text-xl font-medium tracking-tight text-gray-900 dark:text-zinc-100 mt-10 mb-3',
+        3: 'text-lg font-medium text-gray-900 dark:text-zinc-100 mt-8 mb-2',
+        4: 'font-medium text-gray-900 dark:text-zinc-100 mt-6 mb-1',
+        5: 'text-sm font-medium text-gray-700 dark:text-zinc-300 mt-4 mb-1',
+        6: 'text-sm font-medium text-gray-500 dark:text-zinc-400 mt-4',
       };
       const Tag = `h${level}` as 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
       return (
