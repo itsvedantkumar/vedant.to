@@ -19,10 +19,10 @@ export default async function Home() {
       <div>
         <h1 className="font-medium text-2xl tracking-tight mb-2">Vedant</h1>
         <p className="text-gray-600 dark:text-zinc-400">
-          I love watching movies, listening to music, and absorbing culture + working my ass off
+          I love watching movies, listening to music, and absorbing culture
         </p>
         <p className="text-gray-600 dark:text-zinc-400 mt-1">
-          My greatest fear in life is being mediocre
+          Other than that, I plan to dedicate my life to advancing human civilisation
         </p>
       </div>
 
