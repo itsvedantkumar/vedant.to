@@ -1,7 +1,6 @@
 import { config, fields, collection } from '@keystatic/core';
 
 export default config({
-  // local mode in development; GitHub mode in production (client sees NODE_ENV, not KEYSTATIC_GITHUB_CLIENT_ID)
   storage: process.env.NODE_ENV === 'development'
     ? { kind: 'local' as const }
     : {

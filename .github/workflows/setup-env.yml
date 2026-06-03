@@ -29,6 +29,9 @@ jobs:
           set_env "KEYSTATIC_GITHUB_CLIENT_SECRET"  "dc2456458e0ad053ef5733b86b899b9f622a2a4b"
           set_env "KEYSTATIC_SECRET"                "d53d37cd14fab1066fbfc47b7c42d51ada8313b8bdeb0a2de23994e0f295ec60"
           set_env "KEYSTATIC_AUTH_PASSWORD"         "50216fae185dfccefc4981515dd9b8f3"
+          # Public GitHub App slug — required by app/api/keystatic route handler (slugEnvVarName).
+          # NEXT_PUBLIC_ so it must be present at Vercel build time to be inlined into the client bundle.
+          set_env "NEXT_PUBLIC_KEYSTATIC_GITHUB_APP_SLUG" "itsvedantkumar-keystatic"
 
       - name: Trigger redeploy
         env:
