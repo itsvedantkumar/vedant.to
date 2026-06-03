@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import { Analytics } from '@vercel/analytics/react';
 import Script from 'next/script';
+import { siteSchema } from '@/lib/json-ld';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -22,6 +23,14 @@ export const metadata: Metadata = {
   },
   description:
     'Builder, writer, curious person. Writing about products, software, and ideas.',
+  authors: [{ name: 'Vedant Kumar', url: 'https://vedant.to' }],
+  creator: 'Vedant Kumar',
+  alternates: {
+    types: {
+      'application/rss+xml': '/rss.xml',
+      'application/feed+json': '/feed.json',
+    },
+  },
   openGraph: {
     siteName: 'Vedant',
     locale: 'en_US',
@@ -44,6 +53,10 @@ export default function RootLayout({
   return (
     <html lang="en" className={inter.className}>
       <body className="antialiased tracking-tight">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(siteSchema()) }}
+        />
         {children}
         <Analytics />
         {/* Vercel Speed Insights — injected by Vercel's edge network when deployed */}

@@ -13,6 +13,8 @@ interface PageMetadataOptions {
   image?: string;
   /** For blog posts only */
   publishedAt?: string;
+  /** For blog posts only — drives og:article:modified_time */
+  updatedAt?: string | null;
 }
 
 export function createMetadata({
@@ -21,6 +23,7 @@ export function createMetadata({
   path,
   image,
   publishedAt,
+  updatedAt,
 }: PageMetadataOptions): Metadata {
   const url = `${SITE_URL}${path}`;
   const ogImage = image ?? `${SITE_URL}/api/og?title=${encodeURIComponent(title)}`;
@@ -37,6 +40,7 @@ export function createMetadata({
       locale: 'en_US',
       type: publishedAt ? 'article' : 'website',
       ...(publishedAt ? { publishedTime: publishedAt } : {}),
+      ...(updatedAt ? { modifiedTime: updatedAt } : {}),
       images: [{ url: ogImage, width: 1200, height: 630, alt: title }],
     },
     twitter: {

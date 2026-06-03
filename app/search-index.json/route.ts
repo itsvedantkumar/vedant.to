@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { reader } from '@/lib/reader';
+import { getPublishedPosts } from '@/lib/posts';
 
 // Generated once at build time and served as a static asset. The client search
 // box fetches this and filters in-memory — no backend, no extra deps.
@@ -25,22 +25,15 @@ function plainText(slug: string): string {
 }
 
 export async function GET() {
-  const posts = await reader.collections.posts.all();
+  const posts = await getPublishedPosts();
 
-  const index = posts
-    .filter((p) => p.entry.publishedAt)
-    .sort(
-      (a, b) =>
-        new Date(b.entry.publishedAt!).getTime() -
-        new Date(a.entry.publishedAt!).getTime()
-    )
-    .map(({ slug, entry }) => ({
-      slug,
-      title: entry.title,
-      excerpt: entry.excerpt ?? '',
-      date: entry.publishedAt!,
-      text: plainText(slug),
-    }));
+  const index = posts.map(({ slug, entry }) => ({
+    slug,
+    title: entry.title,
+    excerpt: entry.excerpt ?? '',
+    date: entry.publishedAt!,
+    text: plainText(slug),
+  }));
 
   return Response.json(index);
 }

@@ -1,18 +1,10 @@
 import Link from 'next/link';
-import { reader } from '@/lib/reader';
+import { getPublishedPosts } from '@/lib/posts';
 
 export const revalidate = false;
 
 export default async function Home() {
-  const allPosts = await reader.collections.posts.all();
-  const recentPosts = allPosts
-    .filter((p) => p.entry.publishedAt)
-    .sort(
-      (a, b) =>
-        new Date(b.entry.publishedAt!).getTime() -
-        new Date(a.entry.publishedAt!).getTime()
-    )
-    .slice(0, 3);
+  const recentPosts = (await getPublishedPosts()).slice(0, 3);
 
   return (
     <section className="space-y-8">
