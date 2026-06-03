@@ -13,25 +13,37 @@ jobs:
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          # Secrets — add these under repo Settings → Secrets and variables → Actions.
+          # If a secret is unset it is skipped (the existing Vercel value is left untouched),
+          # so this workflow is safe to run before all secrets are populated.
+          KEYSTATIC_GITHUB_CLIENT_SECRET: ${{ secrets.KEYSTATIC_GITHUB_CLIENT_SECRET }}
+          KEYSTATIC_SECRET: ${{ secrets.KEYSTATIC_SECRET }}
+          KEYSTATIC_AUTH_PASSWORD: ${{ secrets.KEYSTATIC_AUTH_PASSWORD }}
         run: |
           set_env() {
             local key=$1
             local value=$2
+            if [ -z "$value" ]; then
+              echo "SKIP: $key (no value — add it as a GitHub Actions secret)"
+              return
+            fi
+            # upsert=true so re-running overwrites existing values (needed for rotation).
             curl -s -X POST \
-              "https://api.vercel.com/v10/projects/$VERCEL_PROJECT_ID/env" \
+              "https://api.vercel.com/v10/projects/$VERCEL_PROJECT_ID/env?upsert=true" \
               -H "Authorization: Bearer $VERCEL_TOKEN" \
               -H "Content-Type: application/json" \
               -d "{\"key\":\"$key\",\"value\":\"$value\",\"type\":\"encrypted\",\"target\":[\"production\",\"preview\"]}" \
               | python3 -c "import sys,json; r=json.load(sys.stdin); print('OK:', r.get('key','?'), '|', r.get('error',{}).get('message',''))"
           }
 
-          set_env "KEYSTATIC_GITHUB_CLIENT_ID"     "0v23liiSxTR0KyeXh7K4"
-          set_env "KEYSTATIC_GITHUB_CLIENT_SECRET"  "dc2456458e0ad053ef5733b86b899b9f622a2a4b"
-          set_env "KEYSTATIC_SECRET"                "d53d37cd14fab1066fbfc47b7c42d51ada8313b8bdeb0a2de23994e0f295ec60"
-          set_env "KEYSTATIC_AUTH_PASSWORD"         "50216fae185dfccefc4981515dd9b8f3"
-          # Public GitHub App slug — required by app/api/keystatic route handler (slugEnvVarName).
-          # NEXT_PUBLIC_ so it must be present at Vercel build time to be inlined into the client bundle.
+          # Public, non-secret values (safe to keep inline):
+          #   client ID is exposed in the OAuth flow; the App slug is the public github.com/apps/<slug>.
+          set_env "KEYSTATIC_GITHUB_CLIENT_ID"            "0v23liiSxTR0KyeXh7K4"
           set_env "NEXT_PUBLIC_KEYSTATIC_GITHUB_APP_SLUG" "itsvedantkumar-keystatic"
+          # Secrets (sourced from GitHub Actions secrets in the env block above):
+          set_env "KEYSTATIC_GITHUB_CLIENT_SECRET"        "$KEYSTATIC_GITHUB_CLIENT_SECRET"
+          set_env "KEYSTATIC_SECRET"                      "$KEYSTATIC_SECRET"
+          set_env "KEYSTATIC_AUTH_PASSWORD"               "$KEYSTATIC_AUTH_PASSWORD"
 
       - name: Trigger redeploy
         env:
