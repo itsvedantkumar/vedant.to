@@ -5,6 +5,12 @@ const navLinks = [
   { name: 'blog', href: '/blog' },
 ];
 
+const footerLinks = [
+  { name: 'x', url: 'https://x.com/itsvedantkumar' },
+  { name: 'linkedin', url: 'https://www.linkedin.com/in/itsvedantkumar' },
+  { name: 'rss', url: '/rss.xml' },
+];
+
 export default function SiteLayout({
   children,
 }: {
@@ -27,6 +33,21 @@ export default function SiteLayout({
         <main className="space-y-6 flex-1">
           {children}
         </main>
+        <footer className="mt-16">
+          <div className="flex justify-center space-x-4 tracking-tight">
+            {footerLinks.map((link) => (
+              <a
+                key={link.name}
+                href={link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-400 dark:text-gray-500 hover:text-blue-500 transition-colors duration-200"
+              >
+                {link.name}
+              </a>
+            ))}
+          </div>
+        </footer>
       </div>
     </div>
   );
