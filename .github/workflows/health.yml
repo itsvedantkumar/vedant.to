@@ -1,0 +1,105 @@
+name: Production Health
+
+# Hourly probe of the live site + latest Vercel production deployment. On
+# failure it opens (or comments on) a single GitHub issue so problems surface
+# without inbox spam. Manual run available via the Actions tab.
+on:
+  schedule:
+    - cron: '0 * * * *' # hourly
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check public routes return 200
+        id: routes
+        run: |
+          set -uo pipefail
+          BASE="https://vedant.to"
+          ROUTES="/ /blog /rss.xml /feed.json /sitemap.xml /search-index.json /robots.txt"
+          FAIL=""
+          for r in $ROUTES; do
+            CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 20 "$BASE$r")
+            echo "$r -> $CODE"
+            if [ "$CODE" != "200" ]; then FAIL="$FAIL\n$r returned $CODE"; fi
+          done
+          # Homepage must contain the site name (catches blank/error pages that still 200).
+          if ! curl -s --max-time 20 "$BASE/" | grep -q "Vedant"; then
+            FAIL="$FAIL\nhomepage missing expected content"
+          fi
+          if [ -n "$FAIL" ]; then
+            echo "details<<EOF" >> "$GITHUB_OUTPUT"
+            echo -e "Route check failures:$FAIL" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+
+      - name: Check latest Vercel production deployment state
+        if: always()
+        id: vercel
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          set -uo pipefail
+          if [ -z "${VERCEL_TOKEN:-}" ] || [ -z "${VERCEL_PROJECT_ID:-}" ]; then
+            echo "Vercel secrets unset — skipping deployment-state check"
+            exit 0
+          fi
+          RESP=$(curl -s --max-time 20 \
+            -H "Authorization: Bearer $VERCEL_TOKEN" \
+            "https://api.vercel.com/v6/deployments?projectId=$VERCEL_PROJECT_ID&target=production&limit=1")
+          STATE=$(echo "$RESP" | jq -r '.deployments[0].state // "UNKNOWN"')
+          echo "Latest production deployment state: $STATE"
+          if [ "$STATE" = "ERROR" ] || [ "$STATE" = "CANCELED" ]; then
+            echo "details<<EOF" >> "$GITHUB_OUTPUT"
+            echo "Latest Vercel production deployment state: $STATE" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+
+      - name: Open or update alert issue
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = [
+              '### 🚨 Production health check failed',
+              '',
+              'One or more checks failed during the hourly probe.',
+              '',
+              '```',
+              `${{ steps.routes.outputs.details || '' }}`,
+              `${{ steps.vercel.outputs.details || '' }}`,
+              '```',
+              '',
+              `Run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            ].join('\n');
+            const title = '🚨 Production health check failed';
+            const existing = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'health',
+            });
+            if (existing.data.length > 0) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.data[0].number,
+                body,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+                labels: ['health'],
+              });
+            }
