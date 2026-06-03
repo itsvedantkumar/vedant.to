@@ -18,7 +18,8 @@ function getStaticRoutes(): { url: string; lastModified: string }[] {
         entry.startsWith('.') ||
         entry.startsWith('[') ||
         EXCLUDED.has(entry)
-      ) continue;
+      )
+        continue;
 
       const fullPath = join(appDir, entry);
       if (!statSync(fullPath).isDirectory()) continue;

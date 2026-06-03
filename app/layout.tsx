@@ -20,7 +20,8 @@ export const metadata: Metadata = {
     default: 'Vedant',
     template: '%s | Vedant',
   },
-  description: 'Builder, writer, curious person. Writing about products, software, and ideas.',
+  description:
+    'Builder, writer, curious person. Writing about products, software, and ideas.',
   openGraph: {
     siteName: 'Vedant',
     locale: 'en_US',

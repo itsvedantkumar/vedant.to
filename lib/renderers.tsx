@@ -97,15 +97,7 @@ export const renderers = {
       </blockquote>
     ),
     divider: () => <hr />,
-    image: ({
-      src,
-      alt,
-      title,
-    }: {
-      src: string;
-      alt: string;
-      title?: string;
-    }) => (
+    image: ({ src, alt, title }: { src: string; alt: string; title?: string }) => (
       <img
         src={src}
         alt={alt}
@@ -159,7 +151,13 @@ export const renderers = {
     table_row: ({ children }: { children: React.ReactNode }) => (
       <tr className="border-b border-gray-100 dark:border-zinc-800">{children}</tr>
     ),
-    table_cell: ({ children, header }: { children: React.ReactNode; header?: boolean }) =>
+    table_cell: ({
+      children,
+      header,
+    }: {
+      children: React.ReactNode;
+      header?: boolean;
+    }) =>
       header ? (
         <th className="py-2 pr-4 text-left font-medium text-gray-900 dark:text-zinc-100">
           {children}

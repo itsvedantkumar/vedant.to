@@ -4,6 +4,7 @@ Run a YC-grade audit of this repo. Be autonomous, fix root causes, keep changes
 small and reversible, and prove every claim by building + observing the running app.
 
 ## Scope & order
+
 1. **Security (highest priority)**
    - Secrets: nothing real in repo/workflows. `.gitignore` must block every `.env*`
      except `.env.example` / `.env.production` (public-only). Grep the tree for tokens/keys.
@@ -33,6 +34,7 @@ small and reversible, and prove every claim by building + observing the running 
      Deploy step gated on `main` push. No secrets echoed in logs.
 
 ## Done bar (do NOT claim done before all pass)
+
 - `npm run build` passes (run it, not just typecheck).
 - Reload preview, check `preview_console_logs level=error` → none, snapshot renders content.
 - Verify response CSP header via fetch; confirm 200s on `/`, `/blog`, `/blog/[slug]`, `/rss.xml`.

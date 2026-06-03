@@ -21,6 +21,9 @@ jobs:
 
       - run: npm ci
 
+      - name: Check formatting
+        run: npm run format:check
+
       - name: Build
         # Placeholder secrets let the Keystatic route handler pass without throwing.
         # These are NOT baked into the bundle — server env vars are read at runtime
