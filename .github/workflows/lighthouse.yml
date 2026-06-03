@@ -1,0 +1,32 @@
+name: Lighthouse
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  lighthouse:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Build
+        env:
+          KEYSTATIC_GITHUB_CLIENT_ID: build-placeholder
+          KEYSTATIC_GITHUB_CLIENT_SECRET: build-placeholder
+          KEYSTATIC_SECRET: build-placeholder-secret-minimum-32-chars
+        run: npm run build
+
+      - name: Run Lighthouse CI
+        uses: treosh/lighthouse-ci-action@v12
+        with:
+          configPath: ./lighthouserc.json
+          uploadArtifacts: true
+          temporaryPublicStorage: true

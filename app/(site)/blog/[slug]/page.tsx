@@ -4,6 +4,7 @@ import { reader } from '@/lib/reader';
 import { renderers } from '@/lib/renderers';
 import { createMetadata } from '@/lib/metadata';
 import { getReadingTime } from '@/lib/reading-time';
+import { articleSchema } from '@/lib/json-ld';
 
 export const revalidate = false;
 
@@ -44,8 +45,19 @@ export default async function BlogPost({
 
   const mins = getReadingTime(slug);
 
+  const schema = articleSchema({
+    title: post.title,
+    description: post.excerpt ?? post.title,
+    slug,
+    publishedAt: post.publishedAt,
+  });
+
   return (
     <section>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+      />
       <h1 className="text-2xl font-medium tracking-tight mb-0">{post.title}</h1>
       <div className="flex items-center gap-3 mt-2 mb-8 text-sm text-neutral-500 dark:text-neutral-400">
         {post.publishedAt && (
