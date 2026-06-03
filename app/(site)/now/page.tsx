@@ -2,7 +2,7 @@ import { createMetadata } from '@/lib/metadata';
 
 export const metadata = createMetadata({
   title: 'Now',
-  description: 'What I\'m working on right now.',
+  description: "What I'm working on right now.",
   path: '/now',
 });
 
@@ -17,9 +17,7 @@ export default function NowPage() {
       <div className="space-y-6 text-gray-800 dark:text-zinc-300 leading-relaxed">
         <div>
           <h2 className="font-medium text-gray-900 dark:text-zinc-100 mb-2">Building</h2>
-          <p>
-            Working on vedant.to — building in public, writing about what I learn.
-          </p>
+          <p>Working on vedant.to — building in public, writing about what I learn.</p>
         </div>
 
         <div>
@@ -31,10 +29,12 @@ export default function NowPage() {
         </div>
 
         <div>
-          <h2 className="font-medium text-gray-900 dark:text-zinc-100 mb-2">Thinking about</h2>
+          <h2 className="font-medium text-gray-900 dark:text-zinc-100 mb-2">
+            Thinking about
+          </h2>
           <p>
-            How to build things people actually want. What it means to write well.
-            Why most software is worse than it needs to be.
+            How to build things people actually want. What it means to write well. Why
+            most software is worse than it needs to be.
           </p>
         </div>
       </div>

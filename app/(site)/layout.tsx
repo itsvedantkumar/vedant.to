@@ -11,11 +11,7 @@ const footerLinks = [
   { name: 'rss', url: '/rss.xml' },
 ];
 
-export default function SiteLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function SiteLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen flex flex-col p-8 dark:bg-zinc-950 bg-white text-gray-900 dark:text-zinc-200">
       <div className="max-w-[60ch] mx-auto w-full flex flex-col flex-1">
@@ -30,9 +26,7 @@ export default function SiteLayout({
             </Link>
           ))}
         </nav>
-        <main className="space-y-6 flex-1">
-          {children}
-        </main>
+        <main className="space-y-6 flex-1">{children}</main>
         <footer className="mt-16">
           <div className="flex justify-center space-x-4 tracking-tight">
             {footerLinks.map((link) => (

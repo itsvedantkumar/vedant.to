@@ -6,15 +6,15 @@ Live at **[vedant.to](https://vedant.to)**
 
 ## Stack
 
-| Layer | Tool |
-|---|---|
-| Framework | [Next.js 14](https://nextjs.org) (App Router) |
-| CMS | [Keystatic](https://keystatic.com) — content stored as Markdown files in `content/` |
-| Styling | [Tailwind CSS](https://tailwindcss.com) |
-| Fonts | Inter via `next/font/google` |
-| Syntax highlighting | [sugar-high](https://github.com/huozhi/sugar-high) |
-| Analytics | [Vercel Analytics](https://vercel.com/analytics) + [Vercel Speed Insights](https://vercel.com/docs/speed-insights) + Google Analytics (GA4) |
-| Deployment | [Vercel](https://vercel.com) |
+| Layer               | Tool                                                                                                                                        |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Framework           | [Next.js 14](https://nextjs.org) (App Router)                                                                                               |
+| CMS                 | [Keystatic](https://keystatic.com) — content stored as Markdown files in `content/`                                                         |
+| Styling             | [Tailwind CSS](https://tailwindcss.com)                                                                                                     |
+| Fonts               | Inter via `next/font/google`                                                                                                                |
+| Syntax highlighting | [sugar-high](https://github.com/huozhi/sugar-high)                                                                                          |
+| Analytics           | [Vercel Analytics](https://vercel.com/analytics) + [Vercel Speed Insights](https://vercel.com/docs/speed-insights) + Google Analytics (GA4) |
+| Deployment          | [Vercel](https://vercel.com)                                                                                                                |
 
 ## Features
 
@@ -98,6 +98,7 @@ Content lives in `content/posts/` as Markdown files with YAML frontmatter. Keyst
 **In production (GitHub mode):** Keystatic commits changes back to the repo via a GitHub OAuth App. Requires `KEYSTATIC_GITHUB_CLIENT_ID`, `KEYSTATIC_GITHUB_CLIENT_SECRET`, and `KEYSTATIC_SECRET` to be set in Vercel environment variables.
 
 To set up the GitHub OAuth App:
+
 1. Go to [github.com/settings/developers](https://github.com/settings/developers) → New OAuth App
 2. Set the callback URL to `https://vedant.to/api/keystatic/github/oauth/callback`
 3. Add the client ID, secret, and a random `KEYSTATIC_SECRET` (`openssl rand -hex 32`) to Vercel
@@ -117,6 +118,7 @@ Push to `main` → GitHub Actions builds and deploys to Vercel automatically. Th
 ## Backup
 
 A scheduled GitHub Actions workflow runs daily at midnight UTC:
+
 - Creates a `backup/YYYY-MM-DD` git tag pointing to the current commit
 - Zips `content/` and uploads it as a workflow artifact (retained 90 days)
 

@@ -1,10 +1,6 @@
 import Link from 'next/link';
 
-export default function KeystaticLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function KeystaticLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-white dark:bg-zinc-950">
       <nav className="px-8 py-4 border-b border-gray-100 dark:border-zinc-800">

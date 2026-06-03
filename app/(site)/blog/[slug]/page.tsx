@@ -62,7 +62,12 @@ export default async function BlogPost({
       </div>
       <article>
         {/* renderers cast needed: our renderer map is a superset of the core type */}
-        <DocumentRenderer document={content} renderers={renderers as unknown as Parameters<typeof DocumentRenderer>[0]['renderers']} />
+        <DocumentRenderer
+          document={content}
+          renderers={
+            renderers as unknown as Parameters<typeof DocumentRenderer>[0]['renderers']
+          }
+        />
       </article>
     </section>
   );
