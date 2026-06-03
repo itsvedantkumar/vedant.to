@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { reader } from '@/lib/reader';
+import { getPublishedPosts } from '@/lib/posts';
 import { createMetadata } from '@/lib/metadata';
 import { Search } from '@/components/search';
 
@@ -13,15 +13,7 @@ export const metadata = createMetadata({
 export const revalidate = false;
 
 export default async function BlogPage() {
-  const posts = await reader.collections.posts.all();
-
-  const sortedPosts = posts
-    .filter((p) => p.entry.publishedAt)
-    .sort(
-      (a, b) =>
-        new Date(b.entry.publishedAt!).getTime() -
-        new Date(a.entry.publishedAt!).getTime()
-    );
+  const sortedPosts = await getPublishedPosts();
 
   return (
     <div>

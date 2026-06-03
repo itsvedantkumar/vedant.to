@@ -1,4 +1,4 @@
-import { reader } from '../../lib/reader';
+import { getPublishedPosts } from '../../lib/posts';
 
 const SITE_URL = 'https://vedant.to';
 
@@ -12,15 +12,7 @@ function escapeXml(str: string): string {
 }
 
 export async function GET() {
-  const posts = await reader.collections.posts.all();
-
-  const sorted = posts
-    .filter((p) => p.entry.publishedAt)
-    .sort(
-      (a, b) =>
-        new Date(b.entry.publishedAt!).getTime() -
-        new Date(a.entry.publishedAt!).getTime()
-    );
+  const sorted = await getPublishedPosts();
 
   const lastBuildDate = sorted[0]
     ? new Date(sorted[0].entry.publishedAt!).toUTCString()

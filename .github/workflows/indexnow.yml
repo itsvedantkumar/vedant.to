@@ -1,0 +1,40 @@
+name: IndexNow
+
+# Pings IndexNow (Bing, Yandex, Seznam, …) on every push to main so new/changed
+# posts get crawled within minutes instead of days. The key is public by design
+# and is served at /<key>.txt. Google ignores IndexNow — submit the sitemap once
+# in Google Search Console for that engine.
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Submit URLs to IndexNow
+        env:
+          HOST: vedant.to
+          KEY: 6b3d50d9f977ead7a83ee04e62745866
+        run: |
+          set -euo pipefail
+          URLS=$(jq -R -s -c '
+            split("\n") | map(select(length > 0))
+          ' < <(
+            printf "https://%s/\n" "$HOST"
+            printf "https://%s/blog\n" "$HOST"
+            for f in content/posts/*.mdoc; do
+              [ -e "$f" ] || continue
+              grep -q 'draft: true' "$f" && continue
+              slug=$(basename "$f" .mdoc)
+              printf "https://%s/blog/%s\n" "$HOST" "$slug"
+            done
+          ))
+          echo "Submitting: $URLS"
+          curl -fsS -X POST "https://api.indexnow.org/indexnow" \
+            -H "Content-Type: application/json" \
+            -d "{\"host\":\"$HOST\",\"key\":\"$KEY\",\"keyLocation\":\"https://$HOST/$KEY.txt\",\"urlList\":$URLS}"

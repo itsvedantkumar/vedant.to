@@ -30,6 +30,16 @@ export default config({
           label: 'Published At',
           validation: { isRequired: true },
         }),
+        updatedAt: fields.date({
+          label: 'Updated At',
+          description:
+            'Optional — set when meaningfully revised. Drives "dateModified" for SEO.',
+        }),
+        draft: fields.checkbox({
+          label: 'Draft',
+          description: 'Hidden from the site, feeds, sitemap, and search while checked.',
+          defaultValue: false,
+        }),
         excerpt: fields.text({
           label: 'Excerpt',
           multiline: true,

@@ -1,11 +1,18 @@
 import { readdirSync, statSync } from 'fs';
 import { join } from 'path';
-import { reader } from '../lib/reader';
+import { getPublishedPosts } from '../lib/posts';
 
 const SITE_URL = 'https://vedant.to';
 
 // Dirs to exclude from auto-discovery
-const EXCLUDED = new Set(['api', 'keystatic', 'rss.xml', '_not-found']);
+const EXCLUDED = new Set([
+  'api',
+  'keystatic',
+  'rss.xml',
+  'feed.json',
+  'search-index.json',
+  '_not-found',
+]);
 
 function getStaticRoutes(): { url: string; lastModified: string }[] {
   const appDir = join(process.cwd(), 'app');
@@ -42,14 +49,12 @@ function getStaticRoutes(): { url: string; lastModified: string }[] {
 }
 
 export default async function sitemap() {
-  const posts = await reader.collections.posts.all();
+  const posts = await getPublishedPosts();
 
-  const blogPosts = posts
-    .filter((p) => p.entry.publishedAt)
-    .map(({ slug, entry }) => ({
-      url: `${SITE_URL}/blog/${slug}`,
-      lastModified: new Date(entry.publishedAt!).toISOString(),
-    }));
+  const blogPosts = posts.map(({ slug, entry }) => ({
+    url: `${SITE_URL}/blog/${slug}`,
+    lastModified: new Date(entry.updatedAt ?? entry.publishedAt!).toISOString(),
+  }));
 
   return [...getStaticRoutes(), ...blogPosts];
 }

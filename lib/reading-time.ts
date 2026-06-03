@@ -1,7 +1,7 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
-export function getReadingTime(slug: string): number {
+export function getReadingStats(slug: string): { words: number; minutes: number } {
   try {
     const raw = readFileSync(
       join(process.cwd(), 'content/posts', `${slug}.mdoc`),
@@ -9,8 +9,12 @@ export function getReadingTime(slug: string): number {
     );
     const body = raw.replace(/^---[\s\S]*?---/, '').trim();
     const words = body.split(/\s+/).filter(Boolean).length;
-    return Math.max(1, Math.ceil(words / 200));
+    return { words, minutes: Math.max(1, Math.ceil(words / 200)) };
   } catch {
-    return 1;
+    return { words: 0, minutes: 1 };
   }
+}
+
+export function getReadingTime(slug: string): number {
+  return getReadingStats(slug).minutes;
 }

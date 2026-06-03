@@ -15,6 +15,8 @@ export function Search() {
   const [items, setItems] = useState<Item[]>([]);
 
   useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get('q');
+    if (q) setQuery(q);
     fetch('/search-index.json')
       .then((r) => r.json())
       .then(setItems)
