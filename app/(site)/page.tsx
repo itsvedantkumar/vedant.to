@@ -26,24 +26,6 @@ export default async function Home() {
         </p>
       </div>
 
-      <div className="flex space-x-4 tracking-tight">
-        {[
-          { name: 'x', url: 'https://x.com/itsvedantkumar' },
-          { name: 'linkedin', url: 'https://www.linkedin.com/in/itsvedantkumar' },
-          { name: 'rss', url: '/rss.xml' },
-        ].map((link) => (
-          <a
-            key={link.name}
-            href={link.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-gray-400 dark:text-gray-500 hover:text-blue-500 transition-colors duration-200"
-          >
-            {link.name}
-          </a>
-        ))}
-      </div>
-
       <div>
         <h2 className="font-medium text-gray-800 dark:text-zinc-200 mb-4">
           Recent Posts
