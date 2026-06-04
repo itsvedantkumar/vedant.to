@@ -1,7 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
 import { highlight } from 'sugar-high';
-import { CopyButton } from '@/components/copy-button';
 
 const linkClass =
   'text-blue-500 hover:text-blue-700 dark:text-gray-400 hover:dark:text-gray-300 dark:underline dark:underline-offset-2 dark:decoration-gray-800';
@@ -80,15 +79,12 @@ export const renderers = {
     code: ({ children, language }: { children: string; language?: string }) => {
       const codeHTML = highlight(children);
       return (
-        <div className="relative group">
-          <pre>
-            <code
-              dangerouslySetInnerHTML={{ __html: codeHTML }}
-              className={language ? `language-${language}` : ''}
-            />
-          </pre>
-          <CopyButton code={children} />
-        </div>
+        <pre>
+          <code
+            dangerouslySetInnerHTML={{ __html: codeHTML }}
+            className={language ? `language-${language}` : ''}
+          />
+        </pre>
       );
     },
     blockquote: ({ children }: { children: React.ReactNode }) => (
