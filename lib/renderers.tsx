@@ -16,6 +16,17 @@ export const renderers = {
     // Inline code is a mark: children is a ReactNode (text), not a raw string.
     // sugar-high is only for code BLOCKS, so render inline code plainly.
     code: ({ children }: { children: React.ReactNode }) => <code>{children}</code>,
+    // Fallback: image can appear in inline context if inserted inside a paragraph.
+    // Render it as a block-style image rather than throwing.
+    image: ({ src, alt }: { src: string; alt: string }) => (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={src}
+        alt={alt}
+        loading="lazy"
+        style={{ maxWidth: '100%', height: 'auto', borderRadius: '0.5rem' }}
+      />
+    ),
     link: ({ href, children }: { href: string; children: React.ReactNode }) => {
       if (href.startsWith('/') || href.startsWith('#')) {
         return (
