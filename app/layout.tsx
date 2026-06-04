@@ -59,8 +59,6 @@ export default function RootLayout({
         />
         {children}
         <Analytics />
-        {/* Vercel Speed Insights — injected by Vercel's edge network when deployed */}
-        <Script src="/_vercel/speed-insights/script.js" strategy="afterInteractive" />
         {/* Google Analytics */}
         {GA_ID && (
           <>
