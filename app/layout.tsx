@@ -21,8 +21,7 @@ export const metadata: Metadata = {
     default: 'Vedant',
     template: '%s',
   },
-  description:
-    'Builder, writer, curious person. Writing about products, software, and ideas.',
+  description: "Hi I'm Vedant",
   authors: [{ name: 'Vedant Kumar', url: 'https://vedant.to' }],
   creator: 'Vedant Kumar',
   alternates: {
@@ -35,12 +34,12 @@ export const metadata: Metadata = {
     siteName: 'Vedant',
     locale: 'en_US',
     type: 'website',
-    images: [{ url: 'https://vedant.to/api/og?title=Vedant', width: 1200, height: 630 }],
+    images: [{ url: 'https://vedant.to/icon.png', width: 512, height: 512 }],
   },
   twitter: {
     card: 'summary_large_image',
     creator: '@itsvedantkumar',
-    images: ['https://vedant.to/api/og?title=Vedant'],
+    images: ['https://vedant.to/icon.png'],
   },
   robots: { index: true, follow: true },
 };
