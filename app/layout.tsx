@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   metadataBase: new URL('https://vedant.to'),
   title: {
     default: 'Vedant',
-    template: '%s | Vedant',
+    template: '%s',
   },
   description:
     'Builder, writer, curious person. Writing about products, software, and ideas.',
