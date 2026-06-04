@@ -3,6 +3,9 @@ name: Setup Vercel Env Vars
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   setup:
     runs-on: ubuntu-latest
