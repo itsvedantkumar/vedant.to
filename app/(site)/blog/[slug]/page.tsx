@@ -48,31 +48,48 @@ export default async function BlogPost({
   if (!post || !post.publishedAt || post.draft) notFound();
 
   const raw = await post.content();
-  // Keystatic throws "Unknown inline node type: paragraph" when a list item
-  // contains a paragraph node (loose lists with blank lines between items).
-  // Recursively unwrap those paragraph wrappers so inline children are direct.
+  // Keystatic throws "Unknown inline node type: X" when block nodes (paragraph,
+  // image) appear where only inline nodes are expected. Two cases handled:
+  // 1. Loose lists: list items wrap children in paragraph nodes — unwrap them.
+  // 2. Images inside paragraphs: hoist them out as standalone block nodes.
   const normalizeDoc = (nodes: typeof raw): typeof raw =>
-    nodes.map((node) => {
+    nodes.flatMap((node) => {
       const n = node as { type?: string; children?: typeof raw };
       if (n.type === 'unordered-list' || n.type === 'ordered-list') {
-        return {
-          ...n,
-          children: (n.children ?? []).map((item) => {
-            const it = item as { type?: string; children?: typeof raw };
-            return {
-              ...it,
-              children: (it.children ?? []).flatMap((child) => {
-                const c = child as { type?: string; children?: typeof raw };
-                return c.type === 'paragraph' ? (c.children ?? []) : [child];
-              }),
-            };
-          }),
-        } as (typeof raw)[number];
+        return [
+          {
+            ...n,
+            children: (n.children ?? []).map((item) => {
+              const it = item as { type?: string; children?: typeof raw };
+              return {
+                ...it,
+                children: (it.children ?? []).flatMap((child) => {
+                  const c = child as { type?: string; children?: typeof raw };
+                  return c.type === 'paragraph' ? (c.children ?? []) : [child];
+                }),
+              };
+            }),
+          } as (typeof raw)[number],
+        ];
+      }
+      // Hoist image nodes out of paragraph children into standalone blocks.
+      if (n.type === 'paragraph') {
+        const children = n.children ?? [];
+        const hasBlockChild = children.some(
+          (c) => (c as { type?: string }).type === 'image'
+        );
+        if (hasBlockChild) {
+          return children.flatMap((child) => {
+            const c = child as { type?: string; children?: typeof raw };
+            if (c.type === 'image') return [c as (typeof raw)[number]];
+            return [{ type: 'paragraph', children: [child] } as (typeof raw)[number]];
+          });
+        }
       }
       if (n.children) {
-        return { ...n, children: normalizeDoc(n.children) } as (typeof raw)[number];
+        return [{ ...n, children: normalizeDoc(n.children) } as (typeof raw)[number]];
       }
-      return node;
+      return [node];
     });
   const content = normalizeDoc(raw);
   const { words, minutes } = getReadingStats(slug);
