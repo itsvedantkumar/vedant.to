@@ -60,7 +60,7 @@ export function Search() {
           onChange={(e) => setQuery(e.target.value)}
           placeholder="search posts"
           aria-label="Search posts"
-          className="flex-1 bg-transparent border-0 text-sm text-gray-900 dark:text-zinc-200 placeholder:text-gray-300 dark:placeholder:text-zinc-600 focus:outline-none tracking-tight"
+          className="flex-1 bg-transparent dark:bg-zinc-950 border-0 text-sm text-gray-900 dark:text-zinc-200 placeholder:text-gray-300 dark:placeholder:text-zinc-600 focus:outline-none tracking-tight"
         />
       </div>
       {query.trim() && (
