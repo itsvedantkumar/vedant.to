@@ -1,3 +1,5 @@
+const isProd = process.env.NODE_ENV === 'production';
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   pageExtensions: ['ts', 'tsx'],
@@ -11,6 +13,7 @@ const nextConfig = {
     ];
   },
   async headers() {
+    if (!isProd) return [];
     return [
       {
         // Keystatic admin UI needs relaxed CSP for its React editor
