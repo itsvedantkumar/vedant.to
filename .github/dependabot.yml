@@ -5,6 +5,9 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    ignore:
+      # next@15.x hard-pins postcss@8.4.31; no safe upgrade path until Next.js ships it
+      - dependency-name: 'postcss'
     groups:
       # Batch low-risk updates into one PR to cut noise.
       minor-and-patch:
