@@ -37,11 +37,11 @@ export function Search() {
   }, [query, items]);
 
   return (
-    <div className="mb-8">
+    <div className="mb-5">
       <div className="flex items-center gap-2 border-b border-gray-200 dark:border-zinc-800 pb-1.5 focus-within:border-blue-400 dark:focus-within:border-blue-500 transition-colors duration-200">
         <svg
-          width="13"
-          height="13"
+          width="14"
+          height="14"
           className="shrink-0 text-gray-300 dark:text-zinc-600 transition-colors duration-200"
           fill="none"
           viewBox="0 0 24 24"

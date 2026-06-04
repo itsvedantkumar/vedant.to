@@ -17,7 +17,7 @@ export default async function BlogPage() {
 
   return (
     <div>
-      <h1 className="font-semibold text-2xl mb-8 tracking-tighter">Blog</h1>
+      <h1 className="font-semibold text-2xl mb-4 tracking-tighter">Blog</h1>
       <Search />
       {sortedPosts.length === 0 && (
         <p className="text-gray-500 dark:text-gray-400">No posts yet.</p>
