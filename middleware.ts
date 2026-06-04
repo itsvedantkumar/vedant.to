@@ -38,5 +38,5 @@ function timingSafeEqual(a: string, b: string): boolean {
 }
 
 export const config = {
-  matcher: ['/keystatic', '/keystatic/:path*'],
+  matcher: ['/admin', '/admin/:path*'],
 };
