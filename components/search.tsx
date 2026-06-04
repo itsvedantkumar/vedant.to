@@ -38,25 +38,44 @@ export function Search() {
 
   return (
     <div className="mb-8">
-      <input
-        type="text"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder="Search posts…"
-        aria-label="Search posts"
-        className="w-full rounded border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-500"
-      />
+      <div className="flex items-center gap-2 border-b border-gray-200 dark:border-zinc-800 pb-1.5 focus-within:border-blue-400 dark:focus-within:border-blue-500 transition-colors duration-200">
+        <svg
+          width="13"
+          height="13"
+          className="shrink-0 text-gray-300 dark:text-zinc-600 transition-colors duration-200"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"
+          />
+        </svg>
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="search posts"
+          aria-label="Search posts"
+          className="flex-1 bg-transparent border-0 text-sm text-gray-900 dark:text-zinc-200 placeholder:text-gray-300 dark:placeholder:text-zinc-600 focus:outline-none tracking-tight"
+        />
+      </div>
       {query.trim() && (
-        <div className="mt-3">
+        <div className="mt-4 pl-6">
           {results.length === 0 ? (
-            <p className="text-sm text-gray-500 dark:text-gray-400">No matches.</p>
+            <p className="text-xs text-gray-400 dark:text-zinc-600 tracking-tight">
+              no matches
+            </p>
           ) : (
             <ul className="space-y-2">
               {results.map((r) => (
                 <li key={r.slug}>
                   <Link
                     href={`/blog/${r.slug}`}
-                    className="text-gray-900 hover:text-blue-500 dark:text-gray-100 dark:hover:text-blue-400"
+                    className="text-sm text-gray-500 dark:text-zinc-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors duration-200 tracking-tight"
                   >
                     {r.title}
                   </Link>
