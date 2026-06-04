@@ -41,7 +41,7 @@ export const renderers = {
       textAlign: 'center' | 'end' | undefined;
     }) => (
       <p
-        className="text-gray-800 dark:text-zinc-300 leading-relaxed mb-4"
+        className="text-gray-800 dark:text-zinc-300 leading-relaxed mb-3"
         style={textAlign ? { textAlign } : undefined}
       >
         {children}
