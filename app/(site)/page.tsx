@@ -28,7 +28,7 @@ export default async function Home() {
               <Link
                 key={slug}
                 href={`/blog/${slug}`}
-                className="flex flex-col md:flex-row md:items-center md:gap-4 group"
+                className="flex flex-row items-baseline gap-4 group"
               >
                 <span className="text-gray-400 dark:text-gray-500 tabular-nums text-sm w-[100px] shrink-0">
                   {new Date(entry.publishedAt!).toLocaleDateString('en-US', {
