@@ -1,10 +1,10 @@
-import { readdirSync, statSync } from 'fs';
+import { readdirSync } from 'fs';
 import { join } from 'path';
 import { getPublishedPosts } from '../lib/posts';
 
 const SITE_URL = 'https://vedant.to';
 
-// Dirs to exclude from auto-discovery
+// Dir names that never map to a public, indexable page.
 const EXCLUDED = new Set([
   'api',
   'keystatic',
@@ -14,35 +14,42 @@ const EXCLUDED = new Set([
   '_not-found',
 ]);
 
+const PAGE_FILE = /^page\.(tsx|ts|jsx|js)$/;
+const isRouteGroup = (name: string) => name.startsWith('(') && name.endsWith(')');
+
+// Walk app/ for page files. Route groups like (site) contribute no URL segment,
+// dynamic [slug] segments are skipped (handled from content), so /blog and /now
+// nested inside (site) are discovered correctly.
 function getStaticRoutes(): { url: string; lastModified: string }[] {
   const appDir = join(process.cwd(), 'app');
-  const routes: string[] = ['/'];
+  const routes = new Set<string>();
 
-  try {
-    for (const entry of readdirSync(appDir)) {
-      if (
-        entry.startsWith('_') ||
-        entry.startsWith('.') ||
-        entry.startsWith('[') ||
-        EXCLUDED.has(entry)
-      )
-        continue;
-
-      const fullPath = join(appDir, entry);
-      if (!statSync(fullPath).isDirectory()) continue;
-
-      try {
-        statSync(join(fullPath, 'page.tsx'));
-        routes.push(`/${entry}`);
-      } catch {
-        // no page.tsx — not a routable page
-      }
+  function walk(dir: string, segments: string[]) {
+    let entries;
+    try {
+      entries = readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
     }
-  } catch {
-    // fallback: at minimum serve the root
+
+    if (entries.some((e) => e.isFile() && PAGE_FILE.test(e.name))) {
+      routes.add('/' + segments.join('/'));
+    }
+
+    for (const e of entries) {
+      if (!e.isDirectory()) continue;
+      const name = e.name;
+      if (name.startsWith('_') || name.startsWith('.') || name.startsWith('[')) {
+        continue;
+      }
+      if (EXCLUDED.has(name)) continue;
+      walk(join(dir, name), isRouteGroup(name) ? segments : [...segments, name]);
+    }
   }
 
-  return routes.map((route) => ({
+  walk(appDir, []);
+
+  return [...routes].map((route) => ({
     url: `${SITE_URL}${route === '/' ? '' : route}`,
     lastModified: new Date().toISOString().split('T')[0],
   }));
