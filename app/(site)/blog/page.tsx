@@ -1,7 +1,6 @@
 import Link from 'next/link';
 import { getPublishedPosts } from '@/lib/posts';
 import { createMetadata } from '@/lib/metadata';
-import { Search } from '@/components/search';
 
 export const metadata = createMetadata({
   title: 'Blog',
@@ -18,7 +17,6 @@ export default async function BlogPage() {
   return (
     <div>
       <h1 className="font-medium text-2xl mb-6 tracking-tight">Blog</h1>
-      <Search />
       {sortedPosts.length === 0 && (
         <p className="text-gray-500 dark:text-gray-400">No posts yet.</p>
       )}
