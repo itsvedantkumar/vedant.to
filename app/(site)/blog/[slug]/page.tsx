@@ -33,7 +33,7 @@ export async function generateMetadata({
     path: `/blog/${slug}`,
     publishedAt: post.publishedAt,
     updatedAt: post.updatedAt,
-    image: post.coverImage ? `${SITE_URL}${post.coverImage}` : undefined,
+    image: post.coverImage ?? undefined,
   });
 }
 
@@ -89,7 +89,7 @@ export default async function BlogPost({
     slug,
     publishedAt: post.publishedAt,
     updatedAt: post.updatedAt,
-    image: post.coverImage ? `${SITE_URL}${post.coverImage}` : undefined,
+    image: post.coverImage ?? undefined,
     wordCount: words,
     minutes,
   });
