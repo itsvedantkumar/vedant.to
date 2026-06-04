@@ -45,7 +45,9 @@ export default config({
           multiline: true,
         }),
         coverImage: fields.url({
-          label: 'Cover Image',
+          label: 'Cover Image URL',
+          description:
+            'Upload image at vedant.to/admin/upload → paste the returned https://assets.vedant.to/… URL here.',
           validation: { isRequired: false },
         }),
         content: fields.document({
