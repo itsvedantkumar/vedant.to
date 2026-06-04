@@ -22,7 +22,7 @@ jobs:
       - name: Submit URLs to IndexNow
         env:
           HOST: vedant.to
-          KEY: 6b3d50d9f977ead7a83ee04e62745866
+          KEY: 6b3d50d9f977ead7a83ee04e62745866 # gitleaks:allow
         run: |
           set -euo pipefail
           URLS=$(jq -R -s -c '
