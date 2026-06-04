@@ -9,7 +9,14 @@ updates:
       # next@15.x hard-pins postcss@8.4.31; no safe upgrade path until Next.js ships it
       - dependency-name: 'postcss'
     groups:
-      # Batch low-risk updates into one PR to cut noise.
+      # React ecosystem must move together — peer deps break if split across PRs
+      react:
+        patterns:
+          - 'react'
+          - 'react-dom'
+          - '@types/react'
+          - '@types/react-dom'
+      # Batch all other low-risk updates into one PR to cut noise.
       minor-and-patch:
         update-types:
           - minor
