@@ -37,7 +37,7 @@ export function Search() {
   }, [query, items]);
 
   return (
-    <div className="mb-8">
+    <div className="mb-6">
       <div className="flex items-center gap-2 border-b border-gray-200 dark:border-zinc-800 pb-1.5 focus-within:border-blue-400 dark:focus-within:border-blue-500 transition-colors duration-200">
         <svg
           width="14"
