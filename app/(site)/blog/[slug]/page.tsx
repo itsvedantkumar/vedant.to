@@ -47,7 +47,34 @@ export default async function BlogPost({
 
   if (!post || !post.publishedAt || post.draft) notFound();
 
-  const content = await post.content();
+  const raw = await post.content();
+  // Keystatic throws "Unknown inline node type: paragraph" when a list item
+  // contains a paragraph node (loose lists with blank lines between items).
+  // Recursively unwrap those paragraph wrappers so inline children are direct.
+  const normalizeDoc = (nodes: typeof raw): typeof raw =>
+    nodes.map((node) => {
+      const n = node as { type?: string; children?: typeof raw };
+      if (n.type === 'unordered-list' || n.type === 'ordered-list') {
+        return {
+          ...n,
+          children: (n.children ?? []).map((item) => {
+            const it = item as { type?: string; children?: typeof raw };
+            return {
+              ...it,
+              children: (it.children ?? []).flatMap((child) => {
+                const c = child as { type?: string; children?: typeof raw };
+                return c.type === 'paragraph' ? (c.children ?? []) : [child];
+              }),
+            };
+          }),
+        } as (typeof raw)[number];
+      }
+      if (n.children) {
+        return { ...n, children: normalizeDoc(n.children) } as (typeof raw)[number];
+      }
+      return node;
+    });
+  const content = normalizeDoc(raw);
   const { words, minutes } = getReadingStats(slug);
 
   // Adjacent posts for prev/next navigation (newest-first ordering).
