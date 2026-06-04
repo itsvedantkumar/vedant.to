@@ -7,6 +7,8 @@ const SITE_URL = 'https://vedant.to';
 // Dir names that never map to a public, indexable page.
 const EXCLUDED = new Set([
   'api',
+  'admin',
+  'now',
   'keystatic',
   'rss.xml',
   'feed.json',
