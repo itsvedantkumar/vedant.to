@@ -10,6 +10,7 @@
     "format:check": "prettier --check ."
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1061.0",
     "@keystatic/core": "^0.5.38",
     "@keystatic/next": "^5.0.2",
     "@vercel/analytics": "^1.4.1",

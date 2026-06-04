@@ -44,10 +44,9 @@ export default config({
           label: 'Excerpt',
           multiline: true,
         }),
-        coverImage: fields.image({
+        coverImage: fields.url({
           label: 'Cover Image',
-          directory: 'public/images/posts',
-          publicPath: '/images/posts/',
+          validation: { isRequired: false },
         }),
         content: fields.document({
           label: 'Content',
