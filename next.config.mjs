@@ -10,6 +10,16 @@ const nextConfig = {
         destination: 'https://calendar.app.google/nB6tr8kyTD2mwkCa8',
         permanent: false,
       },
+      {
+        source: '/keystatic',
+        destination: '/admin',
+        permanent: true,
+      },
+      {
+        source: '/keystatic/:path*',
+        destination: '/admin/:path*',
+        permanent: true,
+      },
     ];
   },
   async headers() {
@@ -17,7 +27,7 @@ const nextConfig = {
     return [
       {
         // Keystatic admin UI needs relaxed CSP for its React editor
-        source: '/keystatic(.*)',
+        source: '/admin(.*)',
         headers: [
           {
             key: 'X-Content-Type-Options',

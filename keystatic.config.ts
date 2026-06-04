@@ -44,11 +44,10 @@ export default config({
           label: 'Excerpt',
           multiline: true,
         }),
-        coverImage: fields.url({
-          label: 'Cover Image URL',
-          description:
-            'Upload image at vedant.to/admin/upload → paste the returned https://assets.vedant.to/… URL here.',
-          validation: { isRequired: false },
+        coverImage: fields.image({
+          label: 'Cover Image',
+          directory: 'public/images/posts',
+          publicPath: '/images/posts/',
         }),
         content: fields.document({
           label: 'Content',
