@@ -12,6 +12,8 @@ const person = {
   '@type': 'Person',
   name: AUTHOR,
   url: SITE_URL,
+  email: 'vedant@simulacrum.world',
+  image: `${SITE_URL}/icon-512.png`,
   sameAs: SOCIALS,
 };
 

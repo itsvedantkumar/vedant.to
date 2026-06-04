@@ -1,5 +1,9 @@
 import { getPublishedPosts } from '../../lib/posts';
 
+// Next 15 no longer statically caches GET route handlers by default; the feed
+// is build-time content, so opt back into static generation.
+export const dynamic = 'force-static';
+
 const SITE_URL = 'https://vedant.to';
 
 function escapeXml(str: string): string {
