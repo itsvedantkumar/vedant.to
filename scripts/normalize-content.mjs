@@ -108,6 +108,13 @@ function fixLists(lines) {
         if (isListItem(next) && listItemIndent(next) === indent) {
           // Blank line(s) between same-level items → skip them (tight list).
           i = j;
+        } else if (isListItem(next) && listItemIndent(next) > indent) {
+          // Blank line before a nested sub-list → also remove it.
+          // Keeping this blank makes the OUTER list "loose" (CommonMark spec:
+          // a list is loose if any item contains two block elements with a blank
+          // line between them), which causes Keystatic's reader to wrap each
+          // item's content in a paragraph node, triggering the inline-node error.
+          i = j;
         } else if (!isListItem(next) && /^[ \t]{2,}/.test(next)) {
           // Indented continuation paragraph → merge into current item.
           out[out.length - 1] += ' ' + next.trimStart();
