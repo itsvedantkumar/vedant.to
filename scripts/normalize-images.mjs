@@ -59,6 +59,9 @@ for (const mdocPath of findMdoc(path.join(ROOT, 'content'))) {
 
   src = src.replace(IMG_RE, (match, rawRef) => {
     // rawRef is the raw string inside the parens, e.g. /images/posts/slug/image%20%281%29.png
+    // Absolute URLs (CDN / external) are not local files — skip them entirely.
+    if (/^https?:\/\//.test(rawRef)) return match;
+
     const absRef = path.join(ROOT, 'public', rawRef);
     const absDecoded = path.join(ROOT, 'public', decodeURIComponent(rawRef));
 
