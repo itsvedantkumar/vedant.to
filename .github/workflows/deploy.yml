@@ -24,6 +24,9 @@ jobs:
 
       - run: npm ci
 
+      - name: Normalize content
+        run: node scripts/normalize-content.mjs
+
       - name: Check formatting
         run: npm run format:check
 
