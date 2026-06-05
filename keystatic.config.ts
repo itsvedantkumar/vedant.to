@@ -47,7 +47,7 @@ export default config({
         coverImage: fields.image({
           label: 'Cover Image',
           directory: 'public/images/posts',
-          publicPath: 'https://assets.vedant.to/images/posts/',
+          publicPath: 'https://assets.vedant.to/i/',
         }),
         content: fields.document({
           label: 'Content',
@@ -63,7 +63,7 @@ export default config({
           links: true,
           images: {
             directory: 'public/images/posts',
-            publicPath: 'https://assets.vedant.to/images/posts/',
+            publicPath: 'https://assets.vedant.to/i/',
           },
         }),
       },
