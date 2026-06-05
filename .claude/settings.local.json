@@ -3,7 +3,23 @@
     "allow": [
       "Bash(gh repo *)",
       "WebFetch(domain:github.com)",
-      "Bash(git --version)"
+      "Bash(git --version)",
+      "Bash(git -C /Users/vk/Projects/vedant.to remote get-url origin)",
+      "Bash(python3 -c ' *)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.file_path // .tool_response.filePath' | { read -r f; [ -n \"$f\" ] && P=/Users/vk/.nvm/versions/node/v20.20.2/bin/prettier; \"$P\" --find-config-path \"$f\" >/dev/null 2>&1 && \"$P\" --write --ignore-unknown \"$f\"; } 2>/dev/null || true",
+            "statusMessage": "prettier"
+          }
+        ]
+      }
     ]
   }
 }

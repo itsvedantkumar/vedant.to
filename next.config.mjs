@@ -11,14 +11,14 @@ const nextConfig = {
         permanent: false,
       },
       {
-        source: '/keystatic',
-        destination: '/admin',
-        permanent: true,
+        source: '/admin',
+        destination: '/keystatic',
+        permanent: false,
       },
       {
-        source: '/keystatic/:path*',
-        destination: '/admin/:path*',
-        permanent: true,
+        source: '/admin/:path*',
+        destination: '/keystatic/:path*',
+        permanent: false,
       },
     ];
   },
@@ -37,7 +37,7 @@ const nextConfig = {
       },
       {
         // Strict security headers for all public-facing routes
-        source: '/((?!keystatic|admin).*)',
+        source: '/((?!keystatic).*)',
         headers: [
           {
             key: 'Content-Security-Policy',
