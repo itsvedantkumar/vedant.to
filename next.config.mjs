@@ -37,7 +37,7 @@ const nextConfig = {
       },
       {
         // Strict security headers for all public-facing routes
-        source: '/((?!keystatic).*)',
+        source: '/((?!keystatic|admin).*)',
         headers: [
           {
             key: 'Content-Security-Policy',
