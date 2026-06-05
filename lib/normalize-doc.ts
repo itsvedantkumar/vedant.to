@@ -21,8 +21,11 @@ export function normalizeDoc<T extends DocNode>(nodes: T[]): T[] {
           ...node,
           children: (node.children ?? []).map((item) => ({
             ...item,
-            children: (item.children ?? []).flatMap((child) =>
-              child.type === 'paragraph' ? (child.children ?? []) : [child]
+            // Unwrap paragraphs first, then recurse so nested lists are also normalized.
+            children: normalizeDoc(
+              (item.children ?? []).flatMap((child) =>
+                child.type === 'paragraph' ? (child.children ?? []) : [child]
+              )
             ),
           })),
         } as T,
