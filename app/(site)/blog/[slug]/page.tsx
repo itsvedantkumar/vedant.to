@@ -134,7 +134,7 @@ export default async function BlogPost({
         <img
           src={post.coverImage}
           alt={post.title}
-          className="w-full h-auto rounded-lg mb-8"
+          className="w-full aspect-video object-cover rounded-xl mb-10"
         />
       )}
       <article>
