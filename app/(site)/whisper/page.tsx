@@ -16,6 +16,7 @@ export default function WhisperPage() {
   const [quizIdx, setQuizIdx] = useState(-1);
   const [answer, setAnswer] = useState('');
   const [answered, setAnswered] = useState(false);
+  const [wrongAnswer, setWrongAnswer] = useState(false);
   const [text, setText] = useState('');
   const [state, setState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
   const [tokenReady, setTokenReady] = useState(false);
@@ -38,8 +39,18 @@ export default function WhisperPage() {
   function handleAnswerChange(e: React.ChangeEvent<HTMLInputElement>) {
     const val = e.target.value;
     setAnswer(val);
+    setWrongAnswer(false);
     if (quiz && checkAnswer(val, quiz.answers)) {
       setAnswered(true);
+    }
+  }
+
+  function handleAnswerSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (quiz && checkAnswer(answer, quiz.answers)) {
+      setAnswered(true);
+    } else {
+      setWrongAnswer(true);
     }
   }
 
@@ -77,15 +88,31 @@ export default function WhisperPage() {
       <h1 className="font-medium text-2xl mb-8 tracking-tight">{question}</h1>
 
       {!answered ? (
-        <input
-          type="text"
-          value={answer}
-          onChange={handleAnswerChange}
-          placeholder="your answer"
-          aria-label="answer the question"
-          autoComplete="off"
-          className="w-full bg-transparent border-b border-gray-200 dark:border-zinc-800 pb-2 text-sm text-gray-800 dark:text-zinc-200 placeholder-gray-300 dark:placeholder-zinc-700 focus:outline-none focus:border-gray-400 dark:focus:border-zinc-600 transition-colors"
-        />
+        <form onSubmit={handleAnswerSubmit} className="flex flex-col gap-4">
+          <input
+            type="text"
+            value={answer}
+            onChange={handleAnswerChange}
+            placeholder="your answer"
+            aria-label="answer the question"
+            autoComplete="off"
+            className="w-full bg-transparent border-b border-gray-200 dark:border-zinc-800 pb-2 text-sm text-gray-800 dark:text-zinc-200 placeholder-gray-300 dark:placeholder-zinc-700 focus:outline-none focus:border-gray-400 dark:focus:border-zinc-600 transition-colors"
+          />
+          <div className="flex items-center justify-between">
+            {wrongAnswer ? (
+              <span className="text-xs text-red-400">wrong.</span>
+            ) : (
+              <span />
+            )}
+            <button
+              type="submit"
+              disabled={!answer.trim()}
+              className="text-sm text-gray-400 dark:text-zinc-500 hover:text-gray-900 dark:hover:text-zinc-100 disabled:opacity-30 transition-colors tracking-tight"
+            >
+              submit →
+            </button>
+          </div>
+        </form>
       ) : (
         <form onSubmit={submit} className="flex flex-col gap-4">
           <textarea
