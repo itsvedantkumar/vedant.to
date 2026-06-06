@@ -17,6 +17,31 @@ export default config({
     },
   },
   collections: {
+    quotes: collection({
+      label: 'Quotes',
+      slugField: 'slug',
+      path: 'content/quotes/*',
+      schema: {
+        slug: fields.slug({
+          name: { label: 'Slug (auto)' },
+        }),
+        quote: fields.text({
+          label: 'Quote',
+          multiline: true,
+          validation: { isRequired: true },
+        }),
+        author: fields.text({
+          label: 'Author',
+          validation: { isRequired: true },
+        }),
+        source: fields.text({
+          label: 'Source (book, speech, etc.)',
+        }),
+        year: fields.text({
+          label: 'Year',
+        }),
+      },
+    }),
     posts: collection({
       label: 'Posts',
       slugField: 'title',

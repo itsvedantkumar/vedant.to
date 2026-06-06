@@ -4,10 +4,11 @@ import { Inter } from 'next/font/google';
 import { Analytics } from '@vercel/analytics/react';
 import Script from 'next/script';
 import { siteSchema } from '@/lib/json-ld';
+import { EasterEgg } from '@/components/easter-egg';
 
 const inter = Inter({ subsets: ['latin'] });
 
-const GA_ID = process.env.NEXT_PUBLIC_GA_ID;
+const GA_ID = 'G-RDWCGNBH9B';
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -57,24 +58,16 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(siteSchema()) }}
         />
         {children}
+        <EasterEgg />
         <Analytics />
-        {/* Google Analytics */}
-        {GA_ID && (
-          <>
-            <Script
-              src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}
-              strategy="afterInteractive"
-            />
-            <Script id="ga-init" strategy="afterInteractive">
-              {`
-                window.dataLayer = window.dataLayer || [];
-                function gtag(){dataLayer.push(arguments);}
-                gtag('js', new Date());
-                gtag('config', '${GA_ID}');
-              `}
-            </Script>
-          </>
-        )}
+        {/* Google tag (gtag.js) */}
+        <Script
+          src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}
+          strategy="afterInteractive"
+        />
+        <Script id="ga-init" strategy="afterInteractive">
+          {`window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','${GA_ID}');`}
+        </Script>
       </body>
     </html>
   );

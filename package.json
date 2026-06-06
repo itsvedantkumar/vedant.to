@@ -21,6 +21,7 @@
     "next": "^15.5.0",
     "react": "18.3",
     "react-dom": "18.3",
+    "resend": "^6.12.4",
     "sugar-high": "^0.9.3"
   },
   "devDependencies": {

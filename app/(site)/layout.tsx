@@ -3,6 +3,7 @@ import Link from 'next/link';
 const navLinks = [
   { name: 'home', href: '/' },
   { name: 'blog', href: '/blog' },
+  { name: 'quotes', href: '/quotes' },
   { name: 'letterboxd', href: 'https://letterboxd.com/itsvedantkumar/', external: true },
   {
     name: 'spotify',
