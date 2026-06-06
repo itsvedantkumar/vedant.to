@@ -2,31 +2,74 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-const QUESTIONS = [
-  "what's my favourite color?",
-  "what's my fav movie?",
-  "who's my fav director?",
-  "what's my dob?",
+const QUIZ = [
+  {
+    question: "what's my favourite color?",
+    answers: ['black'],
+  },
+  {
+    question: "what's my fav movie?",
+    answers: ['animal'],
+  },
+  {
+    question: "who's my fav director?",
+    answers: ['anurag kashyap', 'kashyap', 'ak'],
+  },
+  {
+    question: "what's my dob?",
+    answers: [
+      '30/07/2007',
+      '30-07-2007',
+      '30.07.2007',
+      '30 july 2007',
+      '30 jul 2007',
+      '30th july 2007',
+      '30th jul 2007',
+      'july 30 2007',
+      'jul 30 2007',
+      'july 30, 2007',
+      'jul 30, 2007',
+      '2007-07-30',
+      '30072007',
+    ],
+  },
 ];
 
+function checkAnswer(input: string, answers: string[]): boolean {
+  const normalized = input.trim().toLowerCase().replace(/\s+/g, ' ');
+  return answers.some((a) => a.toLowerCase() === normalized);
+}
+
 export default function WhisperPage() {
+  const [quizIdx, setQuizIdx] = useState(-1);
+  const [answer, setAnswer] = useState('');
+  const [answered, setAnswered] = useState(false);
   const [text, setText] = useState('');
   const [state, setState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
   const [tokenReady, setTokenReady] = useState(false);
-  const [question, setQuestion] = useState('');
   const tokenRef = useRef<string>('');
 
-  // Fetch submission proof token on mount — proves page was loaded before submitting
   useEffect(() => {
-    setQuestion(QUESTIONS[Math.floor(Math.random() * QUESTIONS.length)]);
+    setQuizIdx(Math.floor(Math.random() * QUIZ.length));
     fetch('/api/whisper')
       .then((r) => r.json())
       .then((d) => {
         tokenRef.current = d.token ?? '';
         setTokenReady(true);
       })
-      .catch(() => setTokenReady(true)); // fail-open in dev/offline
+      .catch(() => setTokenReady(true));
   }, []);
+
+  const quiz = quizIdx >= 0 ? QUIZ[quizIdx] : null;
+  const question = quiz?.question ?? '';
+
+  function handleAnswerChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const val = e.target.value;
+    setAnswer(val);
+    if (quiz && checkAnswer(val, quiz.answers)) {
+      setAnswered(true);
+    }
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -60,34 +103,51 @@ export default function WhisperPage() {
   return (
     <div>
       <h1 className="font-medium text-2xl mb-8 tracking-tight">{question}</h1>
-      <form onSubmit={submit} className="flex flex-col gap-4">
-        <textarea
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="whisper something to me"
-          aria-label="your message"
-          rows={6}
-          maxLength={1000}
-          className="w-full bg-transparent border border-gray-200 dark:border-zinc-800 rounded-lg p-4 text-sm text-gray-800 dark:text-zinc-200 placeholder-gray-300 dark:placeholder-zinc-700 resize-none focus:outline-none focus:border-gray-400 dark:focus:border-zinc-600 transition-colors leading-relaxed"
+
+      {!answered ? (
+        <input
+          type="text"
+          value={answer}
+          onChange={handleAnswerChange}
+          placeholder="your answer"
+          aria-label="answer the question"
+          autoComplete="off"
+          className="w-full bg-transparent border-b border-gray-200 dark:border-zinc-800 pb-2 text-sm text-gray-800 dark:text-zinc-200 placeholder-gray-300 dark:placeholder-zinc-700 focus:outline-none focus:border-gray-400 dark:focus:border-zinc-600 transition-colors"
         />
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-gray-300 dark:text-zinc-700">
-            {text.length}/1000
-          </span>
-          <button
-            type="submit"
-            disabled={
-              !tokenReady || !text.trim() || text.trim().length < 5 || state === 'sending'
-            }
-            className="text-sm text-gray-400 dark:text-zinc-500 hover:text-gray-900 dark:hover:text-zinc-100 disabled:opacity-30 transition-colors tracking-tight"
-          >
-            {state === 'sending' ? 'sending...' : 'send →'}
-          </button>
-        </div>
-        {state === 'error' && (
-          <p className="text-xs text-red-400">something went wrong. try again.</p>
-        )}
-      </form>
+      ) : (
+        <form onSubmit={submit} className="flex flex-col gap-4">
+          <textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder="whisper something to me"
+            aria-label="your message"
+            rows={6}
+            maxLength={1000}
+            autoFocus
+            className="w-full bg-transparent border border-gray-200 dark:border-zinc-800 rounded-lg p-4 text-sm text-gray-800 dark:text-zinc-200 placeholder-gray-300 dark:placeholder-zinc-700 resize-none focus:outline-none focus:border-gray-400 dark:focus:border-zinc-600 transition-colors leading-relaxed"
+          />
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-gray-300 dark:text-zinc-700">
+              {text.length}/1000
+            </span>
+            <button
+              type="submit"
+              disabled={
+                !tokenReady ||
+                !text.trim() ||
+                text.trim().length < 5 ||
+                state === 'sending'
+              }
+              className="text-sm text-gray-400 dark:text-zinc-500 hover:text-gray-900 dark:hover:text-zinc-100 disabled:opacity-30 transition-colors tracking-tight"
+            >
+              {state === 'sending' ? 'sending...' : 'send →'}
+            </button>
+          </div>
+          {state === 'error' && (
+            <p className="text-xs text-red-400">something went wrong. try again.</p>
+          )}
+        </form>
+      )}
     </div>
   );
 }
