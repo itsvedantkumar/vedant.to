@@ -12,7 +12,7 @@ export const revalidate = false;
 export default async function QuotesPage() {
   const all = await reader.collections.quotes.all();
 
-  const quotes = all.sort((a, b) => a.entry.author.localeCompare(b.entry.author));
+  const quotes = all.sort((a, b) => a.slug.localeCompare(b.slug));
 
   return (
     <div>
