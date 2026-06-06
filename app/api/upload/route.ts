@@ -12,8 +12,21 @@ const r2 = new S3Client({
 });
 
 export async function POST(req: NextRequest) {
-  const secret = req.headers.get('x-upload-secret');
-  if (!secret || secret !== process.env.UPLOAD_SECRET) {
+  const secret = req.headers.get('x-upload-secret') ?? '';
+  const expected = process.env.UPLOAD_SECRET ?? '';
+  const enc = new TextEncoder();
+  const a = enc.encode(secret);
+  const b = enc.encode(expected);
+  const unauthorized =
+    !secret ||
+    !expected ||
+    a.byteLength !== b.byteLength ||
+    (() => {
+      let diff = 0;
+      for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
+      return diff !== 0;
+    })();
+  if (unauthorized) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
