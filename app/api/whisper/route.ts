@@ -90,6 +90,21 @@ function getIP(req: NextRequest): string {
   );
 }
 
+// Check if IP is a known VPN, proxy, or datacenter via ip-api.com (free, fail-open)
+async function isVpnOrProxy(ip: string): Promise<boolean> {
+  if (ip === 'unknown' || ip === '127.0.0.1' || ip.startsWith('::')) return false;
+  try {
+    const res = await fetch(`http://ip-api.com/json/${ip}?fields=proxy,hosting`, {
+      signal: AbortSignal.timeout(2000),
+    });
+    if (!res.ok) return false;
+    const data = (await res.json()) as { proxy?: boolean; hosting?: boolean };
+    return data.proxy === true || data.hosting === true;
+  } catch {
+    return false; // fail-open — never block legitimate users due to API timeout
+  }
+}
+
 // SHA-256 hash of message for dedup
 async function msgHash(msg: string): Promise<string> {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(msg));
@@ -143,6 +158,11 @@ export async function POST(req: NextRequest) {
   }
 
   const ip = getIP(req);
+
+  // Block VPN/proxy/datacenter IPs — fail-open on API timeout
+  if (await isVpnOrProxy(ip)) {
+    return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+  }
 
   // Dedup: reject exact duplicate message from same IP within 24h
   if (redis) {

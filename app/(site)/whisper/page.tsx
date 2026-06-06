@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 export default function WhisperPage() {
   const [text, setText] = useState('');
   const [state, setState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+  const [tokenReady, setTokenReady] = useState(false);
   const tokenRef = useRef<string>('');
 
   // Fetch submission proof token on mount — proves page was loaded before submitting
@@ -13,8 +14,9 @@ export default function WhisperPage() {
       .then((r) => r.json())
       .then((d) => {
         tokenRef.current = d.token ?? '';
+        setTokenReady(true);
       })
-      .catch(() => {});
+      .catch(() => setTokenReady(true)); // fail-open in dev/offline
   }, []);
 
   async function submit(e: React.FormEvent) {
@@ -64,7 +66,9 @@ export default function WhisperPage() {
           </span>
           <button
             type="submit"
-            disabled={!text.trim() || text.trim().length < 5 || state === 'sending'}
+            disabled={
+              !tokenReady || !text.trim() || text.trim().length < 5 || state === 'sending'
+            }
             className="text-sm text-gray-400 dark:text-zinc-500 hover:text-gray-900 dark:hover:text-zinc-100 disabled:opacity-30 transition-colors tracking-tight"
           >
             {state === 'sending' ? 'sending...' : 'send →'}
