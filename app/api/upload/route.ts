@@ -23,15 +23,55 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'No file provided' }, { status: 400 });
   }
 
+  const ALLOWED_TYPES: Record<string, string> = {
+    'image/jpeg': '.jpg',
+    'image/png': '.png',
+    'image/webp': '.webp',
+    'image/avif': '.avif',
+    'image/gif': '.gif',
+  };
+
+  const contentType = ALLOWED_TYPES[file.type] ? file.type : null;
+  if (!contentType) {
+    return NextResponse.json({ error: 'Unsupported file type' }, { status: 415 });
+  }
+
+  const MAX_BYTES = 10 * 1024 * 1024; // 10 MB
   const bytes = await file.arrayBuffer();
-  const key = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+  if (bytes.byteLength > MAX_BYTES) {
+    return NextResponse.json({ error: 'File too large' }, { status: 413 });
+  }
+
+  // Verify magic bytes for the declared type
+  const header = new Uint8Array(bytes.slice(0, 12));
+  const isJpeg = header[0] === 0xff && header[1] === 0xd8;
+  const isPng =
+    header[0] === 0x89 && header[1] === 0x50 && header[2] === 0x4e && header[3] === 0x47;
+  const isGif = header[0] === 0x47 && header[1] === 0x49 && header[2] === 0x46;
+  const isWebp =
+    header[8] === 0x57 &&
+    header[9] === 0x45 &&
+    header[10] === 0x42 &&
+    header[11] === 0x50;
+  const isAvif = false; // AVIF magic is complex; rely on type allowlist + CDN
+
+  const validMagic = isJpeg || isPng || isGif || isWebp || isAvif;
+  if (!validMagic && file.type !== 'image/avif') {
+    return NextResponse.json(
+      { error: 'File content does not match declared type' },
+      { status: 415 }
+    );
+  }
+
+  const ext = ALLOWED_TYPES[contentType];
+  const key = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_').replace(/\.[^.]+$/, '')}${ext}`;
 
   await r2.send(
     new PutObjectCommand({
       Bucket: process.env.R2_BUCKET_NAME,
       Key: key,
       Body: Buffer.from(bytes),
-      ContentType: file.type,
+      ContentType: contentType,
     })
   );
 

@@ -26,14 +26,21 @@ const nextConfig = {
     if (!isProd) return [];
     return [
       {
-        // Keystatic admin UI needs relaxed CSP for its React editor
-        source: '/admin(.*)',
+        // Keystatic admin: security headers with relaxed CSP for the React editor
+        source: '/keystatic(.*)',
         headers: [
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
           {
-            key: 'X-Content-Type-Options',
-            value: 'nosniff',
+            key: 'Strict-Transport-Security',
+            value: 'max-age=63072000; includeSubDomains; preload',
           },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
         ],
+      },
+      {
+        source: '/admin(.*)',
+        headers: [{ key: 'X-Content-Type-Options', value: 'nosniff' }],
       },
       {
         // Strict security headers for all public-facing routes
