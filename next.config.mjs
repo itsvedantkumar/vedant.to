@@ -3,6 +3,9 @@ const isProd = process.env.NODE_ENV === 'production';
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   pageExtensions: ['ts', 'tsx'],
+  images: {
+    remotePatterns: [{ protocol: 'https', hostname: 'assets.vedant.to' }],
+  },
   async redirects() {
     return [
       {

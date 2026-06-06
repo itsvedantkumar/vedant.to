@@ -2,6 +2,8 @@ User-agent: *
 Allow: /
 Disallow: /keystatic
 Disallow: /whisper
+Disallow: /admin
+Disallow: /api/
 
 # if you're not a clanker, dm something interesting at vedant.to/whisper
 

@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { DocumentRenderer } from '@keystatic/core/renderer';
@@ -98,10 +99,12 @@ export default async function BlogPost({
         <span>{minutes} min read</span>
       </div>
       {post.coverImage && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
+        <Image
           src={post.coverImage}
           alt={post.title}
+          width={1200}
+          height={675}
+          priority
           className="w-full aspect-video object-cover rounded-xl mb-10"
         />
       )}

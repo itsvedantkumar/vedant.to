@@ -2,6 +2,8 @@ import { readdirSync } from 'fs';
 import { join } from 'path';
 import { getPublishedPosts } from '@/lib/posts';
 
+export const dynamic = 'force-static';
+
 const SITE_URL = 'https://vedant.to';
 
 const EXCLUDED = new Set([

@@ -25,11 +25,20 @@ export async function GET() {
       ...(entry.updatedAt
         ? { date_modified: new Date(entry.updatedAt).toISOString() }
         : {}),
-      ...(entry.coverImage ? { image: `${SITE_URL}${entry.coverImage}` } : {}),
+      ...(entry.coverImage
+        ? {
+            image: entry.coverImage.startsWith('http')
+              ? entry.coverImage
+              : `${SITE_URL}${entry.coverImage}`,
+          }
+        : {}),
     })),
   };
 
   return Response.json(feed, {
-    headers: { 'Content-Type': 'application/feed+json; charset=utf-8' },
+    headers: {
+      'Content-Type': 'application/feed+json; charset=utf-8',
+      'Cache-Control': 'public, max-age=3600, stale-while-revalidate=86400',
+    },
   });
 }

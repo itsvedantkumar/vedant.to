@@ -35,5 +35,7 @@ export async function GET() {
     text: plainText(slug),
   }));
 
-  return Response.json(index);
+  return Response.json(index, {
+    headers: { 'Cache-Control': 'public, max-age=3600, stale-while-revalidate=86400' },
+  });
 }
