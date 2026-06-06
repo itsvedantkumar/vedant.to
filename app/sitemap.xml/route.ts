@@ -63,10 +63,18 @@ export async function GET() {
 
   const all = [...staticRoutes, ...blogEntries];
 
+  function xmlEscape(s: string) {
+    return s
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
   const urls = all
     .map(
       (r) =>
-        `  <url>\n    <loc>${r.url}</loc>\n    <lastmod>${r.lastModified}</lastmod>\n  </url>`
+        `  <url>\n    <loc>${xmlEscape(r.url)}</loc>\n    <lastmod>${xmlEscape(r.lastModified)}</lastmod>\n  </url>`
     )
     .join('\n');
 
