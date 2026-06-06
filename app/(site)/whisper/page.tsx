@@ -8,13 +8,13 @@ export default function WhisperPage() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!text.trim()) return;
+    if (!text.trim() || text.trim().length < 5) return;
     setState('sending');
     try {
       const res = await fetch('/api/whisper', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text.trim() }),
+        body: JSON.stringify({ message: text.trim(), _trap: '' }),
       });
       setState(res.ok ? 'sent' : 'error');
     } catch {
