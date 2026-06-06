@@ -52,13 +52,17 @@ async function hmac(secret: string, data: string): Promise<string> {
   return btoa(String.fromCharCode(...new Uint8Array(sig)));
 }
 
+const TOKEN_MIN_AGE_MS = 15_000; // tokens submitted < 15s after issue = bot
+
 async function verifyToken(token: string): Promise<boolean> {
   if (!TOKEN_SECRET) return true; // dev: skip if not configured
   try {
     const [tsStr, sig] = token.split('.');
     if (!tsStr || !sig) return false;
     const ts = parseInt(tsStr, 36);
-    if (Date.now() - ts > TOKEN_TTL_MS) return false; // expired
+    const age = Date.now() - ts;
+    if (age > TOKEN_TTL_MS) return false; // expired
+    if (age < TOKEN_MIN_AGE_MS) return false; // too fast = bot
     const expected = await hmac(TOKEN_SECRET, tsStr);
     // Constant-time compare
     const enc = new TextEncoder();
@@ -67,7 +71,13 @@ async function verifyToken(token: string): Promise<boolean> {
     if (a.length !== b.length) return false;
     let diff = 0;
     for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
-    return diff === 0;
+    if (diff !== 0) return false;
+    // Single-use: burn token in Redis so it can't be replayed
+    if (redis) {
+      const burned = await redis.set(`whisper:token:${sig}`, 1, { nx: true, ex: 1800 });
+      if (burned === null) return false; // already used
+    }
+    return true;
   } catch {
     return false;
   }
@@ -159,7 +169,7 @@ export async function POST(req: NextRequest) {
 
   await r2.send(
     new PutObjectCommand({
-      Bucket: process.env.R2_BUCKET_NAME,
+      Bucket: process.env.WHISPER_BUCKET_NAME ?? process.env.R2_BUCKET_NAME,
       Key: key,
       Body: JSON.stringify({ message, ts }),
       ContentType: 'application/json',
