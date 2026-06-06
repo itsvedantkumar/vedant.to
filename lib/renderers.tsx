@@ -24,7 +24,12 @@ export const renderers = {
         src={src}
         alt={alt}
         loading="lazy"
-        style={{ maxWidth: '100%', height: 'auto', borderRadius: '0.5rem' }}
+        style={{
+          maxWidth: '100%',
+          height: 'auto',
+          borderRadius: '0.5rem',
+          aspectRatio: '16/9',
+        }}
       />
     ),
     link: ({ href, children }: { href: string; children: React.ReactNode }) => {
@@ -116,6 +121,7 @@ export const renderers = {
           borderRadius: '0.5rem',
           marginTop: '2rem',
           marginBottom: '2rem',
+          aspectRatio: '16/9',
         }}
       />
     ),
