@@ -39,9 +39,6 @@ const ratelimit = redis
 // GET /api/whisper issues a token; POST validates it.
 // Proves the submitter loaded the page — stops bulk scripted submissions.
 const TOKEN_SECRET = process.env.WHISPER_TOKEN_SECRET ?? '';
-if (!TOKEN_SECRET && process.env.NODE_ENV === 'production') {
-  console.error('WHISPER_TOKEN_SECRET not set — token validation bypassed in production');
-}
 const TOKEN_TTL_MS = 30 * 60 * 1000;
 
 async function hmac(secret: string, data: string): Promise<string> {
@@ -59,7 +56,11 @@ async function hmac(secret: string, data: string): Promise<string> {
 const TOKEN_MIN_AGE_MS = 15_000; // tokens submitted < 15s after issue = bot
 
 async function verifyToken(token: string): Promise<boolean> {
-  if (!TOKEN_SECRET) return true; // dev: skip if not configured
+  if (!TOKEN_SECRET) {
+    // Fail-closed in prod — missing secret means misconfiguration
+    if (process.env.NODE_ENV === 'production') return false;
+    return true; // dev: skip
+  }
   try {
     const [tsStr, sig] = token.split('.');
     if (!tsStr || !sig) return false;
@@ -94,16 +95,19 @@ function getIP(req: NextRequest): string {
   );
 }
 
-// Check if IP is a known VPN, proxy, or datacenter via ip-api.com (free, fail-open)
+// Check if IP is a known VPN, proxy, or datacenter via proxycheck.io (HTTPS, free tier)
 async function isVpnOrProxy(ip: string): Promise<boolean> {
   if (ip === 'unknown' || ip === '127.0.0.1' || ip.startsWith('::')) return false;
   try {
-    const res = await fetch(`http://ip-api.com/json/${ip}?fields=proxy,hosting`, {
+    const key = process.env.PROXYCHECK_API_KEY
+      ? `&key=${process.env.PROXYCHECK_API_KEY}`
+      : '';
+    const res = await fetch(`https://proxycheck.io/v2/${ip}?vpn=1&asn=1${key}`, {
       signal: AbortSignal.timeout(2000),
     });
     if (!res.ok) return false;
-    const data = (await res.json()) as { proxy?: boolean; hosting?: boolean };
-    return data.proxy === true || data.hosting === true;
+    const data = (await res.json()) as Record<string, { proxy?: string }>;
+    return data[ip]?.proxy === 'yes';
   } catch {
     return false; // fail-open — never block legitimate users due to API timeout
   }
@@ -120,6 +124,9 @@ async function msgHash(msg: string): Promise<string> {
 // --- GET: issue a submission proof token ---
 export async function GET() {
   if (!TOKEN_SECRET) {
+    if (process.env.NODE_ENV === 'production') {
+      return NextResponse.json({ error: 'misconfigured' }, { status: 503 });
+    }
     return NextResponse.json({ token: 'dev' });
   }
   const ts = Date.now().toString(36);

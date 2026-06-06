@@ -96,7 +96,8 @@ export function PostConsoleArt({ slug }: { slug: string }) {
     if (!entry) return;
     console.clear();
     console.log('%c' + entry.lines, dim);
-    setTimeout(() => console.log('%c' + entry.caption, fade), 800);
+    const t = setTimeout(() => console.log('%c' + entry.caption, fade), 800);
+    return () => clearTimeout(t);
   }, [slug]);
 
   return null;

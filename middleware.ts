@@ -23,9 +23,12 @@ function getIP(req: NextRequest): string {
 export async function middleware(req: NextRequest): Promise<NextResponse> {
   const password = process.env.KEYSTATIC_AUTH_PASSWORD;
 
-  // Skip auth when env var not set (local dev without the var)
+  // Fail-closed in production — missing password means misconfiguration, not open access
   if (!password) {
-    return NextResponse.next();
+    if (process.env.NODE_ENV === 'production') {
+      return new NextResponse('Service Unavailable', { status: 503 });
+    }
+    return NextResponse.next(); // dev: skip auth if var not set
   }
 
   // Rate-limit all auth attempts to /keystatic

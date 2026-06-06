@@ -12,7 +12,7 @@ export async function GET(request: Request) {
       ? searchParams.get('title')?.slice(0, 100)
       : 'Vedant.to - Personal Blog & Portfolio';
 
-    return new ImageResponse(
+    const imageResponse = new ImageResponse(
       <div
         style={{
           height: '100%',
@@ -55,6 +55,11 @@ export async function GET(request: Request) {
         height: 630,
       }
     );
+    imageResponse.headers.set(
+      'Cache-Control',
+      'public, immutable, no-transform, max-age=31536000'
+    );
+    return imageResponse;
   } catch {
     return new Response('Failed to generate the image', {
       status: 500,

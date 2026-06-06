@@ -1,3 +1,6 @@
+[extend]
+useDefault = true
+
 [allowlist]
   description = "Allowlist for intentionally public values"
   # IndexNow key is public by design — served at /<key>.txt for domain verification.
