@@ -14,7 +14,3 @@ export function getReadingStats(slug: string): { words: number; minutes: number 
     return { words: 0, minutes: 1 };
   }
 }
-
-export function getReadingTime(slug: string): number {
-  return getReadingStats(slug).minutes;
-}

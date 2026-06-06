@@ -2,14 +2,23 @@
 
 import { useEffect, useRef, useState } from 'react';
 
+const QUESTIONS = [
+  "what's my favourite color?",
+  "what's my fav movie?",
+  "who's my fav director?",
+  "what's my dob?",
+];
+
 export default function WhisperPage() {
   const [text, setText] = useState('');
   const [state, setState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
   const [tokenReady, setTokenReady] = useState(false);
+  const [question, setQuestion] = useState('');
   const tokenRef = useRef<string>('');
 
   // Fetch submission proof token on mount — proves page was loaded before submitting
   useEffect(() => {
+    setQuestion(QUESTIONS[Math.floor(Math.random() * QUESTIONS.length)]);
     fetch('/api/whisper')
       .then((r) => r.json())
       .then((d) => {
@@ -42,7 +51,7 @@ export default function WhisperPage() {
   if (state === 'sent') {
     return (
       <div>
-        <h1 className="font-medium text-2xl mb-6 tracking-tight">whisper</h1>
+        <h1 className="font-medium text-2xl mb-6 tracking-tight">{question}</h1>
         <p className="text-gray-500 dark:text-zinc-400 text-sm">received.</p>
       </div>
     );
@@ -50,12 +59,13 @@ export default function WhisperPage() {
 
   return (
     <div>
-      <h1 className="font-medium text-2xl mb-8 tracking-tight">whisper</h1>
+      <h1 className="font-medium text-2xl mb-8 tracking-tight">{question}</h1>
       <form onSubmit={submit} className="flex flex-col gap-4">
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="say something you wouldn't say out loud."
+          placeholder="whisper something to me"
+          aria-label="your message"
           rows={6}
           maxLength={1000}
           className="w-full bg-transparent border border-gray-200 dark:border-zinc-800 rounded-lg p-4 text-sm text-gray-800 dark:text-zinc-200 placeholder-gray-300 dark:placeholder-zinc-700 resize-none focus:outline-none focus:border-gray-400 dark:focus:border-zinc-600 transition-colors leading-relaxed"
