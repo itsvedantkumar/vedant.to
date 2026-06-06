@@ -8,6 +8,7 @@ import { createMetadata } from '@/lib/metadata';
 import { getReadingStats } from '@/lib/reading-time';
 import { articleSchema } from '@/lib/json-ld';
 import { normalizeDoc } from '@/lib/normalize-doc';
+import { PostConsoleArt } from '@/components/post-console-art';
 
 const SITE_URL = 'https://vedant.to';
 
@@ -79,6 +80,7 @@ export default async function BlogPost({
 
   return (
     <section>
+      <PostConsoleArt slug={slug} />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
