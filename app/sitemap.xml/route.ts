@@ -14,6 +14,7 @@ const EXCLUDED = new Set([
   'rss.xml',
   'feed.json',
   'search-index.json',
+  'whisper',
   '_not-found',
 ]);
 

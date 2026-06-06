@@ -39,8 +39,12 @@ export function articleSchema({
   minutes,
 }: ArticleSchemaInput) {
   const url = `${SITE_URL}/blog/${slug}`;
-  const published = new Date(publishedAt).toISOString();
-  const modified = new Date(updatedAt ?? publishedAt).toISOString();
+  const safeIso = (s: string | null | undefined) => {
+    const d = new Date(s ?? '');
+    return isNaN(d.getTime()) ? undefined : d.toISOString();
+  };
+  const published = safeIso(publishedAt);
+  const modified = safeIso(updatedAt ?? publishedAt) ?? published;
 
   return {
     '@context': 'https://schema.org',
