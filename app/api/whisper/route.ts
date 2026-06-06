@@ -1,8 +1,8 @@
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
-import { NextRequest, NextResponse } from 'next/server';
-import { Resend } from 'resend';
 import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
+import { NextRequest, NextResponse } from 'next/server';
+import { Resend } from 'resend';
 
 const r2 = new S3Client({
   region: 'auto',
@@ -24,6 +24,7 @@ if ((upstashUrl && !upstashToken) || (!upstashUrl && upstashToken)) {
 }
 
 const redis = upstashUrl && upstashToken ? Redis.fromEnv() : null;
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 // 3 requests per IP per 24h sliding window
 const ratelimit = redis
@@ -38,6 +39,9 @@ const ratelimit = redis
 // GET /api/whisper issues a token; POST validates it.
 // Proves the submitter loaded the page — stops bulk scripted submissions.
 const TOKEN_SECRET = process.env.WHISPER_TOKEN_SECRET ?? '';
+if (!TOKEN_SECRET && process.env.NODE_ENV === 'production') {
+  console.error('WHISPER_TOKEN_SECRET not set — token validation bypassed in production');
+}
 const TOKEN_TTL_MS = 30 * 60 * 1000;
 
 async function hmac(secret: string, data: string): Promise<string> {
@@ -164,22 +168,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   }
 
-  // Dedup: reject exact duplicate message from same IP within 24h
+  // Rate limit first — every attempt counts against the quota
+  if (ratelimit) {
+    const { success } = await ratelimit.limit(ip);
+    if (!success) {
+      return NextResponse.json({ error: 'slow down' }, { status: 429 });
+    }
+  }
+
+  // Dedup: silent drop for exact duplicate message from same IP within 24h
   if (redis) {
     const hash = await msgHash(message);
     const dedupKey = `whisper:dedup:${ip}:${hash}`;
     const seen = await redis.set(dedupKey, 1, { nx: true, ex: 86400 });
     if (seen === null) {
-      // nx=true returned null means key already existed
       return NextResponse.json({ ok: true }); // silent — don't confirm dedup to sender
-    }
-  }
-
-  // IP rate limit: 3 per 24h
-  if (ratelimit) {
-    const { success } = await ratelimit.limit(ip);
-    if (!success) {
-      return NextResponse.json({ error: 'slow down' }, { status: 429 });
     }
   }
 
@@ -197,8 +200,7 @@ export async function POST(req: NextRequest) {
   );
 
   const toEmail = process.env.WHISPER_TO_EMAIL;
-  if (process.env.RESEND_API_KEY && toEmail) {
-    const resend = new Resend(process.env.RESEND_API_KEY);
+  if (resend && toEmail) {
     await resend.emails
       .send({
         from: 'whisper@vedant.to',
