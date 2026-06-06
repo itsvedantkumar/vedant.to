@@ -30,16 +30,6 @@ export default config({
           multiline: true,
           validation: { isRequired: true },
         }),
-        author: fields.text({
-          label: 'Author',
-          validation: { isRequired: true },
-        }),
-        source: fields.text({
-          label: 'Source (book, speech, etc.)',
-        }),
-        year: fields.text({
-          label: 'Year',
-        }),
       },
     }),
     posts: collection({
