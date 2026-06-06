@@ -1,10 +1,21 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 export default function WhisperPage() {
   const [text, setText] = useState('');
   const [state, setState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+  const tokenRef = useRef<string>('');
+
+  // Fetch submission proof token on mount — proves page was loaded before submitting
+  useEffect(() => {
+    fetch('/api/whisper')
+      .then((r) => r.json())
+      .then((d) => {
+        tokenRef.current = d.token ?? '';
+      })
+      .catch(() => {});
+  }, []);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -14,7 +25,11 @@ export default function WhisperPage() {
       const res = await fetch('/api/whisper', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text.trim(), _trap: '' }),
+        body: JSON.stringify({
+          message: text.trim(),
+          _trap: '',
+          token: tokenRef.current,
+        }),
       });
       setState(res.ok ? 'sent' : 'error');
     } catch {
@@ -49,7 +64,7 @@ export default function WhisperPage() {
           </span>
           <button
             type="submit"
-            disabled={!text.trim() || state === 'sending'}
+            disabled={!text.trim() || text.trim().length < 5 || state === 'sending'}
             className="text-sm text-gray-400 dark:text-zinc-500 hover:text-gray-900 dark:hover:text-zinc-100 disabled:opacity-30 transition-colors tracking-tight"
           >
             {state === 'sending' ? 'sending...' : 'send →'}
