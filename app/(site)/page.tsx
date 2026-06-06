@@ -1,14 +1,19 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { getPublishedPosts } from '@/lib/posts';
 import { createMetadata } from '@/lib/metadata';
 
-export const metadata = createMetadata({
-  title: 'Vedant',
-  description:
-    "I'm Vedant — I love watching movies, listening to music, and absorbing culture. I plan to dedicate my life to advancing human civilisation.",
-  path: '/',
-  image: 'https://vedant.to/api/og?title=Vedant',
-});
+export const metadata: Metadata = {
+  ...createMetadata({
+    title: 'Vedant',
+    description:
+      "I'm Vedant — I love watching movies, listening to music, and absorbing culture. I plan to dedicate my life to advancing human civilisation.",
+    path: '/',
+    image: 'https://vedant.to/api/og?title=Vedant',
+  }),
+  // absolute bypasses the '%s — Vedant' template so homepage doesn't become 'Vedant — Vedant'
+  title: { absolute: 'Vedant' },
+};
 
 export const revalidate = false;
 

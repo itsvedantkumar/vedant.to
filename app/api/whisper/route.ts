@@ -142,9 +142,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'too large' }, { status: 413 });
   }
 
-  // Origin check — https-only for production domain
+  // Origin check — require a valid origin; reject missing or cross-origin
   const origin = req.headers.get('origin');
-  if (origin && !origin.match(/^(https:\/\/vedant\.to|https?:\/\/localhost(:\d+)?)$/)) {
+  const validOrigin = /^(https:\/\/vedant\.to|https?:\/\/localhost(:\d+)?)$/.test(
+    origin ?? ''
+  );
+  if (!validOrigin && process.env.NODE_ENV === 'production') {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   }
 

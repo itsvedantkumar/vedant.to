@@ -28,7 +28,6 @@ export const renderers = {
           maxWidth: '100%',
           height: 'auto',
           borderRadius: '0.5rem',
-          aspectRatio: '16/9',
         }}
       />
     ),
@@ -121,7 +120,6 @@ export const renderers = {
           borderRadius: '0.5rem',
           marginTop: '2rem',
           marginBottom: '2rem',
-          aspectRatio: '16/9',
         }}
       />
     ),

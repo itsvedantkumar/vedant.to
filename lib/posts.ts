@@ -9,7 +9,7 @@ export async function getPublishedPosts() {
     .filter((p) => p.entry.publishedAt && !p.entry.draft)
     .sort(
       (a, b) =>
-        new Date(b.entry.publishedAt!).getTime() -
-        new Date(a.entry.publishedAt!).getTime()
+        (new Date(b.entry.publishedAt!).getTime() || 0) -
+        (new Date(a.entry.publishedAt!).getTime() || 0)
     );
 }

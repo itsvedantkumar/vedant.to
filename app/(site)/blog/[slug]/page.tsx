@@ -105,6 +105,7 @@ export default async function BlogPost({
           width={1200}
           height={675}
           priority
+          sizes="(max-width: 768px) 100vw, 768px"
           className="w-full aspect-video object-cover rounded-xl mb-10"
         />
       )}
