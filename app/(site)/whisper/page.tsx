@@ -113,7 +113,9 @@ export default function WhisperPage() {
 
   return (
     <div>
-      <h1 className="font-medium text-2xl mb-8 tracking-tight">{question}</h1>
+      {!answered && (
+        <h1 className="font-medium text-2xl mb-8 tracking-tight">{question}</h1>
+      )}
 
       {!answered ? (
         <form onSubmit={handleAnswerSubmit} className="flex flex-col gap-4">
