@@ -14,28 +14,43 @@ const r2 = new S3Client({
   forcePathStyle: true,
 });
 
-// Rate limiter: 5 requests per IP per day. Skipped if Upstash not configured.
-let ratelimit: Ratelimit | null = null;
-if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
-  ratelimit = new Ratelimit({
-    redis: Redis.fromEnv(),
-    limiter: Ratelimit.slidingWindow(5, '24 h'),
-    prefix: 'whisper',
-  });
+// Fail closed: if Upstash is configured at all, both vars must be present.
+// If neither is set, we skip rate limiting (dev mode).
+// If one is set but not the other, that's a misconfiguration — refuse to start.
+const upstashUrl = process.env.UPSTASH_REDIS_REST_URL;
+const upstashToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+if ((upstashUrl && !upstashToken) || (!upstashUrl && upstashToken)) {
+  throw new Error(
+    'Upstash misconfigured: set both UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN or neither'
+  );
 }
 
+const ratelimit =
+  upstashUrl && upstashToken
+    ? new Ratelimit({
+        redis: Redis.fromEnv(),
+        limiter: Ratelimit.slidingWindow(5, '24 h'),
+        prefix: 'whisper',
+      })
+    : null;
+
+// Use Vercel's tamper-proof forwarded header; falls back to x-real-ip
 function getIP(req: NextRequest): string {
   return (
-    req.headers.get('x-forwarded-for')?.split(',')[0].trim() ??
-    req.headers.get('x-real-ip') ??
-    'unknown'
+    req.headers.get('x-vercel-forwarded-for') ?? req.headers.get('x-real-ip') ?? 'unknown'
   );
 }
 
 export async function POST(req: NextRequest) {
-  // Origin check — must come from same site (or be absent for same-origin fetches)
+  // Content-Length guard — reject oversized bodies before parsing
+  const contentLength = parseInt(req.headers.get('content-length') ?? '0', 10);
+  if (contentLength > 4096) {
+    return NextResponse.json({ error: 'too large' }, { status: 413 });
+  }
+
+  // Origin check — must come from same site (absent = non-browser, allowed through to rate limiter)
   const origin = req.headers.get('origin');
-  if (origin && !origin.match(/^https?:\/\/(vedant\.to|localhost(:\d+)?)$/)) {
+  if (origin && !origin.match(/^(https:\/\/vedant\.to|https?:\/\/localhost(:\d+)?)$/)) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   }
 
@@ -46,9 +61,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'bad request' }, { status: 400 });
   }
 
-  // Honeypot — bots fill this field, humans never see it
+  // Honeypot — naive HTML-form bots fill hidden fields
   if (body._trap) {
-    return NextResponse.json({ ok: true }); // silently accept, don't store
+    return NextResponse.json({ ok: true });
   }
 
   const message = (body.message ?? '').trim().slice(0, 1000);
@@ -56,7 +71,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'too short' }, { status: 400 });
   }
 
-  // IP rate limit: 5 per day
+  // IP rate limit: 5 per 24h via Upstash (x-vercel-forwarded-for is not client-spoofable)
   if (ratelimit) {
     const ip = getIP(req);
     const { success } = await ratelimit.limit(ip);
@@ -78,12 +93,13 @@ export async function POST(req: NextRequest) {
     })
   );
 
-  if (process.env.RESEND_API_KEY) {
+  const toEmail = process.env.WHISPER_TO_EMAIL;
+  if (process.env.RESEND_API_KEY && toEmail) {
     const resend = new Resend(process.env.RESEND_API_KEY);
     await resend.emails
       .send({
         from: 'whisper@vedant.to',
-        to: process.env.WHISPER_TO_EMAIL ?? 'vk.work.official@gmail.com',
+        to: toEmail,
         subject: 'new whisper',
         text: message,
       })

@@ -27,8 +27,8 @@ export async function POST(req: NextRequest) {
     'image/jpeg': '.jpg',
     'image/png': '.png',
     'image/webp': '.webp',
-    'image/avif': '.avif',
     'image/gif': '.gif',
+    // AVIF excluded until magic-byte validation is implemented
   };
 
   const contentType = ALLOWED_TYPES[file.type] ? file.type : null;
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'File too large' }, { status: 413 });
   }
 
-  // Verify magic bytes for the declared type
+  // Verify magic bytes match the declared type
   const header = new Uint8Array(bytes.slice(0, 12));
   const isJpeg = header[0] === 0xff && header[1] === 0xd8;
   const isPng =
@@ -53,18 +53,17 @@ export async function POST(req: NextRequest) {
     header[9] === 0x45 &&
     header[10] === 0x42 &&
     header[11] === 0x50;
-  const isAvif = false; // AVIF magic is complex; rely on type allowlist + CDN
 
-  const validMagic = isJpeg || isPng || isGif || isWebp || isAvif;
-  if (!validMagic && file.type !== 'image/avif') {
+  if (!isJpeg && !isPng && !isGif && !isWebp) {
     return NextResponse.json(
       { error: 'File content does not match declared type' },
       { status: 415 }
     );
   }
 
+  // Random UUID key — no user-controlled component to prevent double-extension attacks
   const ext = ALLOWED_TYPES[contentType];
-  const key = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_').replace(/\.[^.]+$/, '')}${ext}`;
+  const key = `${crypto.randomUUID()}${ext}`;
 
   await r2.send(
     new PutObjectCommand({

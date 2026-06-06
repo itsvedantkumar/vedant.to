@@ -26,7 +26,19 @@ const nextConfig = {
     if (!isProd) return [];
     return [
       {
-        // Keystatic admin: security headers with relaxed CSP for the React editor
+        // Keystatic API routes — same base headers as the UI
+        source: '/api/keystatic(.*)',
+        headers: [
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          {
+            key: 'Strict-Transport-Security',
+            value: 'max-age=63072000; includeSubDomains; preload',
+          },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+        ],
+      },
+      {
+        // Keystatic admin UI
         source: '/keystatic(.*)',
         headers: [
           { key: 'X-Content-Type-Options', value: 'nosniff' },
