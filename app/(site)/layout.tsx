@@ -23,7 +23,7 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
   return (
     <div className="min-h-screen flex flex-col p-8 pb-20 md:pb-8 dark:bg-zinc-950 bg-white text-gray-900 dark:text-zinc-200">
       <div className="max-w-[60ch] mx-auto w-full flex flex-col flex-1">
-        <nav className="flex flex-wrap gap-4 mb-12">
+        <nav className="flex flex-wrap gap-3 mb-12 text-sm">
           {navLinks.map((link) =>
             link.external ? (
               <a

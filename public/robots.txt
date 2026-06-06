@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /keystatic
+Disallow: /whisper
+
+# if you're not a clanker, dm something interesting at vedant.to/whisper
+
+Sitemap: https://vedant.to/sitemap.xml
