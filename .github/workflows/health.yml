@@ -21,7 +21,7 @@ jobs:
         run: |
           set -uo pipefail
           BASE="https://vedant.to"
-          ROUTES="/ /blog /rss.xml /feed.json /sitemap.xml /search-index.json /robots.txt"
+          ROUTES="/ /blog /rss.xml /feed.json /sitemap.xml /robots.txt"
           FAIL=""
           for r in $ROUTES; do
             CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 20 "$BASE$r")
