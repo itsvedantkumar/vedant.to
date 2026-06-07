@@ -1,6 +1,7 @@
 import { readdirSync } from 'fs';
 import { join } from 'path';
 import { getPublishedPosts } from '@/lib/posts';
+import { getPublishedDailyEntries } from '@/lib/daily';
 
 export const dynamic = 'force-static';
 
@@ -55,7 +56,10 @@ function getStaticRoutes(): { url: string; lastModified: string }[] {
 }
 
 export async function GET() {
-  const posts = await getPublishedPosts();
+  const [posts, dailyEntries] = await Promise.all([
+    getPublishedPosts(),
+    getPublishedDailyEntries(),
+  ]);
 
   const staticRoutes = getStaticRoutes();
 
@@ -64,7 +68,12 @@ export async function GET() {
     lastModified: new Date(entry.updatedAt ?? entry.publishedAt!).toISOString(),
   }));
 
-  const all = [...staticRoutes, ...blogEntries];
+  const dailySitemapEntries = dailyEntries.map(({ slug, entry }) => ({
+    url: `${SITE_URL}/daily/${slug}`,
+    lastModified: new Date(entry.date!).toISOString(),
+  }));
+
+  const all = [...staticRoutes, ...blogEntries, ...dailySitemapEntries];
 
   function xmlEscape(s: string) {
     return s
