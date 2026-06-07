@@ -8,6 +8,7 @@
  * 1. Loose lists (blank lines between same-level list items) → tightened
  * 2. Multi-paragraph list items (indented continuations) → merged into one line
  * 3. Images not isolated by blank lines → surrounded with blank lines
+ * 4. Nested sub-lists inside list items → merged into parent with " — " separator
  *
  * Usage:
  *   node scripts/normalize-content.mjs          # mutate files in place
@@ -125,6 +126,12 @@ function fixLists(lines) {
           i = j;
           break;
         }
+      } else if (isListItem(cur) && listItemIndent(cur) > indent) {
+        // Nested sub-list item: merge into parent item with " — " separator.
+        // Keeps the list item flat so Keystatic doesn't wrap it in paragraph nodes.
+        const text = cur.replace(/^[ \t]*([-*+]|\d+[.)]) /, '');
+        out[out.length - 1] += ' — ' + text;
+        i++;
       } else if (!isListItem(cur) && /^[ \t]{2,}/.test(cur)) {
         // Indented continuation without a blank line — merge.
         out[out.length - 1] += ' ' + cur.trimStart();
