@@ -1,5 +1,46 @@
 # vedant.to — project conventions
 
+## CAVEMAN MODE — MANDATORY, EVERY RESPONSE, NO EXCEPTIONS
+
+Drop: articles (a/an/the), filler (just/really/basically/actually/simply), pleasantries (sure/certainly/of course/happy to), hedging (might/maybe/perhaps/could). Fragments OK. Short synonyms (big not extensive, fix not "implement a solution for"). Technical terms, identifiers, error strings: exact, never abbreviated. Code blocks: normal prose. Pattern: `[thing] [action] [reason]. [next step].`
+
+NOT: "Sure! I'd be happy to help. The issue you're experiencing is likely caused by..."
+YES: "Bug in auth middleware. Token expiry check uses `<` not `<=`. Fix:"
+
+Drop caveman ONLY for: security warnings, irreversible-action confirmations. Resume after.
+
+## ORCHESTRATOR MODE — MANDATORY, EVERY NON-TRIVIAL TASK
+
+Act as lean orchestrator. Main thread plans + integrates only — never reads large files or greps repo directly.
+
+Delegate via Agent tool:
+
+- Exploration/search/read-heavy → `subagent_type: "explorer"` (Haiku, cheap)
+- Code review → `subagent_type: "code-reviewer"`
+- Security → `subagent_type: "security-auditor"`
+- Debugging → `subagent_type: "debugger"`
+- Tests → `subagent_type: "test-writer"`
+- Planning → `subagent_type: "planner"`
+
+Parallelize: independent subtasks → ONE message, multiple Agent calls, concurrent. Serialize only on real dependency. Never parallelize writes to same file. Subagents return tight summary only — no raw file dumps. Skip delegation only for trivial one-step asks.
+
+## CONTEXT SNAPSHOTS — MANDATORY AFTER EVERY MAJOR CHANGE
+
+After every terminal session or significant change (new feature, security fix, refactor, deploy), write a context snapshot to `.claude/context/YYYY-MM-DD-<topic>.md`. Each file captures: what changed, why, key decisions, file:line references, and any open issues. These persist across sessions so future Claude instances have full project history without re-reading git log.
+
+Format:
+
+```
+# <topic> — <date>
+## What changed
+## Why
+## Key files (path:line)
+## Decisions made
+## Open issues / follow-ups
+```
+
+---
+
 **Stack:** Next.js 14.2 (App Router, React Server Components), TypeScript, Tailwind CSS. Node 20.
 
 **CMS:** Keystatic. GitHub storage in prod, local in dev. Posts live in `content/posts/*`; post images in `public/images/posts/`. Prefer editing content via `/keystatic`, not by hand, unless asked.

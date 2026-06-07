@@ -3,12 +3,14 @@ import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import { Analytics } from '@vercel/analytics/react';
 import Script from 'next/script';
+import { headers } from 'next/headers';
 import { siteSchema } from '@/lib/json-ld';
 import { EasterEgg } from '@/components/easter-egg';
 
 const inter = Inter({ subsets: ['latin'] });
 
-const GA_ID = process.env.NEXT_PUBLIC_GA_ID ?? 'G-RDWCGNBH9B';
+// No fallback — GA is optional; omit NEXT_PUBLIC_GA_ID to disable entirely
+const GA_ID = process.env.NEXT_PUBLIC_GA_ID;
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -45,29 +47,34 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const nonce = (await headers()).get('x-nonce') ?? '';
+  // Escape </script> breakout vectors in JSON-LD
+  const siteJsonLd = JSON.stringify(siteSchema()).replace(/</g, '\\u003c');
+
   return (
     <html lang="en" className={inter.className}>
       <body className="antialiased tracking-tight">
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(siteSchema()) }}
+          nonce={nonce}
+          dangerouslySetInnerHTML={{ __html: siteJsonLd }}
         />
         {children}
         <EasterEgg />
         <Analytics />
-        {/* Google tag (gtag.js) */}
         {process.env.NODE_ENV === 'production' && GA_ID && (
           <>
             <Script
               src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}
               strategy="afterInteractive"
+              nonce={nonce}
             />
-            <Script id="ga-init" strategy="afterInteractive">
+            <Script id="ga-init" strategy="afterInteractive" nonce={nonce}>
               {`window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','${GA_ID}');`}
             </Script>
           </>

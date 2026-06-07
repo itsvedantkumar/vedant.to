@@ -184,12 +184,65 @@ function collapseExtraBlankLines(lines) {
   return out;
 }
 
+/**
+ * Split body into alternating text/code segments so normalizeBody can skip
+ * fenced code blocks (``` or ~~~ fences).
+ * @returns {{ type: 'text' | 'code', content: string }[]}
+ */
+function splitByFencedCode(body) {
+  const lines = body.split('\n');
+  const segments = [];
+  let inFence = false;
+  let fenceMarker = '';
+  let current = [];
+
+  for (const line of lines) {
+    if (!inFence) {
+      const fenceMatch = line.match(/^(`{3,}|~{3,})/);
+      if (fenceMatch) {
+        // Push accumulated text segment (may be empty string at start)
+        segments.push({ type: 'text', content: current.join('\n') });
+        current = [line];
+        inFence = true;
+        fenceMarker = fenceMatch[1][0].repeat(fenceMatch[1].length);
+      } else {
+        current.push(line);
+      }
+    } else {
+      current.push(line);
+      // Closing fence: same character, same or greater length, only whitespace after
+      if (
+        new RegExp(
+          `^${fenceMarker[0] === '`' ? '`' : '~'}{${fenceMarker.length},}\\s*$`
+        ).test(line)
+      ) {
+        segments.push({ type: 'code', content: current.join('\n') });
+        current = [];
+        inFence = false;
+        fenceMarker = '';
+      }
+    }
+  }
+
+  // Remaining content (could be unclosed fence — treat as text to avoid data loss)
+  if (current.length > 0) {
+    segments.push({ type: inFence ? 'code' : 'text', content: current.join('\n') });
+  }
+
+  return segments;
+}
+
 function normalizeBody(body) {
-  let lines = body.split('\n');
-  lines = fixLists(lines);
-  lines = fixImageSpacing(lines);
-  lines = collapseExtraBlankLines(lines);
-  return lines.join('\n');
+  const segments = splitByFencedCode(body);
+  const processed = segments.map((seg) => {
+    if (seg.type === 'code') return seg.content;
+    let lines = seg.content.split('\n');
+    lines = fixLists(lines);
+    lines = fixImageSpacing(lines);
+    lines = collapseExtraBlankLines(lines);
+    return lines.join('\n');
+  });
+  return processed.join('\n');
 }
 
 // ── main ───────────────────────────────────────────────────────────────────

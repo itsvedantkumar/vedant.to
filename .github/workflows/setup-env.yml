@@ -15,7 +15,7 @@ jobs:
       # Required: `vercel deploy --prod` below uploads the working directory and
       # builds it remotely. Without a checkout the dir is empty, so it would
       # deploy an empty app (404 on every route). This step makes the source present.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
       - name: Set Keystatic env vars on Vercel
         env:
@@ -36,12 +36,13 @@ jobs:
               echo "SKIP: $key (no value — add it as a GitHub Actions secret)"
               return
             fi
-            # upsert=true so re-running overwrites existing values (needed for rotation).
+            local payload
+            payload=$(python3 -c "import json,sys; print(json.dumps({'key':sys.argv[1],'value':sys.argv[2],'type':'encrypted','target':['production','preview']}))" "$key" "$value")
             curl -s -X POST \
               "https://api.vercel.com/v10/projects/$VERCEL_PROJECT_ID/env?upsert=true" \
               -H "Authorization: Bearer $VERCEL_TOKEN" \
               -H "Content-Type: application/json" \
-              -d "{\"key\":\"$key\",\"value\":\"$value\",\"type\":\"encrypted\",\"target\":[\"production\",\"preview\"]}" \
+              -d "$payload" \
               | python3 -c "import sys,json; r=json.load(sys.stdin); print('OK:', r.get('key','?'), '|', r.get('error',{}).get('message',''))"
           }
 
@@ -58,4 +59,4 @@ jobs:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-        run: npx vercel deploy --prod --token $VERCEL_TOKEN --yes
+        run: npx vercel deploy --prod --token "$VERCEL_TOKEN" --yes

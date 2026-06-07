@@ -26,22 +26,28 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const post = await reader.collections.posts.read(slug);
+  try {
+    const post = await reader.collections.posts.read(slug);
 
-  if (!post || !post.publishedAt || post.draft) return {};
+    if (!post || !post.publishedAt || post.draft) return {};
 
-  return createMetadata({
-    title: post.title,
-    description: post.excerpt ?? post.title,
-    path: `/blog/${slug}`,
-    publishedAt: post.publishedAt,
-    updatedAt: post.updatedAt,
-    image: post.coverImage
-      ? post.coverImage.startsWith('http')
-        ? post.coverImage
-        : `${SITE_URL}${post.coverImage}`
-      : undefined,
-  });
+    return createMetadata({
+      title: post.title,
+      description: post.excerpt ?? post.title,
+      path: `/blog/${slug}`,
+      publishedAt: post.publishedAt,
+      updatedAt: post.updatedAt,
+      image: post.coverImage
+        ? post.coverImage.startsWith('https://')
+          ? post.coverImage
+          : post.coverImage.startsWith('/')
+            ? `${SITE_URL}${post.coverImage}`
+            : undefined
+        : undefined,
+    });
+  } catch {
+    return {};
+  }
 }
 
 export default async function BlogPost({
@@ -71,7 +77,7 @@ export default async function BlogPost({
     publishedAt: post.publishedAt,
     updatedAt: post.updatedAt,
     image: post.coverImage
-      ? post.coverImage.startsWith('http')
+      ? post.coverImage.startsWith('https://')
         ? post.coverImage
         : `${SITE_URL}${post.coverImage}`
       : undefined,
@@ -84,7 +90,9 @@ export default async function BlogPost({
       <PostConsoleArt slug={slug} />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(schema).replace(/</g, '\\u003c'),
+        }}
       />
       <h1 className="text-2xl font-medium tracking-tight mb-0">{post.title}</h1>
       <div className="flex items-center gap-3 mt-2 mb-8 text-sm text-neutral-500 dark:text-neutral-400">
@@ -98,17 +106,19 @@ export default async function BlogPost({
         <span aria-hidden>·</span>
         <span>{minutes} min read</span>
       </div>
-      {post.coverImage && (
-        <Image
-          src={post.coverImage}
-          alt={post.title}
-          width={1200}
-          height={675}
-          priority
-          sizes="(max-width: 768px) 100vw, 768px"
-          className="w-full aspect-video object-cover rounded-xl mb-10"
-        />
-      )}
+      {post.coverImage &&
+        (post.coverImage.startsWith('/') ||
+          post.coverImage.startsWith('https://assets.vedant.to')) && (
+          <Image
+            src={post.coverImage}
+            alt={post.title}
+            width={1200}
+            height={675}
+            priority
+            sizes="(max-width: 768px) 100vw, 768px"
+            className="w-full aspect-video object-cover rounded-xl mb-10"
+          />
+        )}
       <article>
         {/* renderers cast needed: our renderer map is a superset of the core type */}
         <DocumentRenderer

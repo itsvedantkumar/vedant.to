@@ -35,8 +35,9 @@ yarn-error.log*
 # vercel
 .vercel
 
-# claude code agent worktrees (local only)
+# claude code (local only — settings.local.json may contain secrets)
 .claude/worktrees/
+.claude/settings.local.json
 
 # typescript
 *.tsbuildinfo

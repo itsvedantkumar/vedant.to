@@ -36,7 +36,11 @@ const envPath = path.join(ROOT, '.env.local');
 if (fs.existsSync(envPath)) {
   for (const line of fs.readFileSync(envPath, 'utf8').split('\n')) {
     const m = line.match(/^([A-Z0-9_]+)=(.+)$/);
-    if (m && !process.env[m[1]]) process.env[m[1]] = m[2].trim();
+    if (m && !process.env[m[1]]) {
+      let val = m[2].trim();
+      val = val.replace(/^(['"])(.*)\1$/, '$2');
+      process.env[m[1]] = val;
+    }
   }
 }
 
@@ -86,7 +90,7 @@ async function existsOnR2(key, contentHash) {
     const res = await s3.send(
       new HeadObjectCommand({ Bucket: R2_BUCKET_NAME, Key: key })
     );
-    return (res.ETag || '').replace(/"/g, '') === contentHash;
+    return res.Metadata?.contenthash === contentHash;
   } catch {
     return false;
   }
@@ -108,41 +112,41 @@ for (const absPath of files) {
 
   let buf;
   let contentType;
-  if (COMPRESS.has(ext)) {
-    buf = await sharp(absPath)
-      .resize({ width: 1600, withoutEnlargement: true })
-      .webp({ quality: 82 })
-      .toBuffer();
-    contentType = 'image/webp';
-  } else if (ext === '.webp') {
-    buf = fs.readFileSync(absPath);
-    contentType = 'image/webp';
-  } else if (ext === '.svg') {
-    buf = fs.readFileSync(absPath);
-    contentType = 'image/svg+xml';
-  } else if (ext === '.gif') {
-    buf = fs.readFileSync(absPath);
-    contentType = 'image/gif';
-  } else {
-    buf = fs.readFileSync(absPath);
-    contentType = 'application/octet-stream';
-  }
-
-  const hash = md5(buf);
-
-  if (DRY) {
-    console.log(`would upload: ${key}  (${(buf.length / 1024).toFixed(0)}KB)`);
-    uploaded++;
-    continue;
-  }
-
-  const unchanged = await existsOnR2(key, hash);
-  if (unchanged) {
-    skipped++;
-    continue;
-  }
-
   try {
+    if (COMPRESS.has(ext)) {
+      buf = await sharp(absPath)
+        .resize({ width: 1600, withoutEnlargement: true })
+        .webp({ quality: 82 })
+        .toBuffer();
+      contentType = 'image/webp';
+    } else if (ext === '.webp') {
+      buf = fs.readFileSync(absPath);
+      contentType = 'image/webp';
+    } else if (ext === '.svg') {
+      buf = fs.readFileSync(absPath);
+      contentType = 'image/svg+xml';
+    } else if (ext === '.gif') {
+      buf = fs.readFileSync(absPath);
+      contentType = 'image/gif';
+    } else {
+      buf = fs.readFileSync(absPath);
+      contentType = 'application/octet-stream';
+    }
+
+    const hash = md5(buf);
+
+    if (DRY) {
+      console.log(`would upload: ${key}  (${(buf.length / 1024).toFixed(0)}KB)`);
+      uploaded++;
+      continue;
+    }
+
+    const unchanged = await existsOnR2(key, hash);
+    if (unchanged) {
+      skipped++;
+      continue;
+    }
+
     await s3.send(
       new PutObjectCommand({
         Bucket: R2_BUCKET_NAME,
@@ -150,6 +154,7 @@ for (const absPath of files) {
         Body: buf,
         ContentType: contentType,
         CacheControl: 'public, max-age=31536000, immutable',
+        Metadata: { contenthash: hash },
       })
     );
     console.log(`✓ ${key}`);
