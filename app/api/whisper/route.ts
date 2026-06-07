@@ -77,13 +77,17 @@ async function verifyToken(token: string): Promise<boolean> {
     let diff = 0;
     for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
     if (diff !== 0) return false;
-    // Single-use: burn token in Redis so it can't be replayed
+    // Single-use: burn token in Redis so it can't be replayed.
+    // Fail-closed in prod — without Redis a valid token is replayable ~600×
+    // within its 30-min TTL, exhausting Resend quota and filling R2.
     if (redis) {
       const burned = await redis.set(`whisper:token:${sig}`, 1, {
         nx: true,
         ex: TOKEN_TTL_MS / 1000 + 60,
       });
       if (burned === null) return false; // already used
+    } else if (process.env.NODE_ENV === 'production') {
+      return false; // no dedup store → refuse rather than allow replay
     }
     return true;
   } catch {
@@ -182,8 +186,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   }
 
-  // Rate limit first — every attempt counts against the quota
-  if (ratelimit) {
+  // Rate limit first — every attempt counts against the quota.
+  // Skip when IP is 'unknown': a single shared bucket would lock out all users.
+  if (ratelimit && ip !== 'unknown') {
     const { success } = await ratelimit.limit(ip);
     if (!success) {
       return NextResponse.json({ error: 'slow down' }, { status: 429 });
