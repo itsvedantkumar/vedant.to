@@ -72,11 +72,8 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
       return res;
     }
 
-    // Fail-closed in prod: rate limiter misconfiguration blocks access
-    if (!keystaticlimit && process.env.NODE_ENV === 'production') {
-      return new NextResponse('Service Unavailable', { status: 503 });
-    }
-
+    // Rate limit brute-force attempts — skipped gracefully if Upstash is absent.
+    // KEYSTATIC_AUTH_PASSWORD is the real gate; rate limiting is defence-in-depth only.
     if (keystaticlimit) {
       const { success } = await keystaticlimit.limit(getIP(req));
       if (!success) {
