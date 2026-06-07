@@ -53,7 +53,7 @@ async function hmac(secret: string, data: string): Promise<string> {
   return btoa(String.fromCharCode(...new Uint8Array(sig)));
 }
 
-const TOKEN_MIN_AGE_MS = 15_000; // tokens submitted < 15s after issue = bot
+const TOKEN_MIN_AGE_MS = 3_000; // quiz already gates humans; 3s only catches scripted instant-submit
 
 async function verifyToken(token: string): Promise<boolean> {
   if (!TOKEN_SECRET) {
