@@ -3,13 +3,11 @@ const isProd = process.env.NODE_ENV === 'production';
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   pageExtensions: ['ts', 'tsx'],
-  experimental: {
-    // Force-include content files in serverless function bundles.
-    // Vercel's NFT can't trace fs.readdir at runtime, so dynamic pages
-    // (like /quotes) won't have content files without this.
-    outputFileTracingIncludes: {
-      '/(.*)?': ['./content/**/*'],
-    },
+  // Force-include content files in serverless function bundles.
+  // Vercel's NFT can't trace fs.readdir at runtime, so dynamic pages
+  // (like /quotes) won't have content files without this.
+  outputFileTracingIncludes: {
+    '/(.*)?': ['./content/**/*'],
   },
   images: {
     remotePatterns: [{ protocol: 'https', hostname: 'assets.vedant.to' }],
