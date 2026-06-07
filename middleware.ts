@@ -62,18 +62,7 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
   if (isKeystatic) {
     const password = process.env.KEYSTATIC_AUTH_PASSWORD;
 
-    if (!password) {
-      if (process.env.NODE_ENV === 'production') {
-        return new NextResponse('Service Unavailable', { status: 503 });
-      }
-      // dev: skip auth, still attach nonce
-      const res = NextResponse.next({ request: { headers: requestHeaders } });
-      res.headers.set('Content-Security-Policy', buildCSP(nonce, true));
-      return res;
-    }
-
     // Rate limit brute-force attempts — skipped gracefully if Upstash is absent.
-    // KEYSTATIC_AUTH_PASSWORD is the real gate; rate limiting is defence-in-depth only.
     if (keystaticlimit) {
       const { success } = await keystaticlimit.limit(getIP(req));
       if (!success) {
@@ -81,45 +70,52 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
       }
     }
 
-    const authHeader = req.headers.get('authorization');
+    // Optional Basic Auth gate. When KEYSTATIC_AUTH_PASSWORD is not set, pass
+    // through to Keystatic — it handles auth via GitHub OAuth in production.
+    if (password) {
+      const authHeader = req.headers.get('authorization');
 
-    if (authHeader?.startsWith('Basic ')) {
-      try {
-        const base64 = authHeader.slice('Basic '.length);
-        const decoded = atob(base64);
-        const colonIndex = decoded.indexOf(':');
-        if (colonIndex !== -1) {
-          const providedPassword = decoded.slice(colonIndex + 1);
+      if (authHeader?.startsWith('Basic ')) {
+        try {
+          const base64 = authHeader.slice('Basic '.length);
+          const decoded = atob(base64);
+          const colonIndex = decoded.indexOf(':');
+          if (colonIndex !== -1) {
+            const providedPassword = decoded.slice(colonIndex + 1);
 
-          const enc = new TextEncoder();
-          const a = enc.encode(providedPassword);
-          const b = enc.encode(password);
+            const enc = new TextEncoder();
+            const a = enc.encode(providedPassword);
+            const b = enc.encode(password);
 
-          // Always iterate max length to avoid timing oracle on length mismatch
-          const maxLen = Math.max(a.byteLength, b.byteLength);
-          const aPadded = new Uint8Array(maxLen);
-          const bPadded = new Uint8Array(maxLen);
-          aPadded.set(a);
-          bPadded.set(b);
-          // Length mismatch poisons diff so equal-content different-length strings never match
-          let diff = a.byteLength ^ b.byteLength;
-          for (let i = 0; i < maxLen; i++) diff |= aPadded[i] ^ bPadded[i];
+            const maxLen = Math.max(a.byteLength, b.byteLength);
+            const aPadded = new Uint8Array(maxLen);
+            const bPadded = new Uint8Array(maxLen);
+            aPadded.set(a);
+            bPadded.set(b);
+            let diff = a.byteLength ^ b.byteLength;
+            for (let i = 0; i < maxLen; i++) diff |= aPadded[i] ^ bPadded[i];
 
-          if (diff === 0) {
-            const res = NextResponse.next({ request: { headers: requestHeaders } });
-            res.headers.set('Content-Security-Policy', buildCSP(nonce, true));
-            return res;
+            if (diff === 0) {
+              const res = NextResponse.next({ request: { headers: requestHeaders } });
+              res.headers.set('Content-Security-Policy', buildCSP(nonce, true));
+              return res;
+            }
           }
+        } catch {
+          // malformed base64 → fall through to 401
         }
-      } catch {
-        // malformed base64 → fall through to 401
       }
+
+      return new NextResponse('Unauthorized', {
+        status: 401,
+        headers: { 'WWW-Authenticate': 'Basic realm="keystatic"' },
+      });
     }
 
-    return new NextResponse('Unauthorized', {
-      status: 401,
-      headers: { 'WWW-Authenticate': 'Basic realm="keystatic"' },
-    });
+    // No password set — pass through to Keystatic's own auth
+    const res = NextResponse.next({ request: { headers: requestHeaders } });
+    res.headers.set('Content-Security-Policy', buildCSP(nonce, true));
+    return res;
   }
 
   // All public routes: attach nonce + per-request CSP
