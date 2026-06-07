@@ -19,16 +19,25 @@ if [ -z "$ZIP" ] || [ ! -f "$ZIP" ]; then
 fi
 
 echo "Verifying archive..."
-unzip -t "$ZIP" > /dev/null
+unzip -t -- "$ZIP" > /dev/null
+
+echo "Checking archive entries for zip-slip..."
+if unzip -l -- "$ZIP" | awk 'NR>3 && /[^ ]/ && !/^-/ {print $NF}' | grep -qvE '^content/'; then
+  echo "ERROR: archive contains entries outside content/ — aborting." >&2
+  exit 1
+fi
 
 if [ -d content ]; then
-  STAMP="$(date +%Y%m%d-%H%M%S)"
+  STAMP="$(date +%Y%m%d-%H%M%S)-$$"
   echo "Existing content/ moved to content.bak-$STAMP"
   mv content "content.bak-$STAMP"
 fi
 
 echo "Restoring content/ from $ZIP..."
-unzip -q "$ZIP" 'content/*'
+TMPDIR="$(mktemp -d)"
+unzip -q -- "$ZIP" -d "$TMPDIR"
+mv "$TMPDIR/content" .
+rm -rf "$TMPDIR"
 
 COUNT=$(find content -type f | wc -l | tr -d ' ')
 echo "Restored $COUNT files. Review with 'git status', then commit."

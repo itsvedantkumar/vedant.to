@@ -2,6 +2,7 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 
 export function getReadingStats(slug: string): { words: number; minutes: number } {
+  if (!/^[a-z0-9-]+$/i.test(slug)) return { words: 0, minutes: 1 };
   try {
     const raw = readFileSync(
       join(process.cwd(), 'content/posts', `${slug}.mdoc`),
