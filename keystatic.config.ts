@@ -83,5 +83,42 @@ export default config({
         }),
       },
     }),
+    daily: collection({
+      label: 'Daily',
+      slugField: 'slug',
+      path: 'content/daily/*',
+      format: { contentField: 'content' },
+      schema: {
+        slug: fields.slug({
+          name: { label: 'Slug (e.g. 2026-06-07)' },
+        }),
+        date: fields.date({
+          label: 'Date',
+          validation: { isRequired: true },
+        }),
+        draft: fields.checkbox({
+          label: 'Draft',
+          description: 'Hidden from the site while checked.',
+          defaultValue: false,
+        }),
+        content: fields.document({
+          label: 'Content',
+          formatting: {
+            headingLevels: [2, 3, 4],
+            inlineMarks: true,
+            listTypes: true,
+            blockTypes: true,
+            alignment: true,
+            softBreaks: true,
+          },
+          dividers: true,
+          links: true,
+          images: {
+            directory: 'public/images/daily',
+            publicPath: 'https://assets.vedant.to/i/',
+          },
+        }),
+      },
+    }),
   },
 });
