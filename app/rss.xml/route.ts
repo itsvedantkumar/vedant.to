@@ -1,4 +1,5 @@
 import { getPublishedPosts } from '../../lib/posts';
+import { getPublishedDailyEntries } from '../../lib/daily';
 
 // Next 15 no longer statically caches GET route handlers by default; the feed
 // is build-time content, so opt back into static generation.
@@ -15,11 +16,34 @@ function escapeXml(str: string): string {
 }
 
 export async function GET() {
-  const sorted = await getPublishedPosts();
+  const [posts, daily] = await Promise.all([
+    getPublishedPosts(),
+    getPublishedDailyEntries(),
+  ]);
 
-  const lastBuildDate = sorted[0]
-    ? new Date(sorted[0].entry.publishedAt!).toUTCString()
-    : new Date().toUTCString();
+  const postItems = posts.map(({ slug, entry }) => ({
+    title: entry.title,
+    link: `${SITE_URL}/blog/${slug}`,
+    description: entry.excerpt ?? '',
+    pubDate: new Date(entry.publishedAt!).toUTCString(),
+  }));
+
+  const dailyItems = daily.map(({ slug, entry }) => ({
+    title: new Date(entry.date!).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    }),
+    link: `${SITE_URL}/daily/${slug}`,
+    description: '',
+    pubDate: new Date(entry.date!).toUTCString(),
+  }));
+
+  const allItems = [...postItems, ...dailyItems].sort(
+    (a, b) => new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime()
+  );
+
+  const lastBuildDate = allItems[0]?.pubDate ?? new Date().toUTCString();
 
   const rssFeed = `<?xml version="1.0" encoding="UTF-8" ?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
@@ -30,15 +54,15 @@ export async function GET() {
     <language>en-us</language>
     <lastBuildDate>${lastBuildDate}</lastBuildDate>
     <atom:link href="${SITE_URL}/rss.xml" rel="self" type="application/rss+xml" />
-    ${sorted
+    ${allItems
       .map(
-        ({ slug, entry }) => `
+        (item) => `
     <item>
-      <title>${escapeXml(entry.title)}</title>
-      <link>${SITE_URL}/blog/${slug}</link>
-      <guid isPermaLink="true">${SITE_URL}/blog/${slug}</guid>
-      <description>${escapeXml(entry.excerpt ?? '')}</description>
-      <pubDate>${new Date(entry.publishedAt!).toUTCString()}</pubDate>
+      <title>${escapeXml(item.title)}</title>
+      <link>${escapeXml(item.link)}</link>
+      <guid isPermaLink="true">${escapeXml(item.link)}</guid>
+      <description>${escapeXml(item.description)}</description>
+      <pubDate>${item.pubDate}</pubDate>
     </item>`
       )
       .join('')}
