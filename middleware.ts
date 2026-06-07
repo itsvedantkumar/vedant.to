@@ -1,10 +1,7 @@
 import { Ratelimit } from '@upstash/ratelimit';
-import { Redis } from '@upstash/redis';
 import { NextRequest, NextResponse } from 'next/server';
-
-const upstashUrl = process.env.UPSTASH_REDIS_REST_URL;
-const upstashToken = process.env.UPSTASH_REDIS_REST_TOKEN;
-const redis = upstashUrl && upstashToken ? Redis.fromEnv() : null;
+import { getIP } from './lib/request';
+import { redis } from './lib/redis';
 
 // 20 auth attempts per 10 min per IP
 const keystaticlimit = redis
@@ -14,11 +11,6 @@ const keystaticlimit = redis
       prefix: 'keystatic:auth',
     })
   : null;
-
-// Only trust Vercel's injected header — not client-spoofable through Vercel's edge
-function getIP(req: NextRequest): string {
-  return req.headers.get('x-vercel-forwarded-for') ?? 'unknown';
-}
 
 function buildCSP(nonce: string, isKeystatic: boolean): string {
   if (isKeystatic) {

@@ -1,18 +1,9 @@
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { PutObjectCommand } from '@aws-sdk/client-s3';
 import { Ratelimit } from '@upstash/ratelimit';
-import { Redis } from '@upstash/redis';
 import { NextRequest, NextResponse } from 'next/server';
-
-// Fail closed: partial Upstash config is a misconfiguration.
-const upstashUrl = process.env.UPSTASH_REDIS_REST_URL;
-const upstashToken = process.env.UPSTASH_REDIS_REST_TOKEN;
-if ((upstashUrl && !upstashToken) || (!upstashUrl && upstashToken)) {
-  throw new Error(
-    'Upstash misconfigured: set both UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN or neither'
-  );
-}
-
-const redis = upstashUrl && upstashToken ? Redis.fromEnv() : null;
+import { getIP } from '@/lib/request';
+import { r2 } from '@/lib/r2';
+import { redis } from '@/lib/redis';
 
 // 10 requests per IP per hour sliding window (defense-in-depth; upload is auth-gated)
 const uploadRatelimit = redis
@@ -22,16 +13,6 @@ const uploadRatelimit = redis
       prefix: 'upload',
     })
   : null;
-
-const r2 = new S3Client({
-  region: 'auto',
-  endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
-  credentials: {
-    accessKeyId: process.env.R2_ACCESS_KEY_ID!,
-    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
-  },
-  forcePathStyle: true,
-});
 
 export async function POST(req: NextRequest) {
   const secret = req.headers.get('x-upload-secret') ?? '';
@@ -65,7 +46,7 @@ export async function POST(req: NextRequest) {
 
   // Rate limit (defense-in-depth; upload is already auth-gated)
   if (uploadRatelimit) {
-    const ip = req.headers.get('x-vercel-forwarded-for') ?? 'unknown';
+    const ip = getIP(req);
     const { success } = await uploadRatelimit.limit(ip);
     if (!success) {
       return NextResponse.json({ error: 'Too many requests' }, { status: 429 });

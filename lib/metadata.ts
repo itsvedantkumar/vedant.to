@@ -1,8 +1,5 @@
 import type { Metadata } from 'next';
-
-const SITE_URL = 'https://vedant.to';
-const SITE_NAME = 'Vedant';
-const TWITTER_HANDLE = '@itsvedantkumar';
+import { SITE_URL, SITE_NAME, TWITTER_HANDLE } from '@/lib/constants';
 
 interface PageMetadataOptions {
   title: string;
@@ -17,6 +14,10 @@ interface PageMetadataOptions {
   updatedAt?: string | null;
 }
 
+export function ogImageUrl(title: string): string {
+  return `${SITE_URL}/api/og?title=${encodeURIComponent(title)}`;
+}
+
 export function createMetadata({
   title,
   description,
@@ -26,7 +27,7 @@ export function createMetadata({
   updatedAt,
 }: PageMetadataOptions): Metadata {
   const url = `${SITE_URL}${path}`;
-  const ogImage = image ?? `${SITE_URL}/api/og?title=${encodeURIComponent(title)}`;
+  const ogImage = image ?? ogImageUrl(title);
 
   return {
     title,

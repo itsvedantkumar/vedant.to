@@ -24,38 +24,14 @@ const ROOT = path.resolve(__dirname, '..');
 const DRY = process.argv.includes('--dry');
 const CONTENT_DIR = path.join(ROOT, 'content');
 
-function findMdocFiles(dir) {
-  const results = [];
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    const full = path.join(dir, entry.name);
-    if (entry.isDirectory()) results.push(...findMdocFiles(full));
-    else if (entry.isFile() && entry.name.endsWith('.mdoc')) results.push(full);
-  }
-  return results;
-}
-
-/** Split raw .mdoc into frontmatter block + body content. */
-function splitMdoc(raw) {
-  const match = raw.match(/^(---\n[\s\S]*?\n---\n?)([\s\S]*)$/);
-  if (!match) return { frontmatter: '', body: raw };
-  return { frontmatter: match[1], body: match[2] };
-}
-
-/** True if the line starts a list item (at any indent level). */
-function isListItem(line) {
-  return /^[ \t]*([-*+]|\d+[.)]) /.test(line);
-}
-
-/** Returns the indentation width of a list item line, or -1 if not a list item. */
-function listItemIndent(line) {
-  const m = line.match(/^([ \t]*)([-*+]|\d+[.)]) /);
-  return m ? m[1].length : -1;
-}
-
-/** True if the line is blank (empty or only whitespace). */
-function isBlank(line) {
-  return line === '' || /^\s+$/.test(line);
-}
+import {
+  isListItem,
+  listItemIndent,
+  isBlank,
+  splitMdoc,
+  findMdocFiles,
+  splitByFencedCode,
+} from './lib/mdoc-utils.mjs';
 
 /**
  * Fix loose lists and multi-paragraph list items.
@@ -191,59 +167,11 @@ function collapseExtraBlankLines(lines) {
   return out;
 }
 
-/**
- * Split body into alternating text/code segments so normalizeBody can skip
- * fenced code blocks (``` or ~~~ fences).
- * @returns {{ type: 'text' | 'code', content: string }[]}
- */
-function splitByFencedCode(body) {
-  const lines = body.split('\n');
-  const segments = [];
-  let inFence = false;
-  let fenceMarker = '';
-  let current = [];
-
-  for (const line of lines) {
-    if (!inFence) {
-      const fenceMatch = line.match(/^(`{3,}|~{3,})/);
-      if (fenceMatch) {
-        // Push accumulated text segment (may be empty string at start)
-        segments.push({ type: 'text', content: current.join('\n') });
-        current = [line];
-        inFence = true;
-        fenceMarker = fenceMatch[1][0].repeat(fenceMatch[1].length);
-      } else {
-        current.push(line);
-      }
-    } else {
-      current.push(line);
-      // Closing fence: same character, same or greater length, only whitespace after
-      if (
-        new RegExp(
-          `^${fenceMarker[0] === '`' ? '`' : '~'}{${fenceMarker.length},}\\s*$`
-        ).test(line)
-      ) {
-        segments.push({ type: 'code', content: current.join('\n') });
-        current = [];
-        inFence = false;
-        fenceMarker = '';
-      }
-    }
-  }
-
-  // Remaining content (could be unclosed fence — treat as text to avoid data loss)
-  if (current.length > 0) {
-    segments.push({ type: inFence ? 'code' : 'text', content: current.join('\n') });
-  }
-
-  return segments;
-}
-
 function normalizeBody(body) {
   const segments = splitByFencedCode(body);
   const processed = segments.map((seg) => {
-    if (seg.type === 'code') return seg.content;
-    let lines = seg.content.split('\n');
+    if (seg.type === 'code') return seg.lines.join('\n');
+    let lines = seg.lines;
     lines = fixLists(lines);
     lines = fixImageSpacing(lines);
     lines = collapseExtraBlankLines(lines);

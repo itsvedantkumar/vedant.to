@@ -6,6 +6,7 @@ import { getPublishedDailyEntries } from '@/lib/daily';
 import { renderers } from '@/lib/renderers';
 import { createMetadata } from '@/lib/metadata';
 import { normalizeDoc } from '@/lib/normalize-doc';
+import { formatDate } from '@/lib/date';
 
 export const revalidate = false;
 
@@ -24,11 +25,7 @@ export async function generateMetadata({
     const entry = await reader.collections.daily.read(slug);
     if (!entry || !entry.date || entry.draft) return {};
 
-    const dateLabel = new Date(entry.date).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
+    const dateLabel = formatDate(entry.date, 'long');
 
     return createMetadata({
       title: dateLabel,
@@ -59,11 +56,7 @@ export default async function DailyEntry({
   const newer = idx > 0 ? all[idx - 1] : null;
   const older = idx >= 0 && idx < all.length - 1 ? all[idx + 1] : null;
 
-  const dateLabel = new Date(entry.date).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
+  const dateLabel = formatDate(entry.date, 'long');
 
   return (
     <section>
@@ -88,10 +81,7 @@ export default async function DailyEntry({
                 ← Older
               </span>
               <span className="text-gray-900 dark:text-gray-100">
-                {new Date(older.entry.date!).toLocaleDateString('en-US', {
-                  month: 'short',
-                  day: 'numeric',
-                })}
+                {formatDate(older.entry.date!, 'short')}
               </span>
             </Link>
           ) : (
@@ -106,10 +96,7 @@ export default async function DailyEntry({
                 Newer →
               </span>
               <span className="text-gray-900 dark:text-gray-100">
-                {new Date(newer.entry.date!).toLocaleDateString('en-US', {
-                  month: 'short',
-                  day: 'numeric',
-                })}
+                {formatDate(newer.entry.date!, 'short')}
               </span>
             </Link>
           ) : (

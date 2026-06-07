@@ -1,6 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { highlight } from 'sugar-high';
+import { SITE_URL } from '@/lib/constants';
 
 const linkClass =
   'text-blue-500 hover:text-blue-700 dark:text-gray-400 hover:dark:text-gray-300 dark:underline dark:underline-offset-2 dark:decoration-gray-800';
@@ -35,7 +36,7 @@ export const renderers = {
       const SAFE_PROTOCOLS = ['http:', 'https:', 'mailto:'];
       let safehref = href;
       try {
-        const parsed = new URL(href, 'https://vedant.to');
+        const parsed = new URL(href, SITE_URL);
         if (!SAFE_PROTOCOLS.includes(parsed.protocol)) safehref = '#';
       } catch {
         safehref = '#';

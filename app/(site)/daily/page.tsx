@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { getPublishedDailyEntries } from '@/lib/daily';
 import { createMetadata } from '@/lib/metadata';
+import { formatDate } from '@/lib/date';
 
 export const metadata = createMetadata({
   title: 'Daily',
@@ -23,11 +24,7 @@ export default async function DailyPage() {
         {entries.map(({ slug, entry }) => (
           <Link key={slug} className="block group" href={`/daily/${slug}`}>
             <span className="text-gray-900 dark:text-gray-100 tracking-tight tabular-nums group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors duration-150">
-              {new Date(entry.date!).toLocaleDateString('en-US', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-              })}
+              {formatDate(entry.date!, 'long')}
             </span>
           </Link>
         ))}
