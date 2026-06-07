@@ -77,8 +77,7 @@ export default function WhisperPage() {
   if (state === 'sent') {
     return (
       <div>
-        <h1 className="font-medium text-2xl mb-6 tracking-tight">{question}</h1>
-        <p className="text-gray-500 dark:text-zinc-400 text-sm">received.</p>
+        <p className="text-gray-500 dark:text-zinc-400 text-sm">sent :)</p>
       </div>
     );
   }
