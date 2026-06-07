@@ -63,10 +63,15 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
     const password = process.env.KEYSTATIC_AUTH_PASSWORD;
 
     // Rate limit brute-force attempts — skipped gracefully if Upstash is absent.
+    // Skip when IP is 'unknown': bucketing all unknown IPs together would let
+    // one bad request globally lock out every user sharing that fallback key.
     if (keystaticlimit) {
-      const { success } = await keystaticlimit.limit(getIP(req));
-      if (!success) {
-        return new NextResponse('Too Many Requests', { status: 429 });
+      const ip = getIP(req);
+      if (ip !== 'unknown') {
+        const { success } = await keystaticlimit.limit(ip);
+        if (!success) {
+          return new NextResponse('Too Many Requests', { status: 429 });
+        }
       }
     }
 
