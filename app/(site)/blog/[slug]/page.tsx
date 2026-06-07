@@ -10,8 +10,7 @@ import { getReadingStats } from '@/lib/reading-time';
 import { articleSchema } from '@/lib/json-ld';
 import { normalizeDoc } from '@/lib/normalize-doc';
 import { PostConsoleArt } from '@/components/post-console-art';
-
-const SITE_URL = 'https://vedant.to';
+import { SITE_URL } from '@/lib/constants';
 
 export const revalidate = false;
 

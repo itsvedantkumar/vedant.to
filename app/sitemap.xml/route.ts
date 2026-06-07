@@ -1,11 +1,9 @@
 import { readdirSync } from 'fs';
 import { join } from 'path';
-import { getPublishedPosts } from '@/lib/posts';
-import { getPublishedDailyEntries } from '@/lib/daily';
+import { FEED_CACHE_CONTROL, escapeXml, getPublishedContent } from '@/lib/feed-utils';
+import { SITE_URL } from '@/lib/constants';
 
 export const dynamic = 'force-static';
-
-const SITE_URL = 'https://vedant.to';
 
 const EXCLUDED = new Set([
   'api',
@@ -56,10 +54,7 @@ function getStaticRoutes(): { url: string; lastModified: string }[] {
 }
 
 export async function GET() {
-  const [posts, dailyEntries] = await Promise.all([
-    getPublishedPosts(),
-    getPublishedDailyEntries(),
-  ]);
+  const { posts, daily: dailyEntries } = await getPublishedContent();
 
   const staticRoutes = getStaticRoutes();
 
@@ -75,18 +70,10 @@ export async function GET() {
 
   const all = [...staticRoutes, ...blogEntries, ...dailySitemapEntries];
 
-  function xmlEscape(s: string) {
-    return s
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
-  }
-
   const urls = all
     .map(
       (r) =>
-        `  <url>\n    <loc>${xmlEscape(r.url)}</loc>\n    <lastmod>${xmlEscape(r.lastModified)}</lastmod>\n  </url>`
+        `  <url>\n    <loc>${escapeXml(r.url)}</loc>\n    <lastmod>${escapeXml(r.lastModified)}</lastmod>\n  </url>`
     )
     .join('\n');
 
@@ -99,7 +86,7 @@ ${urls}
   return new Response(xml, {
     headers: {
       'Content-Type': 'application/xml',
-      'Cache-Control': 'public, max-age=3600, stale-while-revalidate=86400',
+      'Cache-Control': FEED_CACHE_CONTROL,
     },
   });
 }

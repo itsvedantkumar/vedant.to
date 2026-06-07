@@ -1,25 +1,12 @@
-import { getPublishedPosts } from '../../lib/posts';
-import { getPublishedDailyEntries } from '../../lib/daily';
+import { FEED_CACHE_CONTROL, escapeXml, getPublishedContent } from '@/lib/feed-utils';
+import { SITE_URL } from '@/lib/constants';
 
 // Next 15 no longer statically caches GET route handlers by default; the feed
 // is build-time content, so opt back into static generation.
 export const dynamic = 'force-static';
 
-const SITE_URL = 'https://vedant.to';
-
-function escapeXml(str: string): string {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
-
 export async function GET() {
-  const [posts, daily] = await Promise.all([
-    getPublishedPosts(),
-    getPublishedDailyEntries(),
-  ]);
+  const { posts, daily } = await getPublishedContent();
 
   const postItems = posts.map(({ slug, entry }) => ({
     title: entry.title,
@@ -72,7 +59,7 @@ export async function GET() {
   return new Response(rssFeed, {
     headers: {
       'Content-Type': 'application/rss+xml; charset=utf-8',
-      'Cache-Control': 'public, max-age=3600, stale-while-revalidate=86400',
+      'Cache-Control': FEED_CACHE_CONTROL,
     },
   });
 }
