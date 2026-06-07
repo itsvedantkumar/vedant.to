@@ -1,9 +1,34 @@
+import { Ratelimit } from '@upstash/ratelimit';
+import { Redis } from '@upstash/redis';
 import { ImageResponse } from '@vercel/og';
 
 export const runtime = 'edge';
 
+// Upstash HTTP client works in edge runtime
+const redis =
+  process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
+    ? Redis.fromEnv()
+    : null;
+
+// 60 requests per minute sliding window — OG image generation is CPU-heavy
+const ogRatelimit = redis
+  ? new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(60, '1 m'),
+      prefix: 'og',
+    })
+  : null;
+
 export async function GET(request: Request) {
   try {
+    const ip = request.headers.get('x-vercel-forwarded-for') ?? 'unknown';
+    if (ogRatelimit) {
+      const { success } = await ogRatelimit.limit(ip);
+      if (!success) {
+        return new Response('Too Many Requests', { status: 429 });
+      }
+    }
+
     const { searchParams } = new URL(request.url);
 
     // Dynamically fetch title parameter

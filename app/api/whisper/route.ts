@@ -79,7 +79,10 @@ async function verifyToken(token: string): Promise<boolean> {
     if (diff !== 0) return false;
     // Single-use: burn token in Redis so it can't be replayed
     if (redis) {
-      const burned = await redis.set(`whisper:token:${sig}`, 1, { nx: true, ex: 1800 });
+      const burned = await redis.set(`whisper:token:${sig}`, 1, {
+        nx: true,
+        ex: TOKEN_TTL_MS / 1000 + 60,
+      });
       if (burned === null) return false; // already used
     }
     return true;
@@ -88,16 +91,17 @@ async function verifyToken(token: string): Promise<boolean> {
   }
 }
 
-// Use Vercel's tamper-proof header — not client-spoofable
+// Use Vercel's tamper-proof header only — x-real-ip is client-spoofable off Vercel
 function getIP(req: NextRequest): string {
-  return (
-    req.headers.get('x-vercel-forwarded-for') ?? req.headers.get('x-real-ip') ?? 'unknown'
-  );
+  return req.headers.get('x-vercel-forwarded-for') ?? 'unknown';
 }
 
 // Check if IP is a known VPN, proxy, or datacenter via proxycheck.io (HTTPS, free tier)
 async function isVpnOrProxy(ip: string): Promise<boolean> {
   if (ip === 'unknown' || ip === '127.0.0.1' || ip.startsWith('::')) return false;
+  // Validate IP format before interpolating into URL
+  const ipRegex = /^(\d{1,3}\.){3}\d{1,3}$|^[0-9a-fA-F:]+$/;
+  if (!ipRegex.test(ip)) return false;
   try {
     const key = process.env.PROXYCHECK_API_KEY
       ? `&key=${process.env.PROXYCHECK_API_KEY}`
@@ -197,7 +201,7 @@ export async function POST(req: NextRequest) {
   }
 
   const ts = new Date().toISOString();
-  const rand = Math.random().toString(36).slice(2, 8);
+  const rand = crypto.randomUUID().replace(/-/g, '').slice(0, 8);
   const key = `whispers/${ts}-${rand}.json`;
 
   await r2.send(

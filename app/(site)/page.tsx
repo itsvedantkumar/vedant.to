@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   ...createMetadata({
     title: 'Vedant',
     description:
-      "I'm Vedant — I love watching movies, listening to music, and absorbing culture. I plan to dedicate my life to advancing human civilisation.",
+      "I'm a contrarian chasing polymathy. I love watching movies, listening to music, and absorbing culture. I plan to dedicate my life to advancing human civilisation.",
     path: '/',
     image: 'https://vedant.to/api/og?title=Vedant',
   }),
@@ -25,6 +25,9 @@ export default async function Home() {
       <div>
         <h1 className="font-medium text-2xl tracking-tight mb-2">Vedant</h1>
         <p className="text-gray-600 dark:text-zinc-400">
+          I&apos;m a contrarian chasing polymathy
+        </p>
+        <p className="text-gray-600 dark:text-zinc-400 mt-1">
           I love watching movies, listening to music, and absorbing culture
         </p>
         <p className="text-gray-600 dark:text-zinc-400 mt-1">

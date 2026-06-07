@@ -10,7 +10,7 @@ export default function BlogPostError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error(error);
+    console.error('[blog-error]', error.digest ?? error.message);
   }, [error]);
 
   return (

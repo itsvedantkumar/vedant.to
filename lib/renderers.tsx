@@ -32,15 +32,28 @@ export const renderers = {
       />
     ),
     link: ({ href, children }: { href: string; children: React.ReactNode }) => {
-      if (href.startsWith('/') || href.startsWith('#')) {
+      const SAFE_PROTOCOLS = ['http:', 'https:', 'mailto:'];
+      let safehref = href;
+      try {
+        const parsed = new URL(href, 'https://vedant.to');
+        if (!SAFE_PROTOCOLS.includes(parsed.protocol)) safehref = '#';
+      } catch {
+        safehref = '#';
+      }
+      if (safehref.startsWith('/') || safehref.startsWith('#')) {
         return (
-          <Link href={href} className={linkClass}>
+          <Link href={safehref} className={linkClass}>
             {children}
           </Link>
         );
       }
       return (
-        <a href={href} target="_blank" rel="noopener noreferrer" className={linkClass}>
+        <a
+          href={safehref}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={linkClass}
+        >
           {children}
         </a>
       );

@@ -62,8 +62,19 @@ for (const mdocPath of findMdoc(path.join(ROOT, 'content'))) {
     // Absolute URLs (CDN / external) are not local files — skip them entirely.
     if (/^https?:\/\//.test(rawRef)) return match;
 
-    const absRef = path.join(ROOT, 'public', rawRef);
-    const absDecoded = path.join(ROOT, 'public', decodeURIComponent(rawRef));
+    const publicRoot = path.join(ROOT, 'public');
+    const absRef = path.join(publicRoot, rawRef);
+    const absDecoded = path.join(publicRoot, decodeURIComponent(rawRef));
+
+    // Path traversal guard: ensure resolved paths stay within public/
+    const publicRootWithSep = publicRoot + path.sep;
+    if (
+      !absRef.startsWith(publicRootWithSep) ||
+      !absDecoded.startsWith(publicRootWithSep)
+    ) {
+      console.warn(`  TRAVERSAL: ${rawRef} escapes public/ — skipping`);
+      return match;
+    }
 
     // Case 1: file already at exact referenced path → fine
     if (fs.existsSync(absRef)) return match;
@@ -76,13 +87,23 @@ for (const mdocPath of findMdoc(path.join(ROOT, 'content'))) {
       const newRef = path.join(path.dirname(rawRef), slugged).replace(/\\/g, '/');
 
       if (absDecoded !== absDest) {
+        // Collision check: don't overwrite a different existing file
+        if (fs.existsSync(absDest)) {
+          console.warn(
+            `  COLLISION: ${path.relative(ROOT, absDest)} already exists — skipping rename`
+          );
+          return match;
+        }
         if (!DRY) fs.renameSync(absDecoded, absDest);
         console.log(
           `  rename: ${path.relative(ROOT, absDecoded)} → ${path.relative(ROOT, absDest)}`
         );
       }
 
-      const newMatch = match.replace(rawRef, newRef);
+      // Safe replace: rebuild match string to avoid rawRef-in-alt-text corruption
+      // and JS special replacement chars in newRef
+      const altText = match.slice(2, match.indexOf(']'));
+      const newMatch = `![${altText}](${newRef})`;
       changed = true;
       totalFixed++;
       return newMatch;

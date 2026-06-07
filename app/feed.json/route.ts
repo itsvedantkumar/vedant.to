@@ -27,9 +27,11 @@ export async function GET() {
         : {}),
       ...(entry.coverImage
         ? {
-            image: entry.coverImage.startsWith('http')
+            image: entry.coverImage.startsWith('https://')
               ? entry.coverImage
-              : `${SITE_URL}${entry.coverImage}`,
+              : entry.coverImage.startsWith('/')
+                ? `${SITE_URL}${entry.coverImage}`
+                : undefined,
           }
         : {}),
     })),
