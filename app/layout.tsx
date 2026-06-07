@@ -4,8 +4,9 @@ import { Inter } from 'next/font/google';
 import { Analytics } from '@vercel/analytics/react';
 import Script from 'next/script';
 import { headers } from 'next/headers';
-import { siteSchema } from '@/lib/json-ld';
+import { siteSchema, person } from '@/lib/json-ld';
 import { EasterEgg } from '@/components/easter-egg';
+import { SITE_URL, AUTHOR, TWITTER_HANDLE } from '@/lib/constants';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -19,14 +20,14 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://vedant.to'),
+  metadataBase: new URL(SITE_URL),
   title: {
     default: 'Vedant',
     template: '%s — Vedant',
   },
   description: "Hi I'm Vedant",
-  authors: [{ name: 'Vedant Kumar', url: 'https://vedant.to' }],
-  creator: 'Vedant Kumar',
+  authors: [{ name: person.name, url: person.url }],
+  creator: AUTHOR,
   alternates: {
     types: {
       'application/rss+xml': '/rss.xml',
@@ -37,12 +38,12 @@ export const metadata: Metadata = {
     siteName: 'Vedant',
     locale: 'en_US',
     type: 'website',
-    images: [{ url: 'https://vedant.to/icon.png', width: 512, height: 512 }],
+    images: [{ url: `${SITE_URL}/icon.png`, width: 512, height: 512 }],
   },
   twitter: {
     card: 'summary_large_image',
-    creator: '@itsvedantkumar',
-    images: ['https://vedant.to/icon.png'],
+    creator: TWITTER_HANDLE,
+    images: [`${SITE_URL}/icon.png`],
   },
   robots: { index: true, follow: true },
 };

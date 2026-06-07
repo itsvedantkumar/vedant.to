@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { getPublishedPosts } from '@/lib/posts';
 import { createMetadata } from '@/lib/metadata';
+import { formatDate } from '@/lib/date';
 
 export const metadata = createMetadata({
   title: 'Blog',
@@ -28,11 +29,7 @@ export default async function BlogPage() {
             href={`/blog/${slug}`}
           >
             <span className="text-gray-400 dark:text-gray-500 w-[100px] shrink-0 tabular-nums text-sm">
-              {new Date(entry.publishedAt!).toLocaleDateString('en-US', {
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric',
-              })}
+              {formatDate(entry.publishedAt!, 'short')}
             </span>
             <span className="text-gray-900 dark:text-gray-100 tracking-tight group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors duration-150">
               {entry.title}

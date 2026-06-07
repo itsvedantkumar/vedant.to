@@ -1,14 +1,14 @@
 // schema.org JSON-LD, built automatically from existing data — no per-post
 // hand-mapping. Drop each into a <script type="application/ld+json"> tag.
 
-const SITE_URL = 'https://vedant.to';
-const AUTHOR = 'Vedant Kumar';
+import { ogImageUrl } from './metadata';
+import { SITE_URL, AUTHOR } from '@/lib/constants';
 const SOCIALS = [
   'https://x.com/itsvedantkumar',
   'https://www.linkedin.com/in/itsvedantkumar',
 ];
 
-const person = {
+export const person = {
   '@type': 'Person',
   name: AUTHOR,
   url: SITE_URL,
@@ -55,7 +55,7 @@ export function articleSchema({
     dateModified: modified,
     url,
     mainEntityOfPage: url,
-    image: image ?? `${SITE_URL}/api/og?title=${encodeURIComponent(title)}`,
+    image: image ?? ogImageUrl(title),
     author: person,
     publisher: person,
     ...(wordCount ? { wordCount } : {}),

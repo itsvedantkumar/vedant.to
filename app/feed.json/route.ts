@@ -1,16 +1,12 @@
-import { getPublishedPosts } from '@/lib/posts';
-import { getPublishedDailyEntries } from '@/lib/daily';
-
-const SITE_URL = 'https://vedant.to';
+import { FEED_CACHE_CONTROL, getPublishedContent } from '@/lib/feed-utils';
+import { person } from '@/lib/json-ld';
+import { SITE_URL } from '@/lib/constants';
 
 // JSON Feed 1.1 — https://www.jsonfeed.org/version/1.1/
 export const dynamic = 'force-static';
 
 export async function GET() {
-  const [posts, daily] = await Promise.all([
-    getPublishedPosts(),
-    getPublishedDailyEntries(),
-  ]);
+  const { posts, daily } = await getPublishedContent();
 
   const postItems = posts.map(({ slug, entry }) => ({
     id: `${SITE_URL}/blog/${slug}`,
@@ -55,14 +51,14 @@ export async function GET() {
     feed_url: `${SITE_URL}/feed.json`,
     description: 'My portfolio, blog, and personal website.',
     language: 'en-US',
-    authors: [{ name: 'Vedant Kumar', url: SITE_URL }],
+    authors: [person],
     items: allItems,
   };
 
   return Response.json(feed, {
     headers: {
       'Content-Type': 'application/feed+json; charset=utf-8',
-      'Cache-Control': 'public, max-age=3600, stale-while-revalidate=86400',
+      'Cache-Control': FEED_CACHE_CONTROL,
     },
   });
 }

@@ -1,5 +1,30 @@
 import { config, fields, collection } from '@keystatic/core';
 
+const ASSETS_PUBLIC_PATH = 'https://assets.vedant.to/i/';
+
+const draftField = fields.checkbox({
+  label: 'Draft',
+  description: 'Hidden from the site, feeds, sitemap, and search while checked.',
+  defaultValue: false,
+});
+
+function makeDocumentField(imageDir: string) {
+  return fields.document({
+    label: 'Content',
+    formatting: {
+      headingLevels: [2, 3, 4],
+      inlineMarks: true,
+      listTypes: true,
+      blockTypes: true,
+      alignment: true,
+      softBreaks: true,
+    },
+    dividers: true,
+    links: true,
+    images: { directory: imageDir, publicPath: ASSETS_PUBLIC_PATH },
+  });
+}
+
 export default config({
   storage:
     process.env.NODE_ENV === 'development'
@@ -50,11 +75,7 @@ export default config({
           description:
             'Optional — set when meaningfully revised. Drives "dateModified" for SEO.',
         }),
-        draft: fields.checkbox({
-          label: 'Draft',
-          description: 'Hidden from the site, feeds, sitemap, and search while checked.',
-          defaultValue: false,
-        }),
+        draft: draftField,
         excerpt: fields.text({
           label: 'Excerpt',
           multiline: true,
@@ -62,25 +83,9 @@ export default config({
         coverImage: fields.image({
           label: 'Cover Image',
           directory: 'public/images/posts',
-          publicPath: 'https://assets.vedant.to/i/',
+          publicPath: ASSETS_PUBLIC_PATH,
         }),
-        content: fields.document({
-          label: 'Content',
-          formatting: {
-            headingLevels: [2, 3, 4],
-            inlineMarks: true,
-            listTypes: true,
-            blockTypes: true,
-            alignment: true,
-            softBreaks: true,
-          },
-          dividers: true,
-          links: true,
-          images: {
-            directory: 'public/images/posts',
-            publicPath: 'https://assets.vedant.to/i/',
-          },
-        }),
+        content: makeDocumentField('public/images/posts'),
       },
     }),
     daily: collection({
@@ -96,28 +101,8 @@ export default config({
           label: 'Date',
           validation: { isRequired: true },
         }),
-        draft: fields.checkbox({
-          label: 'Draft',
-          description: 'Hidden from the site while checked.',
-          defaultValue: false,
-        }),
-        content: fields.document({
-          label: 'Content',
-          formatting: {
-            headingLevels: [2, 3, 4],
-            inlineMarks: true,
-            listTypes: true,
-            blockTypes: true,
-            alignment: true,
-            softBreaks: true,
-          },
-          dividers: true,
-          links: true,
-          images: {
-            directory: 'public/images/daily',
-            publicPath: 'https://assets.vedant.to/i/',
-          },
-        }),
+        draft: draftField,
+        content: makeDocumentField('public/images/daily'),
       },
     }),
   },
