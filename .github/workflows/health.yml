@@ -1,11 +1,11 @@
 name: Production Health
 
-# Hourly probe of the live site + latest Vercel production deployment. On
-# failure it opens (or comments on) a single GitHub issue so problems surface
-# without inbox spam. Manual run available via the Actions tab.
+# Probe of the live site + latest Vercel production deployment (6x daily).
+# On failure it opens (or comments on) a single GitHub issue so problems
+# surface without inbox spam. Manual run available via the Actions tab.
 on:
   schedule:
-    - cron: '0 * * * *' # hourly
+    - cron: '0 0,6,12,18 * * *' # 6x daily (00:00, 06:00, 12:00, 18:00 UTC)
   workflow_dispatch:
 
 permissions:
