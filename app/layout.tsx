@@ -1,16 +1,13 @@
 import './globals.css';
 import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
-import { Analytics } from '@vercel/analytics/react';
 import Script from 'next/script';
-import { headers } from 'next/headers';
+import { Analytics } from '@vercel/analytics/react';
 import { siteSchema, person } from '@/lib/json-ld';
 import { EasterEgg } from '@/components/easter-egg';
 import { SITE_URL, AUTHOR, TWITTER_HANDLE } from '@/lib/constants';
 
-const inter = Inter({ subsets: ['latin'] });
-
-// No fallback — GA is optional; omit NEXT_PUBLIC_GA_ID to disable entirely
+const inter = Inter({ subsets: ['latin'], display: 'swap' });
 const GA_ID = process.env.NEXT_PUBLIC_GA_ID;
 
 export const viewport: Viewport = {
@@ -38,22 +35,21 @@ export const metadata: Metadata = {
     siteName: 'Vedant',
     locale: 'en_US',
     type: 'website',
-    images: [{ url: `${SITE_URL}/icon.png`, width: 512, height: 512 }],
+    images: [{ url: `${SITE_URL}/api/og?title=Vedant`, width: 1200, height: 630 }],
   },
   twitter: {
     card: 'summary_large_image',
     creator: TWITTER_HANDLE,
-    images: [`${SITE_URL}/icon.png`],
+    images: [`${SITE_URL}/api/og?title=Vedant`],
   },
   robots: { index: true, follow: true },
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const nonce = (await headers()).get('x-nonce') ?? '';
   // Escape </script> breakout vectors in JSON-LD
   const siteJsonLd = JSON.stringify(siteSchema()).replace(/</g, '\\u003c');
 
@@ -62,7 +58,6 @@ export default async function RootLayout({
       <body className="antialiased tracking-tight">
         <script
           type="application/ld+json"
-          nonce={nonce}
           dangerouslySetInnerHTML={{ __html: siteJsonLd }}
         />
         {children}
@@ -73,11 +68,8 @@ export default async function RootLayout({
             <Script
               src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}
               strategy="afterInteractive"
-              nonce={nonce}
             />
-            <Script id="ga-init" strategy="afterInteractive" nonce={nonce}>
-              {`window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','${GA_ID}');`}
-            </Script>
+            <Script src="/ga-init.js" strategy="afterInteractive" />
           </>
         )}
       </body>

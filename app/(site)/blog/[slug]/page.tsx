@@ -11,6 +11,7 @@ import { articleSchema } from '@/lib/json-ld';
 import { normalizeDoc } from '@/lib/normalize-doc';
 import { PostConsoleArt } from '@/components/post-console-art';
 import { SITE_URL } from '@/lib/constants';
+import { formatDate } from '@/lib/date';
 
 export const revalidate = false;
 
@@ -44,7 +45,8 @@ export async function generateMetadata({
             : undefined
         : undefined,
     });
-  } catch {
+  } catch (err) {
+    console.error('[blog] generateMetadata failed for slug:', slug, err);
     return {};
   }
 }
@@ -78,7 +80,9 @@ export default async function BlogPost({
     image: post.coverImage
       ? post.coverImage.startsWith('https://')
         ? post.coverImage
-        : `${SITE_URL}${post.coverImage}`
+        : post.coverImage.startsWith('/')
+          ? `${SITE_URL}${post.coverImage}`
+          : `${SITE_URL}/${post.coverImage}`
       : undefined,
     wordCount: words,
     minutes,
@@ -95,13 +99,7 @@ export default async function BlogPost({
       />
       <h1 className="text-2xl font-medium tracking-tight mb-0">{post.title}</h1>
       <div className="flex items-center gap-3 mt-2 mb-8 text-sm text-neutral-500 dark:text-neutral-400">
-        <span>
-          {new Date(post.publishedAt).toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-          })}
-        </span>
+        <span>{formatDate(post.publishedAt, 'long')}</span>
         <span aria-hidden>·</span>
         <span>{minutes} min read</span>
       </div>
