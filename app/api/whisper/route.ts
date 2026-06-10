@@ -128,10 +128,11 @@ export async function POST(req: NextRequest) {
 
   // Origin check — require a valid origin; reject missing or cross-origin
   const origin = req.headers.get('origin');
-  const validOrigin = /^(https:\/\/vedant\.to|https?:\/\/localhost(:\d+)?)$/.test(
-    origin ?? ''
-  );
-  if (!validOrigin && process.env.NODE_ENV === 'production') {
+  const validOrigin =
+    process.env.NODE_ENV === 'production'
+      ? /^https:\/\/vedant\.to$/.test(origin ?? '')
+      : /^(https:\/\/vedant\.to|https?:\/\/localhost(:\d+)?)$/.test(origin ?? '');
+  if (!validOrigin) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   }
 
@@ -185,14 +186,19 @@ export async function POST(req: NextRequest) {
   const rand = crypto.randomUUID().replace(/-/g, '').slice(0, 8);
   const key = `whispers/${ts}-${rand}.json`;
 
-  await r2.send(
-    new PutObjectCommand({
-      Bucket: process.env.WHISPER_BUCKET_NAME ?? process.env.R2_BUCKET_NAME,
-      Key: key,
-      Body: JSON.stringify({ message, ts }),
-      ContentType: 'application/json',
-    })
-  );
+  try {
+    await r2.send(
+      new PutObjectCommand({
+        Bucket: process.env.WHISPER_BUCKET_NAME ?? process.env.R2_BUCKET_NAME,
+        Key: key,
+        Body: JSON.stringify({ message, ts }),
+        ContentType: 'application/json',
+      })
+    );
+  } catch (err) {
+    console.error('[whisper] R2 write failed:', err);
+    return NextResponse.json({ error: 'storage error' }, { status: 500 });
+  }
 
   const toEmail = process.env.WHISPER_TO_EMAIL;
   if (resend && toEmail) {
@@ -203,7 +209,9 @@ export async function POST(req: NextRequest) {
         subject: 'new whisper',
         text: message,
       })
-      .catch(() => {});
+      .catch((err: unknown) => {
+        console.error('[whisper] email send failed:', err);
+      });
   }
 
   return NextResponse.json({ ok: true });

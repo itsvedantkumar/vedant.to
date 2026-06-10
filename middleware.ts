@@ -2,6 +2,7 @@ import { Ratelimit } from '@upstash/ratelimit';
 import { NextRequest, NextResponse } from 'next/server';
 import { getIP } from './lib/request';
 import { redis } from './lib/redis';
+import { timingSafeEqual } from './lib/timing';
 
 // 20 auth attempts per 10 min per IP
 const keystaticlimit = redis
@@ -12,11 +13,11 @@ const keystaticlimit = redis
     })
   : null;
 
-function buildCSP(nonce: string, isKeystatic: boolean): string {
+function buildCSP(isKeystatic: boolean): string {
   if (isKeystatic) {
     return [
       "default-src 'self'",
-      `script-src 'self' 'nonce-${nonce}'`,
+      "script-src 'self'",
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' blob: data: https://avatars.githubusercontent.com",
       "font-src 'self' data:",
@@ -29,7 +30,7 @@ function buildCSP(nonce: string, isKeystatic: boolean): string {
   }
   return [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' https://va.vercel-scripts.com https://www.googletagmanager.com`,
+    "script-src 'self' https://va.vercel-scripts.com https://www.googletagmanager.com",
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' blob: data: https://assets.vedant.to https://www.google-analytics.com",
     "font-src 'self' data:",
@@ -42,14 +43,9 @@ function buildCSP(nonce: string, isKeystatic: boolean): string {
 }
 
 export async function middleware(req: NextRequest): Promise<NextResponse> {
-  const nonce = Buffer.from(crypto.randomUUID()).toString('base64');
   const { pathname } = req.nextUrl;
   const isKeystatic =
     pathname.startsWith('/keystatic') || pathname.startsWith('/api/keystatic');
-
-  // Forward nonce to server components via request header
-  const requestHeaders = new Headers(req.headers);
-  requestHeaders.set('x-nonce', nonce);
 
   if (isKeystatic) {
     const password = process.env.KEYSTATIC_AUTH_PASSWORD;
@@ -80,21 +76,9 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
           if (colonIndex !== -1) {
             const providedPassword = decoded.slice(colonIndex + 1);
 
-            const enc = new TextEncoder();
-            const a = enc.encode(providedPassword);
-            const b = enc.encode(password);
-
-            const maxLen = Math.max(a.byteLength, b.byteLength);
-            const aPadded = new Uint8Array(maxLen);
-            const bPadded = new Uint8Array(maxLen);
-            aPadded.set(a);
-            bPadded.set(b);
-            let diff = a.byteLength ^ b.byteLength;
-            for (let i = 0; i < maxLen; i++) diff |= aPadded[i] ^ bPadded[i];
-
-            if (diff === 0) {
-              const res = NextResponse.next({ request: { headers: requestHeaders } });
-              res.headers.set('Content-Security-Policy', buildCSP(nonce, true));
+            if (timingSafeEqual(providedPassword, password)) {
+              const res = NextResponse.next({});
+              res.headers.set('Content-Security-Policy', buildCSP(true));
               return res;
             }
           }
@@ -110,20 +94,20 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
     }
 
     // No password set — pass through to Keystatic's own auth
-    const res = NextResponse.next({ request: { headers: requestHeaders } });
-    res.headers.set('Content-Security-Policy', buildCSP(nonce, true));
+    const res = NextResponse.next({});
+    res.headers.set('Content-Security-Policy', buildCSP(true));
     return res;
   }
 
-  // All public routes: attach nonce + per-request CSP
-  const res = NextResponse.next({ request: { headers: requestHeaders } });
-  res.headers.set('Content-Security-Policy', buildCSP(nonce, false));
+  // All public routes: per-request CSP
+  const res = NextResponse.next({});
+  res.headers.set('Content-Security-Policy', buildCSP(false));
   return res;
 }
 
 export const config = {
   // Match all paths except Next.js internals and static assets
   matcher: [
-    '/((?!_next/static|_next/image|favicon\\.ico|.*\\.(?:png|jpg|jpeg|gif|webp|svg|ico|txt|xml|json)).*)',
+    '/((?!_next/static|_next/image|favicon\\.ico|.*\\.(?:png|jpg|jpeg|gif|webp|svg|ico|txt|xml)).*)',
   ],
 };

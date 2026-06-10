@@ -29,11 +29,12 @@ export async function generateMetadata({
 
     return createMetadata({
       title: dateLabel,
-      description: dateLabel,
+      description: `A daily note from ${dateLabel}`,
       path: `/daily/${slug}`,
       publishedAt: entry.date,
     });
-  } catch {
+  } catch (err) {
+    console.error('[daily] generateMetadata failed for slug:', slug, err);
     return {};
   }
 }

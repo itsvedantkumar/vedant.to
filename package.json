@@ -1,6 +1,10 @@
 {
   "name": "vedant-blog",
   "private": true,
+  "version": "1.0.0",
+  "description": "Personal site and blog",
+  "license": "MIT",
+  "author": "Vedant Kumar",
   "scripts": {
     "dev": "next dev --turbo",
     "build": "next build",
@@ -23,8 +27,8 @@
     "@vercel/analytics": "^1.4.1",
     "@vercel/og": "^0.11.1",
     "next": "^15.5.0",
-    "react": "18.3",
-    "react-dom": "18.3",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "resend": "^6.12.4",
     "sugar-high": "^0.9.3"
   },

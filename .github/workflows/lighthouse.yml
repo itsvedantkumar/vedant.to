@@ -21,7 +21,7 @@ jobs:
       - uses: ./.github/actions/build-next
 
       - name: Run Lighthouse CI
-        uses: treosh/lighthouse-ci-action@v12
+        uses: treosh/lighthouse-ci-action@2f8dda6cf4de7d73b29853c3f29e8b2f256e5587 # v12.1.0
         with:
           configPath: ./lighthouserc.json
           uploadArtifacts: true
