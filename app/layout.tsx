@@ -2,7 +2,6 @@ import './globals.css';
 import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import Script from 'next/script';
-import { Analytics } from '@vercel/analytics/react';
 import { siteSchema, person } from '@/lib/json-ld';
 import { EasterEgg } from '@/components/easter-egg';
 import { SITE_URL, AUTHOR, TWITTER_HANDLE } from '@/lib/constants';
@@ -62,7 +61,6 @@ export default function RootLayout({
         />
         {children}
         <EasterEgg />
-        <Analytics />
         {process.env.NODE_ENV === 'production' && GA_ID && (
           <>
             <Script
