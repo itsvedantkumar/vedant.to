@@ -15,7 +15,7 @@
     "audit:watch": "node scripts/audit-content.mjs --watch"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.1061.0",
+    "@aws-sdk/client-s3": "^3.1065.0",
     "@keystatic/core": "^0.5.38",
     "@keystatic/next": "^5.0.2",
     "@upstash/ratelimit": "^2.0.8",
@@ -35,7 +35,7 @@
     "postcss": "^8.5.10",
     "postcss-load-config": "^6.0.1",
     "autoprefixer": "^10.5.0",
-    "prettier": "^3.4.2",
+    "prettier": "^3.8.4",
     "sharp": "^0.34.5",
     "tailwindcss": "^3.4.19",
     "typescript": "^5.9.3"
