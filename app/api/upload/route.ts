@@ -2,6 +2,7 @@ import { PutObjectCommand } from '@aws-sdk/client-s3';
 import { Ratelimit } from '@upstash/ratelimit';
 import { NextRequest, NextResponse } from 'next/server';
 import { getIP } from '@/lib/request';
+import { timingSafeEqual } from '@/lib/timing';
 import { r2 } from '@/lib/r2';
 import { redis } from '@/lib/redis';
 
@@ -17,22 +18,7 @@ const uploadRatelimit = redis
 export async function POST(req: NextRequest) {
   const secret = req.headers.get('x-upload-secret') ?? '';
   const expected = process.env.UPLOAD_SECRET ?? '';
-  const enc = new TextEncoder();
-  const a = enc.encode(secret);
-  const b = enc.encode(expected);
-  const maxLen = Math.max(a.byteLength, b.byteLength);
-  const aPadded = new Uint8Array(maxLen);
-  const bPadded = new Uint8Array(maxLen);
-  aPadded.set(a);
-  bPadded.set(b);
-  const unauthorized =
-    !secret ||
-    !expected ||
-    (() => {
-      let diff = 0;
-      for (let i = 0; i < maxLen; i++) diff |= aPadded[i] ^ bPadded[i];
-      return diff !== 0;
-    })();
+  const unauthorized = !secret || !expected || !timingSafeEqual(secret, expected);
   if (unauthorized) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }

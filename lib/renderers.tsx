@@ -1,5 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { highlight } from 'sugar-high';
 import { SITE_URL } from '@/lib/constants';
 
@@ -12,7 +13,7 @@ export const renderers = {
       <strong className="font-medium">{children}</strong>
     ),
     italic: ({ children }: { children: React.ReactNode }) => (
-      <em className="font-medium">{children}</em>
+      <em className="italic">{children}</em>
     ),
     // Inline code is a mark: children is a ReactNode (text), not a raw string.
     // sugar-high is only for code BLOCKS, so render inline code plainly.
@@ -20,16 +21,13 @@ export const renderers = {
     // Fallback: image can appear in inline context if inserted inside a paragraph.
     // Render it as a block-style image rather than throwing.
     image: ({ src, alt }: { src: string; alt: string }) => (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
+      <Image
         src={src}
-        alt={alt}
-        loading="lazy"
-        style={{
-          maxWidth: '100%',
-          height: 'auto',
-          borderRadius: '0.5rem',
-        }}
+        alt={alt ?? ''}
+        width={0}
+        height={0}
+        sizes="(max-width: 768px) 100vw, 768px"
+        className="max-w-full h-auto rounded-lg"
       />
     ),
     link: ({ href, children }: { href: string; children: React.ReactNode }) => {
@@ -117,24 +115,20 @@ export const renderers = {
       );
     },
     blockquote: ({ children }: { children: React.ReactNode }) => (
-      <blockquote className="ml-[0.075em] border-l-3 border-gray-300 pl-4 text-gray-700 dark:border-zinc-600 dark:text-zinc-300">
+      <blockquote className="ml-[0.075em] border-l-[3px] border-gray-300 pl-4 text-gray-700 dark:border-zinc-600 dark:text-zinc-300">
         {children}
       </blockquote>
     ),
     divider: () => <hr />,
     image: ({ src, alt, title }: { src: string; alt: string; title?: string }) => (
-      <img
+      <Image
         src={src}
-        alt={alt}
+        alt={alt ?? ''}
         title={title}
-        loading="lazy"
-        style={{
-          width: '100%',
-          height: 'auto',
-          borderRadius: '0.5rem',
-          marginTop: '2rem',
-          marginBottom: '2rem',
-        }}
+        width={0}
+        height={0}
+        sizes="100vw"
+        className="w-full h-auto rounded-lg mt-8 mb-8"
       />
     ),
     // `list` receives an array of list-item elements and must wrap each in <li> itself.
