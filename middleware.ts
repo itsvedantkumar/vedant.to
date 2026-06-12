@@ -30,7 +30,7 @@ function buildCSP(isKeystatic: boolean): string {
   }
   return [
     "default-src 'self'",
-    "script-src 'self' https://va.vercel-scripts.com https://www.googletagmanager.com",
+    "script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com https://www.googletagmanager.com",
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' blob: data: https://assets.vedant.to https://www.google-analytics.com",
     "font-src 'self' data:",
