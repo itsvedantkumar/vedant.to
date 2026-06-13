@@ -17,7 +17,7 @@ function buildCSP(isKeystatic: boolean): string {
   if (isKeystatic) {
     return [
       "default-src 'self'",
-      "script-src 'self'",
+      "script-src 'self' 'unsafe-inline'",
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' blob: data: https://avatars.githubusercontent.com",
       "font-src 'self' data:",
