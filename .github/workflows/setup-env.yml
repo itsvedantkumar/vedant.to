@@ -13,7 +13,7 @@ jobs:
       # Required: `vercel deploy --prod` below uploads the working directory and
       # builds it remotely. Without a checkout the dir is empty, so it would
       # deploy an empty app (404 on every route). This step makes the source present.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set Keystatic env vars on Vercel
         env:
