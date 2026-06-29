@@ -26,6 +26,7 @@ Live at **[vedant.to](https://vedant.to)**
 - **404 page** and `/now` page
 - **Strict CSP** — per-route security headers including HSTS, X-Content-Type-Options, Referrer-Policy
 - **Daily content backup** — GitHub Actions creates a dated git tag and uploads a `content-backup.zip` artifact daily with 90-day retention
+- **Production drift alarm** — GitHub Actions checks that `vedant.to` is healthy and not lagging behind `main`
 
 ## Project structure
 
@@ -55,8 +56,9 @@ components/
 
 .github/
   workflows/
-    deploy.yml     # CI: build + Vercel deploy on push to main
+    deploy.yml     # CI: validate build, formatting, typecheck, and content
     backup.yml     # Scheduled: daily content snapshot
+    health.yml     # Scheduled: live-site probe + production drift alarm
 ```
 
 ## Running locally
@@ -113,7 +115,13 @@ Three layers are active in production:
 
 ## Deployment
 
-Push to `main` → GitHub Actions builds and deploys to Vercel automatically. The `VERCEL_TOKEN`, `VERCEL_ORG_ID`, and `VERCEL_PROJECT_ID` secrets must be set in the GitHub repo.
+Production deploys should come from Vercel's Git integration on pushes to `main`, not from GitHub Actions. That keeps releases independent from Actions billing/quota failures.
+
+GitHub Actions still handles validation and support jobs:
+
+- `CI` validates build, formatting, typecheck, and content checks
+- `Production Health` probes the live site and alerts if production falls behind `main`
+- `Setup Vercel Env Vars` is only for syncing env vars to Vercel and forcing a manual redeploy when needed
 
 ## Backup
 
