@@ -19,7 +19,7 @@
     "audit:watch": "node scripts/audit-content.mjs --watch"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.1061.0",
+    "@aws-sdk/client-s3": "^3.1081.0",
     "@keystatic/core": "^0.5.38",
     "@keystatic/next": "^5.0.2",
     "@upstash/ratelimit": "^2.0.8",
@@ -30,18 +30,18 @@
     "next": "^15.5.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "resend": "^6.12.4",
+    "resend": "^6.17.1",
     "sugar-high": "^0.9.3"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
-    "autoprefixer": "^10.5.0",
+    "autoprefixer": "^10.5.2",
     "postcss": "^8.5.10",
     "postcss-load-config": "^6.0.1",
-    "prettier": "^3.4.2",
-    "sharp": "^0.34.5",
+    "prettier": "^3.9.4",
+    "sharp": "^0.35.3",
     "tailwindcss": "^3.4.19",
     "typescript": "^5.9.3"
   }
