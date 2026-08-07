@@ -18,6 +18,10 @@ jobs:
   lighthouse:
     runs-on: ubuntu-latest
     steps:
+      # Required before ./.github/actions/build-next — a local action only
+      # exists on the runner once the repo is checked out.
+      - uses: actions/checkout@v4
+
       - uses: ./.github/actions/build-next
 
       - name: Run Lighthouse CI
