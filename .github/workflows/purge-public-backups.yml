@@ -1,0 +1,72 @@
+name: Purge Public Backups
+
+# One-off remediation, kept for re-use if the misconfiguration ever recurs.
+#
+# Backups used to be written to R2_BUCKET_NAME (the live asset bucket), which is
+# fronted by the public custom domain assets.vedant.to — every archive under
+# `backups/` was world-readable. Backups now go to a private bucket, so those
+# old objects are pure exposure with no remaining purpose.
+#
+# Deletion is scoped to the `backups/` prefix of the asset bucket and nothing
+# else. It never touches the backup bucket, and never touches `i/` (published
+# images), whisper objects, or API uploads.
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type DELETE to confirm removing backups/* from the public asset bucket'
+        required: true
+        type: string
+
+concurrency:
+  group: purge-public-backups
+  cancel-in-progress: false
+
+jobs:
+  purge:
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Check confirmation
+        if: ${{ inputs.confirm != 'DELETE' }}
+        run: |
+          echo "::error::Confirmation not given — expected literal 'DELETE'"
+          exit 1
+
+      - name: Purge backups/ from the public asset bucket
+        env:
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
+          R2_BACKUP_BUCKET_NAME: ${{ secrets.R2_BACKUP_BUCKET_NAME }}
+        run: |
+          set -euo pipefail
+          ENDPOINT="https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
+          export AWS_ACCESS_KEY_ID="$R2_ACCESS_KEY_ID"
+          export AWS_SECRET_ACCESS_KEY="$R2_SECRET_ACCESS_KEY"
+
+          if [ "$R2_BUCKET_NAME" = "$R2_BACKUP_BUCKET_NAME" ]; then
+            echo "::error::Asset and backup buckets are identical — refusing to purge"
+            exit 1
+          fi
+
+          # Refuse to delete the only copy: require the private bucket to hold at
+          # least one archive before removing anything from the public one.
+          SURVIVING=$(aws s3 ls "s3://$R2_BACKUP_BUCKET_NAME/backups/" \
+            --endpoint-url "$ENDPOINT" | wc -l)
+          echo "Archives already in the private backup bucket: $SURVIVING"
+          if [ "$SURVIVING" -eq 0 ]; then
+            echo "::error::No backup exists in $R2_BACKUP_BUCKET_NAME yet — run the backup workflow first"
+            exit 1
+          fi
+
+          echo "--- objects to be deleted ---"
+          aws s3 ls "s3://$R2_BUCKET_NAME/backups/" --endpoint-url "$ENDPOINT" || true
+
+          aws s3 rm "s3://$R2_BUCKET_NAME/backups/" --recursive \
+            --endpoint-url "$ENDPOINT"
+
+          echo "--- remaining under backups/ (expect none) ---"
+          aws s3 ls "s3://$R2_BUCKET_NAME/backups/" --endpoint-url "$ENDPOINT" || true

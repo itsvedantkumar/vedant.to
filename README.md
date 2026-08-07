@@ -128,6 +128,31 @@ GitHub Actions still handles validation and support jobs:
 A scheduled GitHub Actions workflow runs daily at midnight UTC:
 
 - Creates a `backup/YYYY-MM-DD` git tag pointing to the current commit
-- Zips `content/` and uploads it as a workflow artifact (retained 90 days)
+- Zips `content/` and `public/images/` and uploads it as a workflow artifact (retained 90 days)
+- Copies the same zip off-GitHub to `s3://$R2_BACKUP_BUCKET_NAME/backups/content-YYYY-MM-DD.zip`
+- Mirrors the live asset bucket to `s3://$R2_BACKUP_BUCKET_NAME/r2-assets/`, capturing objects
+  that exist only in R2 (API uploads, whisper messages) and have no copy in the repo
 
 Trigger a manual backup anytime from the Actions tab → "Daily Content Backup" → Run workflow.
+
+Backups go to a **private** bucket (`R2_BACKUP_BUCKET_NAME`), never to `R2_BUCKET_NAME`. The
+latter is the live asset bucket, fronted by the public domain `assets.vedant.to` — anything
+written there is world-readable, and backups can contain unpublished drafts. Keep these
+separate.
+
+### Restore
+
+```sh
+scripts/restore.sh path/to/content-backup.zip
+```
+
+Restores `content/` and `public/images/`, moving any existing copies aside to
+`*.bak-<timestamp>` first. It verifies the archive and refuses entries outside those two trees.
+Fetch the zip from an Actions artifact, from the private R2 bucket, or use a git tag directly:
+
+```sh
+git checkout backup/YYYY-MM-DD -- content public/images
+```
+
+R2-only objects restore in the opposite direction, with
+`aws s3 sync s3://$R2_BACKUP_BUCKET_NAME/r2-assets/ s3://$R2_BUCKET_NAME/`.
