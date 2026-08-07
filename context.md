@@ -23,7 +23,8 @@
 
 - Deploy: push to `main` → Vercel (no PR gate). CI runs on PRs + pushes.
 - Secrets: live in Vercel env + GitHub Actions secrets. Never hardcode.
-- R2 backup is optional/off-GitHub cold storage — all required secrets (`R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_ENDPOINT`, `R2_BUCKET`) must be set together.
+- R2 backup is off-GitHub cold storage — required secrets (`R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_ACCOUNT_ID`, `R2_BACKUP_BUCKET_NAME`) must be set together. The endpoint is derived as `https://$R2_ACCOUNT_ID.r2.cloudflarestorage.com`; there is no `R2_ENDPOINT`/`R2_BUCKET` secret (renamed in `634b465`).
+- Backups target the private `R2_BACKUP_BUCKET_NAME` bucket. `R2_BUCKET_NAME` is the live asset bucket behind the public `assets.vedant.to` domain — writing backups there exposes them publicly, which is what happened until 2026-08-07.
 - Health check workflow polls `https://vedant.to` routes on a schedule; any 404 fails the run.
 
 ---
