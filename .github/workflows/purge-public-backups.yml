@@ -62,6 +62,24 @@ jobs:
             exit 1
           fi
 
+          # Historical archives exist only in the public bucket. Migrate them to
+          # the private one before deleting, so purging the exposure does not
+          # also destroy backup history.
+          echo "--- migrating existing archives to the private bucket ---"
+          aws s3 sync "s3://$R2_BUCKET_NAME/backups/" \
+            "s3://$R2_BACKUP_BUCKET_NAME/backups/" \
+            --endpoint-url "$ENDPOINT"
+
+          PUBLIC_COUNT=$(aws s3 ls "s3://$R2_BUCKET_NAME/backups/" \
+            --endpoint-url "$ENDPOINT" | wc -l)
+          PRIVATE_COUNT=$(aws s3 ls "s3://$R2_BACKUP_BUCKET_NAME/backups/" \
+            --endpoint-url "$ENDPOINT" | wc -l)
+          echo "public=$PUBLIC_COUNT private=$PRIVATE_COUNT"
+          if [ "$PRIVATE_COUNT" -lt "$PUBLIC_COUNT" ]; then
+            echo "::error::Private bucket has fewer archives than public — migration incomplete, refusing to delete"
+            exit 1
+          fi
+
           echo "--- objects to be deleted ---"
           aws s3 ls "s3://$R2_BUCKET_NAME/backups/" --endpoint-url "$ENDPOINT" || true
 
