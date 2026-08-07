@@ -29,6 +29,11 @@ const nextConfig = {
         destination: '/keystatic/:path*',
         permanent: false,
       },
+      {
+        source: '/daily/7th-august-2026',
+        destination: '/daily/7-august-2026',
+        permanent: true,
+      },
     ];
   },
   async headers() {
