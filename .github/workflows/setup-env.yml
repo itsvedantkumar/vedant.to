@@ -26,6 +26,9 @@ jobs:
           KEYSTATIC_GITHUB_CLIENT_SECRET: ${{ secrets.KEYSTATIC_GITHUB_CLIENT_SECRET }}
           KEYSTATIC_SECRET: ${{ secrets.KEYSTATIC_SECRET }}
           KEYSTATIC_AUTH_PASSWORD: ${{ secrets.KEYSTATIC_AUTH_PASSWORD }}
+          KEYSTATIC_SESSION_SECRET: ${{ secrets.KEYSTATIC_SESSION_SECRET }}
+          KEYSTATIC_ENROLL_TOKEN: ${{ secrets.KEYSTATIC_ENROLL_TOKEN }}
+          KEYSTATIC_AUTH_MODE: ${{ secrets.KEYSTATIC_AUTH_MODE }}
         run: |
           set_env() {
             local key=$1
@@ -51,6 +54,9 @@ jobs:
           set_env "KEYSTATIC_GITHUB_CLIENT_SECRET"        "$KEYSTATIC_GITHUB_CLIENT_SECRET"
           set_env "KEYSTATIC_SECRET"                      "$KEYSTATIC_SECRET"
           set_env "KEYSTATIC_AUTH_PASSWORD"               "$KEYSTATIC_AUTH_PASSWORD"
+          set_env "KEYSTATIC_SESSION_SECRET"             "$KEYSTATIC_SESSION_SECRET"
+          set_env "KEYSTATIC_ENROLL_TOKEN"               "$KEYSTATIC_ENROLL_TOKEN"
+          set_env "KEYSTATIC_AUTH_MODE"                  "$KEYSTATIC_AUTH_MODE"
 
       - name: Trigger redeploy
         env:
