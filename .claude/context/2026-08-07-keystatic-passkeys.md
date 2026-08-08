@@ -58,6 +58,26 @@ Typing a password into the browser's native prompt every time is friction, and a
 
 `npm run typecheck` and `npm run build` pass (build needs placeholder Keystatic secrets locally — pre-existing). Against `next dev`: unauthenticated navigation → 307 to the login page; `/api/keystatic/*` → 401 JSON; password login sets the cookie and grants access; wrong password → 401; forged/tampered/garbage cookies all rejected; `Origin: https://evil.example` → 403; missing `KEYSTATIC_SESSION_SECRET` → 503 everywhere; `KEYSTATIC_AUTH_MODE=basic` reproduces the old 401 + `WWW-Authenticate` behaviour; `/api/auth/webauthn/*` → 503 with no Redis; credentials endpoint → 401 unauthenticated and with a bad password.
 
+## Rollout state (as of the 2026-08-08 deploy)
+
+Shipped to `main` as `41cc6df` and live on Vercel. `KEYSTATIC_SESSION_SECRET` was generated, added as a GitHub Actions secret, and synced to Vercel production + preview via a manual `setup-env` run. `KEYSTATIC_ENROLL_TOKEN` and `KEYSTATIC_AUTH_MODE` were deliberately left unset, so the gate is still HTTP Basic Auth.
+
+Production reports:
+
+```
+GET /api/auth/status
+{"configured":true,"passkeysAvailable":true,"passwordEnabled":true,
+ "enrolledCount":0,"sessionActive":false,"canEnroll":true}
+
+GET  /keystatic                              → 401 + WWW-Authenticate (unchanged)
+POST /api/auth/webauthn/register/options     → 401 unauthorized (armed, correctly gated)
+POST /api/auth/webauthn/authenticate/options → 409 no passkeys enrolled
+```
+
+Upstash turned out to already be configured in production, so the real WebAuthn round-trip can be exercised against prod — it was never testable locally.
+
+**Blocked on:** enrolling the first passkey, which requires physical presence at an authenticator (Touch ID / Face ID / security key) plus the current `KEYSTATIC_AUTH_PASSWORD`. This cannot be automated by design: the private key is generated inside the device's secure enclave and released only by the owner's biometric. Enrolling a throwaway virtual authenticator would be worse than useless — it would consume the bootstrap slot, after which the step-up rule would prevent the real device from enrolling without an existing passkey session.
+
 ## Open issues / follow-ups
 
 - **The WebAuthn round-trip itself is untested.** No Upstash credentials exist in `.env.local` (every value there is empty), and passkeys need Redis for credential + challenge storage. Registration and assertion have only been verified by construction against the v13 API. Test with a real Upstash dev DB plus a Chrome virtual authenticator (DevTools → More tools → WebAuthn, ctap2 / internal / resident keys on / UV on) before flipping `KEYSTATIC_AUTH_MODE`.
