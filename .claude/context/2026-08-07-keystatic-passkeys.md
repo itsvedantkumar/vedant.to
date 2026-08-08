@@ -58,31 +58,40 @@ Typing a password into the browser's native prompt every time is friction, and a
 
 `npm run typecheck` and `npm run build` pass (build needs placeholder Keystatic secrets locally — pre-existing). Against `next dev`: unauthenticated navigation → 307 to the login page; `/api/keystatic/*` → 401 JSON; password login sets the cookie and grants access; wrong password → 401; forged/tampered/garbage cookies all rejected; `Origin: https://evil.example` → 403; missing `KEYSTATIC_SESSION_SECRET` → 503 everywhere; `KEYSTATIC_AUTH_MODE=basic` reproduces the old 401 + `WWW-Authenticate` behaviour; `/api/auth/webauthn/*` → 503 with no Redis; credentials endpoint → 401 unauthenticated and with a bad password.
 
-## Rollout state (as of the 2026-08-08 deploy)
+## Rollout state — COMPLETE as of 2026-08-08
 
-Shipped to `main` as `41cc6df` and live on Vercel. `KEYSTATIC_SESSION_SECRET` was generated, added as a GitHub Actions secret, and synced to Vercel production + preview via a manual `setup-env` run. `KEYSTATIC_ENROLL_TOKEN` and `KEYSTATIC_AUTH_MODE` were deliberately left unset, so the gate is still HTTP Basic Auth.
+Passkeys are **live and enforcing** on `vedant.to/keystatic`. Rollout ran to completion in one session:
 
-Production reports:
+| Step | State |
+|---|---|
+| Code shipped to `main` | `41cc6df`, deployed via Vercel |
+| `KEYSTATIC_SESSION_SECRET` | generated, GitHub Actions secret, synced to Vercel prod + preview |
+| `KEYSTATIC_AUTH_PASSWORD` | **rotated** (old value was unrecoverable — GitHub secrets are write-only) |
+| `KEYSTATIC_AUTH_MODE` | `passkey` |
+| `KEYSTATIC_ENROLL_TOKEN` | unset — not needed, bootstrap went through the password |
+| Passkeys enrolled | **1** (see follow-ups) |
+
+Verified against production after the flip:
 
 ```
-GET /api/auth/status
-{"configured":true,"passkeysAvailable":true,"passwordEnabled":true,
- "enrolledCount":0,"sessionActive":false,"canEnroll":true}
-
-GET  /keystatic                              → 401 + WWW-Authenticate (unchanged)
-POST /api/auth/webauthn/register/options     → 401 unauthorized (armed, correctly gated)
-POST /api/auth/webauthn/authenticate/options → 409 no passkeys enrolled
+GET  /keystatic          (no session)   → 307 → /auth/keystatic?next=%2Fkeystatic
+GET  /keystatic          (session)      → 200
+GET  /keystatic          (Basic + pw)   → 200   break-glass intact
+GET  /api/keystatic/...  (no session)   → 401
+GET  /                                  → 200
+POST /api/auth/password                 → 200 + Set-Cookie
 ```
 
-Upstash turned out to already be configured in production, so the real WebAuthn round-trip can be exercised against prod — it was never testable locally.
+End-to-end proof beyond curl: commit `e081e0d` (`Update content/daily/7-august-2026`) was authored through the Keystatic UI behind the passkey gate.
 
-**Blocked on:** enrolling the first passkey, which requires physical presence at an authenticator (Touch ID / Face ID / security key) plus the current `KEYSTATIC_AUTH_PASSWORD`. This cannot be automated by design: the private key is generated inside the device's secure enclave and released only by the owner's biometric. Enrolling a throwaway virtual authenticator would be worse than useless — it would consume the bootstrap slot, after which the step-up rule would prevent the real device from enrolling without an existing passkey session.
+Upstash turned out to be already configured in production, which is why the WebAuthn round-trip — untestable locally, since every value in `.env.local` is empty — could be exercised for real against prod.
 
 ## Open issues / follow-ups
 
-- **The WebAuthn round-trip itself is untested.** No Upstash credentials exist in `.env.local` (every value there is empty), and passkeys need Redis for credential + challenge storage. Registration and assertion have only been verified by construction against the v13 API. Test with a real Upstash dev DB plus a Chrome virtual authenticator (DevTools → More tools → WebAuthn, ctap2 / internal / resident keys on / UV on) before flipping `KEYSTATIC_AUTH_MODE`.
-- The **step-up rule's `existingCredentials > 0` branch is untested over HTTP** for the same reason — it needs Redis to have a credential in it. The policy function itself is covered by assertions.
-- Follow the rollout order in the plan: set env vars → ship with `KEYSTATIC_AUTH_MODE=basic` → enroll device 1 with the password → **unlock with that passkey** → enroll device 2 (the step-up rule means the password can't add it; you must be passkey-authenticated) → verify passkey login while still in basic mode → flip to `passkey` → rotate `KEYSTATIC_AUTH_PASSWORD` to 32 random chars → delete `KEYSTATIC_ENROLL_TOKEN`. Never remove `KEYSTATIC_AUTH_PASSWORD`.
+- **Only ONE passkey is enrolled.** If that device is lost, the break-glass password is the only way in. Add a second (iPhone via cross-device QR, or a hardware key): unlock at `/auth/keystatic`, then `/auth/keystatic/enroll`. The password cannot add it — the step-up rule requires an existing passkey session.
+- **`KEYSTATIC_AUTH_PASSWORD` was disclosed in a chat transcript** during rollout (it had to be, to bootstrap the first passkey). It should be rotated again once a second device is enrolled, at which point nobody needs to know its value — it is read out of Vercel only if every authenticator is lost. Rotate via `gh secret set KEYSTATIC_AUTH_PASSWORD` then run the `setup-env` workflow.
+- `gh` operations on this repo require `gh auth switch --user itsvedantkumar`; the active account otherwise reverts to `vedant-simulacrum`, which 404s. A `gh secret set` under the wrong account fails with a 404 that is easy to mistake for success if the exit code is not checked.
+- The `Security Audit` workflow fails on a `nanoid` high-severity advisory reached through `@keystatic/core → @toeverything/y-indexeddb`. Unrelated to this work — the advisory was published between commits, and the lockfile diff here touches only the two `@simplewebauthn` packages. Dependabot has a PR open.
 - Clone detection (`suspended` flag on counter regression) only ever fires for hardware keys — iCloud Keychain and Google Password Manager passkeys always report `signCount: 0`. Not a primary control.
 - The keystatic CSP still allows `script-src 'unsafe-inline'`. Pre-existing, out of scope, but it is the main residual risk to cookie confidentiality and the reason the session TTL stays at 12h.
 - Passkeys enrolled on a Vercel preview deploy have a `*.vercel.app` rpID and will not work on `vedant.to`. Use the password on previews.
