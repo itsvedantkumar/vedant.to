@@ -2,55 +2,134 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-const QUIZ = [
-  // redacted: personal quiz bank purged from history; the live bank comes from the WHISPER_QUIZ env var
-
-];
-
-function checkAnswer(input: string, answers: string[]): boolean {
-  const normalized = input.trim().toLowerCase().replace(/\s+/g, ' ');
-  return answers.some((a) => a.toLowerCase() === normalized);
-}
+// No question bank here on purpose: it used to ship dob + personal answers to
+// every visitor in the JS bundle. GET /api/whisper now hands out one question's
+// text + opaque id, and the server checks the answer (see lib/whisper-quiz.ts).
 
 export default function WhisperPage() {
-  const [quizIdx, setQuizIdx] = useState(-1);
+  const [question, setQuestion] = useState('');
   const [answer, setAnswer] = useState('');
   const [answered, setAnswered] = useState(false);
   const [wrongAnswer, setWrongAnswer] = useState(false);
+  const [checkError, setCheckError] = useState(false);
+  const [checking, setChecking] = useState(false);
   const [text, setText] = useState('');
   const [state, setState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
   const [tokenReady, setTokenReady] = useState(false);
   const tokenRef = useRef<string>('');
+  // Kept so the real submission can re-send it: the server is stateless and
+  // re-validates the answer against the question id signed into the token.
+  const acceptedAnswerRef = useRef<string>('');
 
   useEffect(() => {
-    setQuizIdx(Math.floor(Math.random() * QUIZ.length));
     fetch('/api/whisper')
       .then((r) => r.json())
       .then((d) => {
         tokenRef.current = d.token ?? '';
+        setQuestion(d.quiz?.question ?? '');
         setTokenReady(true);
       })
       .catch(() => setTokenReady(true));
   }, []);
 
-  const quiz = quizIdx >= 0 ? QUIZ[quizIdx] : null;
-  const question = quiz?.question ?? '';
+  /** Error code from the API body ('too_soon' | 'expired' | 'invalid'), if any. */
+  async function errorCode(res: Response): Promise<string> {
+    const body = (await res.json().catch(() => ({}))) as { code?: string };
+    return body.code ?? '';
+  }
 
-  function handleAnswerChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const val = e.target.value;
-    setAnswer(val);
-    setWrongAnswer(false);
-    if (quiz && checkAnswer(val, quiz.answers)) {
-      setAnswered(true);
+  /** Fetch a fresh token + question. Returns null if the request failed. */
+  async function fetchToken(): Promise<{ token: string; question: string } | null> {
+    try {
+      const d = await fetch('/api/whisper').then((r) => r.json());
+      if (!d?.token) return null;
+      tokenRef.current = d.token;
+      return { token: d.token, question: d.quiz?.question ?? '' };
+    } catch {
+      return null;
     }
   }
 
-  function handleAnswerSubmit(e: React.FormEvent) {
+  // The token carries a minimum age (anti-bot); answering faster than that gets
+  // a 425, not a rejection of the answer. The answers are one word, so honest
+  // users hit this routinely — wait out the remainder and retry once. The wait
+  // is only a courtesy: the server re-checks the age against the signed
+  // timestamp, so skipping it client-side gains nothing.
+  async function postWhisper(body: Record<string, unknown>): Promise<Response> {
+    const send = () =>
+      fetch('/api/whisper', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+    const res = await send();
+    if (res.status !== 425) return res;
+    const { retryAfterMs } = (await res.json().catch(() => ({}))) as {
+      retryAfterMs?: number;
+    };
+    // Honour whatever the server asked for (ceiling only as a sanity bound): a
+    // retry that fires EARLY just gets another 425 and surfaces as an error, so
+    // this must not undercut a future increase in the server's minimum age.
+    const waitMs = Math.min(Math.max(retryAfterMs ?? 3000, 0), 10_000) + 150; // +skew
+    await new Promise((r) => setTimeout(r, waitMs));
+    return send();
+  }
+
+  function handleAnswerChange(e: React.ChangeEvent<HTMLInputElement>) {
+    setAnswer(e.target.value);
+    setWrongAnswer(false);
+    setCheckError(false);
+  }
+
+  // Validation moved server-side, so this is a round-trip. A wrong answer is
+  // free: it burns neither the token nor a submission slot.
+  async function handleAnswerSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (quiz && checkAnswer(answer, quiz.answers)) {
-      setAnswered(true);
-    } else {
-      setWrongAnswer(true);
+    if (!answer.trim() || checking) return;
+    setChecking(true);
+    setWrongAnswer(false);
+    setCheckError(false);
+    try {
+      const check = { quizOnly: true, quizAnswer: answer, token: tokenRef.current };
+      const res = await postWhisper(check);
+      if (res.ok) {
+        acceptedAnswerRef.current = answer;
+        setAnswered(true);
+        return;
+      }
+      // Only an explicit 'wrong_answer' means the answer was wrong. A token
+      // problem is not the user's fault and must never render as "wrong."
+      const code = await errorCode(res);
+      if (code === 'expired') {
+        // Tab left open past the 30-min token TTL. Refresh silently rather than
+        // calling a correct answer wrong — but the question rotates hourly, so
+        // only re-check this answer if it's still the same question.
+        const fresh = await fetchToken();
+        if (!fresh) {
+          setCheckError(true);
+        } else if (fresh.question !== question) {
+          setQuestion(fresh.question);
+          setAnswer('');
+        } else {
+          const retry = await postWhisper({ ...check, token: fresh.token });
+          if (retry.ok) {
+            acceptedAnswerRef.current = answer;
+            setAnswered(true);
+          } else if ((await errorCode(retry)) === 'wrong_answer') {
+            setWrongAnswer(true);
+          } else {
+            setCheckError(true);
+          }
+        }
+      } else if (code === 'wrong_answer') {
+        setWrongAnswer(true);
+      } else {
+        setCheckError(true);
+      }
+    } catch {
+      setCheckError(true);
+    } finally {
+      setChecking(false);
     }
   }
 
@@ -59,14 +138,14 @@ export default function WhisperPage() {
     if (!text.trim() || text.trim().length < 5) return;
     setState('sending');
     try {
-      const res = await fetch('/api/whisper', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: text.trim(),
-          _trap: '',
-          token: tokenRef.current,
-        }),
+      // Same 425 handling. No silent token refresh here: the token is burned on
+      // success, and a refreshed one may carry a different question, so the
+      // answer would have to be re-taken — surface the error instead.
+      const res = await postWhisper({
+        message: text.trim(),
+        _trap: '',
+        token: tokenRef.current,
+        quizAnswer: acceptedAnswerRef.current,
       });
       setState(res.ok ? 'sent' : 'error');
     } catch {
@@ -102,12 +181,16 @@ export default function WhisperPage() {
           <div className="flex items-center justify-between">
             {wrongAnswer ? (
               <span className="text-xs text-red-400">wrong.</span>
+            ) : checkError ? (
+              <span className="text-xs text-red-400">
+                something went wrong. try again.
+              </span>
             ) : (
               <span />
             )}
             <button
               type="submit"
-              disabled={!answer.trim()}
+              disabled={!tokenReady || !answer.trim() || checking}
               className="text-sm text-gray-400 dark:text-zinc-500 hover:text-gray-900 dark:hover:text-zinc-100 disabled:opacity-30 transition-colors tracking-tight"
             >
               submit →

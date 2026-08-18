@@ -37,7 +37,7 @@ const nextConfig = {
     ];
   },
   async headers() {
-    // CSP is set per-request by middleware (nonce-based) — not here.
+    // CSP is set per-request by middleware ('unsafe-inline', no nonce) — not here.
     // These are static headers applied on all envs (preview included).
     return [
       {

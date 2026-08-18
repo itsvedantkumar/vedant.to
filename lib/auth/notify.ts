@@ -5,6 +5,7 @@
  */
 
 import { Resend } from 'resend';
+import { getTrustedIP } from '@/lib/request';
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
@@ -27,7 +28,7 @@ export async function notifySecurityEvent(subject: string, text: string): Promis
 export function requestContext(req: {
   headers: { get(name: string): string | null };
 }): string {
-  const ip = req.headers.get('x-vercel-forwarded-for') ?? 'unknown';
+  const ip = getTrustedIP(req);
   const ua = req.headers.get('user-agent') ?? 'unknown';
   return `ip: ${ip}\nuser-agent: ${ua}\nat: ${new Date().toISOString()}`;
 }

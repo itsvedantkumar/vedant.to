@@ -1,6 +1,7 @@
 import { PutObjectCommand } from '@aws-sdk/client-s3';
 import { Ratelimit } from '@upstash/ratelimit';
 import { NextRequest, NextResponse } from 'next/server';
+import { ASSETS_URL } from '@/lib/constants';
 import { getIP } from '@/lib/request';
 import { timingSafeEqual } from '@/lib/timing';
 import { r2 } from '@/lib/r2';
@@ -31,15 +32,31 @@ export async function POST(req: NextRequest) {
   }
 
   // Rate limit (defense-in-depth; upload is already auth-gated)
+  // Skip when IP is 'unknown': a single shared bucket would lock out all users.
   if (uploadRatelimit) {
     const ip = getIP(req);
-    const { success } = await uploadRatelimit.limit(ip);
-    if (!success) {
-      return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+    if (ip !== 'unknown') {
+      try {
+        const { success } = await uploadRatelimit.limit(ip);
+        if (!success) {
+          return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+        }
+      } catch (err) {
+        console.error('[upload] rate limit failed:', err);
+        return NextResponse.json({ error: 'Internal error' }, { status: 500 });
+      }
     }
   }
 
-  const form = await req.formData();
+  let form: FormData;
+  try {
+    form = await req.formData();
+  } catch (err) {
+    // Malformed multipart body — the client's fault, not ours.
+    console.error('[upload] form parse failed:', err);
+    return NextResponse.json({ error: 'Malformed request body' }, { status: 400 });
+  }
+
   const file = form.get('file');
   if (!(file instanceof File)) {
     return NextResponse.json({ error: 'No file provided' }, { status: 400 });
@@ -98,14 +115,19 @@ export async function POST(req: NextRequest) {
   const ext = ALLOWED_TYPES[contentType];
   const key = `${crypto.randomUUID()}${ext}`;
 
-  await r2.send(
-    new PutObjectCommand({
-      Bucket: process.env.R2_BUCKET_NAME,
-      Key: key,
-      Body: Buffer.from(bytes),
-      ContentType: contentType,
-    })
-  );
+  try {
+    await r2.send(
+      new PutObjectCommand({
+        Bucket: process.env.R2_BUCKET_NAME,
+        Key: key,
+        Body: Buffer.from(bytes),
+        ContentType: contentType,
+      })
+    );
+  } catch (err) {
+    console.error('[upload] R2 write failed:', err);
+    return NextResponse.json({ error: 'Storage error' }, { status: 500 });
+  }
 
-  return NextResponse.json({ url: `https://assets.vedant.to/${key}` });
+  return NextResponse.json({ url: `${ASSETS_URL}/${key}` });
 }

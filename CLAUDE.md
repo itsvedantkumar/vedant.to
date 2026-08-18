@@ -26,7 +26,9 @@ Parallelize: independent subtasks → ONE message, multiple Agent calls, concurr
 
 ## CONTEXT SNAPSHOTS — MANDATORY AFTER EVERY MAJOR CHANGE
 
-After every terminal session or significant change (new feature, security fix, refactor, deploy), write a context snapshot to `.claude/context/YYYY-MM-DD-<topic>.md`. Each file captures: what changed, why, key decisions, file:line references, and any open issues. These persist across sessions so future Claude instances have full project history without re-reading git log.
+After every terminal session or significant change (new feature, security fix, refactor, deploy), write a context snapshot to `.claude/context/YYYY-MM-DD-<topic>.md`. Each file captures: what changed, why, key decisions, file:line references, and any open issues.
+
+`.claude/context/` is **gitignored** — snapshots are a local scratchpad, not repo history, and a fresh clone will have none of them. Anything durable (architecture, rationale someone would need six months from now) must be promoted into `docs/` to survive. See `docs/auth.md`, which was promoted out of a snapshot for exactly this reason.
 
 Format:
 
@@ -41,11 +43,11 @@ Format:
 
 ---
 
-**Stack:** Next.js 14.2 (App Router, React Server Components), TypeScript, Tailwind CSS. Node 20.
+**Stack:** Next.js 15.5 (App Router, React Server Components), TypeScript, Tailwind CSS. Node 22.
 
 **CMS:** Keystatic. GitHub storage in prod, local in dev. Posts live in `content/posts/*`; post images in `public/images/posts/`. Prefer editing content via `/keystatic`, not by hand, unless asked.
 
-**Deploy:** Direct-to-`main` flow (no PR gate). Push to `main` → `.github/workflows/deploy.yml` → Vercel. CI builds with placeholder Keystatic secrets; Vercel rebuilds with real env vars. `setup-env.yml` (manual dispatch) syncs Keystatic secrets to Vercel.
+**Deploy:** Direct-to-`main` flow (no PR gate). Vercel's Git integration deploys on push to `main` — deliberately not GitHub Actions, so releases stay independent of Actions quota. `.github/workflows/ci.yml` is validation only (build, normalize-content, format:check, typecheck) and has no deploy step; CI builds with placeholder Keystatic secrets, Vercel rebuilds with real env vars. `setup-env.yml` (manual dispatch) syncs Keystatic secrets to Vercel.
 
 **Secrets:** Never hardcode in the repo or workflows. Live in Vercel env + GitHub Actions secrets. `NEXT_PUBLIC_*` vars are inlined into the client bundle at build time, so they must be set on Vercel before build.
 

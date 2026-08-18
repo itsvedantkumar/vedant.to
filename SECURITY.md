@@ -21,7 +21,16 @@ is supported. There are no released versions to back-port fixes to.
 - **HTTP security headers** on all public routes: CSP, HSTS (2y, preload),
   `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `Permissions-Policy`,
   `frame-ancestors 'none'`.
-- **Admin gate:** `/keystatic` CMS UI is behind constant-time Basic Auth.
+- **Admin gate:** `/keystatic` CMS UI is behind WebAuthn passkeys, with a
+  constant-time break-glass password as the recovery path (Basic Auth is only
+  the fallback when `KEYSTATIC_AUTH_MODE` is not `passkey`). Sessions are
+  signed, 12h, and revoked en masse by rotating the signing secret. See
+  [docs/auth.md](docs/auth.md).
+- **Rate limiting** (Upstash Redis) on every abusable endpoint: admin login,
+  passkey enrollment, image upload, OG rendering, and `/api/whisper`.
+- **Whisper anti-abuse:** submissions need an HMAC proof-of-page-load token
+  (30min TTL, 3s minimum age, burned on use), are capped at 3 per IP per 24h,
+  and are screened for proxy/VPN origin via proxycheck.io.
 - **Secrets** live only in Vercel env + GitHub Actions secrets — never committed.
   `NEXT_PUBLIC_*` values are public by design.
 - **Dependency scanning:** Dependabot alerts + weekly `npm audit` CI

@@ -1,12 +1,12 @@
 name: Build Next.js app
-description: Checkout, setup Node 20, npm ci, and build with Keystatic placeholders
+description: Checkout, setup Node 22, npm ci, and build with Keystatic placeholders
 runs:
   using: composite
   steps:
     - uses: actions/checkout@v4
     - uses: actions/setup-node@v4
       with:
-        node-version: '20'
+        node-version: '22'
         cache: 'npm'
     - run: npm ci
       shell: bash

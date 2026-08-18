@@ -1,5 +1,6 @@
 import { config, fields, collection } from '@keystatic/core';
 
+// Keep the origin in sync with ASSETS_URL in lib/constants.ts.
 const ASSETS_PUBLIC_PATH = 'https://assets.vedant.to/i/';
 
 const draftField = fields.checkbox({

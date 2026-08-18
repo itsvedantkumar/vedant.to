@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -5,12 +6,12 @@ import { DocumentRenderer } from '@keystatic/core/renderer';
 import { reader } from '@/lib/reader';
 import { getPublishedPosts } from '@/lib/posts';
 import { renderers } from '@/lib/renderers';
-import { createMetadata } from '@/lib/metadata';
+import { createMetadata, coverImageUrl } from '@/lib/metadata';
 import { getReadingStats } from '@/lib/reading-time';
 import { articleSchema } from '@/lib/json-ld';
 import { normalizeDoc } from '@/lib/normalize-doc';
 import { PostConsoleArt } from '@/components/post-console-art';
-import { SITE_URL } from '@/lib/constants';
+import { ASSETS_URL } from '@/lib/constants';
 import { formatDate } from '@/lib/date';
 
 export const revalidate = false;
@@ -24,7 +25,7 @@ export async function generateMetadata({
   params,
 }: {
   params: Promise<{ slug: string }>;
-}) {
+}): Promise<Metadata> {
   const { slug } = await params;
   try {
     const post = await reader.collections.posts.read(slug);
@@ -37,13 +38,7 @@ export async function generateMetadata({
       path: `/blog/${slug}`,
       publishedAt: post.publishedAt,
       updatedAt: post.updatedAt,
-      image: post.coverImage
-        ? post.coverImage.startsWith('https://')
-          ? post.coverImage
-          : post.coverImage.startsWith('/')
-            ? `${SITE_URL}${post.coverImage}`
-            : undefined
-        : undefined,
+      image: coverImageUrl(post.coverImage),
     });
   } catch (err) {
     console.error('[blog] generateMetadata failed for slug:', slug, err);
@@ -77,13 +72,7 @@ export default async function BlogPost({
     slug,
     publishedAt: post.publishedAt,
     updatedAt: post.updatedAt,
-    image: post.coverImage
-      ? post.coverImage.startsWith('https://')
-        ? post.coverImage
-        : post.coverImage.startsWith('/')
-          ? `${SITE_URL}${post.coverImage}`
-          : `${SITE_URL}/${post.coverImage}`
-      : undefined,
+    image: coverImageUrl(post.coverImage),
     wordCount: words,
     minutes,
   });
@@ -104,8 +93,7 @@ export default async function BlogPost({
         <span>{minutes} min read</span>
       </div>
       {post.coverImage &&
-        (post.coverImage.startsWith('/') ||
-          post.coverImage.startsWith('https://assets.vedant.to')) && (
+        (post.coverImage.startsWith('/') || post.coverImage.startsWith(ASSETS_URL)) && (
           <Image
             src={post.coverImage}
             alt={post.title}
