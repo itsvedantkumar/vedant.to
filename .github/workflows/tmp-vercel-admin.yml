@@ -1,0 +1,78 @@
+name: TMP Vercel Admin
+
+# Temporary. Added to inspect and clean up the two dead Vercel projects that
+# fail on every deploy. Delete this workflow once that is done — a
+# dispatchable "delete a project" button is not something to leave lying around.
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'inspect | delete'
+        required: true
+        default: 'inspect'
+      project:
+        description: 'project name (delete only)'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  admin:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          ACTION: ${{ inputs.action }}
+          PROJECT: ${{ inputs.project }}
+        run: |
+          set -euo pipefail
+          API=https://api.vercel.com
+          AUTH="Authorization: Bearer $VERCEL_TOKEN"
+          TEAM=""
+          case "$VERCEL_ORG_ID" in team_*) TEAM="?teamId=$VERCEL_ORG_ID" ;; esac
+
+          if [ "$ACTION" = "inspect" ]; then
+            curl -sS -H "$AUTH" "$API/v9/projects$TEAM" > /tmp/projects.json
+            python3 - <<'PY'
+          import json, os, subprocess
+          api = "https://api.vercel.com"
+          tok = os.environ["VERCEL_TOKEN"]
+          org = os.environ.get("VERCEL_ORG_ID", "")
+          team = f"?teamId={org}" if org.startswith("team_") else ""
+          data = json.load(open("/tmp/projects.json"))
+          for p in data.get("projects", []):
+              pid, name = p["id"], p["name"]
+              q = f"{api}/v9/projects/{pid}/domains{team}"
+              out = subprocess.run(["curl","-sS","-H",f"Authorization: Bearer {tok}",q],
+                                   capture_output=True, text=True).stdout
+              try:
+                  doms = [d["name"] for d in json.loads(out).get("domains", [])]
+              except Exception:
+                  doms = ["<error>"]
+              latest = (p.get("latestDeployments") or [{}])[0]
+              print(f"PROJECT {name}")
+              print(f"  id      : {pid}")
+              print(f"  domains : {doms if doms else 'NONE'}")
+              print(f"  state   : {latest.get('readyState','?')}")
+              print(f"  updated : {latest.get('createdAt','?')}")
+              print(f"  envCount: {len(p.get('env') or [])}")
+          PY
+            exit 0
+          fi
+
+          if [ "$ACTION" = "delete" ]; then
+            if [ -z "$PROJECT" ]; then echo "project input required"; exit 1; fi
+            echo "Deleting project: $PROJECT"
+            code=$(curl -sS -o /tmp/del.json -w '%{http_code}' -X DELETE \
+              -H "$AUTH" "$API/v9/projects/$PROJECT$TEAM")
+            echo "HTTP $code"; cat /tmp/del.json || true
+            [ "$code" = "204" ] || [ "$code" = "200" ]
+            exit 0
+          fi
+
+          echo "unknown action: $ACTION"; exit 1
