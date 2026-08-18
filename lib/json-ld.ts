@@ -13,7 +13,7 @@ export const person = {
   name: AUTHOR,
   url: SITE_URL,
   email: 'vedant@simulacrum.world',
-  image: `${SITE_URL}/icon-512.png`,
+  image: `${SITE_URL}/icon.png`,
   sameAs: SOCIALS,
 };
 

@@ -167,8 +167,8 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
 }
 
 export const config = {
-  // Match all paths except Next.js internals and static assets
-  matcher: [
-    '/((?!_next/static|_next/image|favicon\\.ico|.*\\.(?:png|jpg|jpeg|gif|webp|svg|ico|txt|xml)).*)',
-  ],
+  // Everything except Next.js build output, the favicon, /images, and
+  // /.well-known. Excluding by file extension instead would skip any
+  // /keystatic/*.png too — dropping auth and CSP on those requests.
+  matcher: ['/((?!_next/static|_next/image|favicon\\.ico|images/|\\.well-known/).*)'],
 };
