@@ -245,7 +245,8 @@ async function isVpnOrProxyCached(ip: string): Promise<boolean> {
 // question rotate out from under the user.
 const QUESTION_WINDOW_MS = 60 * 60 * 1000;
 
-async function questionForClient(ip: string): Promise<QuizQuestion> {
+// Returns undefined only when the bank is unconfigured; callers answer 503.
+async function questionForClient(ip: string): Promise<QuizQuestion | undefined> {
   // Nothing stable to key on (or no secret to key with) → fall back to random.
   if (ip === 'unknown' || !TOKEN_SECRET) return randomQuestion();
   const window = Math.floor(Date.now() / QUESTION_WINDOW_MS);
@@ -282,6 +283,11 @@ export async function GET(req: NextRequest) {
   }
 
   const q = await questionForClient(ip);
+  // No bank configured (WHISPER_QUIZ missing or malformed) — fail closed rather
+  // than serve an ungated form.
+  if (!q) {
+    return NextResponse.json({ error: 'misconfigured' }, { status: 503 });
+  }
   const ts = Date.now().toString(36);
   const quiz = { id: q.id, question: q.question };
 
