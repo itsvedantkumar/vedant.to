@@ -24,11 +24,16 @@ const AUTH_MODE = process.env.KEYSTATIC_AUTH_MODE === 'passkey' ? 'passkey' : 'b
 
 const LOGIN_PATH = '/auth/keystatic';
 
+// Next's dev-only react-refresh runtime evaluates code with eval(), so without
+// this nothing hydrates under `npm run dev` — every client component is inert.
+// Never emitted in production builds.
+const DEV_EVAL = process.env.NODE_ENV === 'production' ? '' : " 'unsafe-eval'";
+
 function buildCSP(isKeystatic: boolean): string {
   if (isKeystatic) {
     return [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline'",
+      `script-src 'self' 'unsafe-inline'${DEV_EVAL}`,
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' blob: data: https://avatars.githubusercontent.com",
       "font-src 'self' data:",
@@ -41,7 +46,7 @@ function buildCSP(isKeystatic: boolean): string {
   }
   return [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com https://www.googletagmanager.com",
+    `script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com https://www.googletagmanager.com${DEV_EVAL}`,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' blob: data: https://assets.vedant.to https://www.google-analytics.com",
     "font-src 'self' data:",

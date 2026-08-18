@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: 'deploy-${{ github.ref }}'
+  group: 'ci-${{ github.ref }}'
   cancel-in-progress: false
 
 jobs:
@@ -31,6 +31,9 @@ jobs:
       - name: Type-check
         run: npm run typecheck
 
+      - name: Test
+        run: npm test
+
       - name: Sync images to R2
         if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
         env:
@@ -39,3 +42,15 @@ jobs:
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
         run: node scripts/sync-images-to-r2.mjs
+
+      # Lighthouse runs as a step in this job (not a separate job) so it reuses
+      # the ./.github/actions/build-next output above. As its own job it would
+      # need either a second full npm ci + next build, or upload/download of the
+      # whole .next directory — both cost more than they save at this size.
+      # lighthouserc.json's startServerCommand (`npm run start`) needs that .next.
+      - name: Run Lighthouse CI
+        uses: treosh/lighthouse-ci-action@3e7e23fb74242897f95c0ba9cabad3d0227b9b18 # v12.6.2
+        with:
+          configPath: ./lighthouserc.json
+          uploadArtifacts: true
+          temporaryPublicStorage: true
