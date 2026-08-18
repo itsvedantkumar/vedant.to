@@ -77,24 +77,36 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         credential: {
           id: cred.id,
           publicKey: b64UrlToBytes(cred.publicKey),
-          counter: cred.counter,
+          // Deliberately 0, not cred.counter: that disables the library's own
+          // counter check (@simplewebauthn/server v13 throws
+          // `Response counter value N was lower than expected M` *before* it
+          // verifies the signature, so an unsigned forged assertion could trip
+          // it). We redo the comparison below, after the signature is proven.
+          counter: 0,
           transports: cred.transports,
         },
       });
-    } catch (err) {
-      // A signature-counter regression means the authenticator may have been
-      // cloned — disable the credential rather than merely refusing.
-      // Caveat: synced passkeys (iCloud Keychain, Google Password Manager)
-      // always report signCount 0, so this only ever fires for hardware keys.
-      const message = err instanceof Error ? err.message : '';
-      if (/counter/i.test(message)) {
-        await updateCredential(cred.id, { suspended: true });
-        return failed(403, 'credential suspended');
-      }
+    } catch {
+      // Any verification failure is just a 401. Suspension is never inferred
+      // from the library's exception text: the wording is not API surface, so
+      // a reworded upstream message would silently disable clone detection and
+      // an unrelated error mentioning "counter" would brick a real hardware key.
       return failed(401);
     }
 
     if (!verification.verified) return failed(401);
+
+    // Clone detection, on verified data only. Per WebAuthn §6.1.1, a signature
+    // counter that fails to advance means the same credential is in use from
+    // two places — disable it rather than merely refusing this attempt.
+    // Caveat: synced passkeys (iCloud Keychain, Google Password Manager) always
+    // report signCount 0; zero on both sides is spec-legal and must NOT suspend,
+    // so this only ever fires for hardware keys that do maintain a counter.
+    const newCounter = verification.authenticationInfo.newCounter;
+    if ((newCounter > 0 || cred.counter > 0) && newCounter <= cred.counter) {
+      await updateCredential(cred.id, { suspended: true });
+      return failed(403, 'credential suspended');
+    }
 
     await updateCredential(cred.id, {
       counter: verification.authenticationInfo.newCounter,

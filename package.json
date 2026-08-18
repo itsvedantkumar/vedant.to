@@ -5,17 +5,20 @@
   "description": "Personal site and blog",
   "license": "MIT",
   "author": "Vedant Kumar",
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
     "dev": "next dev --turbo",
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "check": "tsc --noEmit && node scripts/audit-content.mjs",
+    "check": "tsc --noEmit && node scripts/audit-content.mjs && npm test",
+    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --import ./tests/alias-loader.mjs --test tests/*.test.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "fix-images": "node scripts/normalize-images.mjs",
     "fix-content": "node scripts/normalize-content.mjs",
-    "audit:content": "node scripts/audit-content.mjs",
     "audit:content:watch": "node scripts/audit-content.mjs --watch"
   },
   "dependencies": {
@@ -49,6 +52,12 @@
   },
   "overrides": {
     "sharp": "^0.35.3",
-    "postcss": "^8.5.26"
+    "postcss": {
+      ".": "^8.5.26",
+      "nanoid": "^3.3.18"
+    },
+    "@toeverything/y-indexeddb": {
+      "nanoid": "^5.1.16"
+    }
   }
 }

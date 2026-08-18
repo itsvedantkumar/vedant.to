@@ -1,65 +1,51 @@
 # vedant.to
 
-Personal site of Vedant Kumar — writing, a /now page, and a few things I'm building.
+Personal site of Vedant Kumar — essays, a daily log, and a quote collection.
 
 Live at **[vedant.to](https://vedant.to)**
 
 ## Stack
 
-| Layer               | Tool                                                                                                                                        |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| Framework           | [Next.js 14](https://nextjs.org) (App Router)                                                                                               |
-| CMS                 | [Keystatic](https://keystatic.com) — content stored as Markdown files in `content/`                                                         |
-| Styling             | [Tailwind CSS](https://tailwindcss.com)                                                                                                     |
-| Fonts               | Inter via `next/font/google`                                                                                                                |
-| Syntax highlighting | [sugar-high](https://github.com/huozhi/sugar-high)                                                                                          |
-| Analytics           | [Vercel Analytics](https://vercel.com/analytics) + [Vercel Speed Insights](https://vercel.com/docs/speed-insights) + Google Analytics (GA4) |
-| Deployment          | [Vercel](https://vercel.com)                                                                                                                |
+Next.js 15 (App Router) with Keystatic as the CMS, Tailwind for styling, TypeScript
+throughout, deployed on Vercel, with Upstash Redis for rate limiting and Cloudflare R2
+for asset and whisper storage. Node 22.
 
-## Features
+## Content
 
-- **Keystatic CMS** — edit posts from `/keystatic` in the browser; writes back to the `content/posts/` directory via GitHub commits (GitHub mode in production, local filesystem in dev)
-- **Dynamic OG images** — auto-generated per-page via `@vercel/og` at `/api/og`
-- **Auto sitemap + RSS** — `sitemap.xml` and `rss.xml` generated at build time from content
-- **Reading time** — calculated per post at build time
-- **Copy-to-clipboard** on code blocks
-- **404 page** and `/now` page
-- **Strict CSP** — per-route security headers including HSTS, X-Content-Type-Options, Referrer-Policy
-- **Daily content backup** — GitHub Actions creates a dated git tag and uploads a `content-backup.zip` artifact daily with 90-day retention
-- **Production drift alarm** — GitHub Actions checks that `vedant.to` is healthy and not lagging behind `main`
+Three Keystatic collections, all stored as flat files in the repo:
 
-## Project structure
+| Collection | Path              | Format  | Count |
+| ---------- | ----------------- | ------- | ----- |
+| Posts      | `content/posts/`  | `.mdoc` | 7     |
+| Daily      | `content/daily/`  | `.mdoc` | 17    |
+| Quotes     | `content/quotes/` | `.yaml` | 51    |
 
-```
-app/
-  (site)/          # Public-facing pages (homepage, blog, /now)
-  api/
-    og/            # OG image generation
-    keystatic/     # Keystatic API routes
-  keystatic/       # Keystatic admin UI (protected by Keystatic auth)
-  layout.tsx       # Root layout — fonts, Analytics, GA
-  robots.ts
-  sitemap.ts
-  rss.xml/
+Posts and daily entries both carry a `draft` boolean. **`draft: true` hides an entry
+everywhere** — site listings, RSS, JSON Feed, and the sitemap. It is enforced once, at the
+source, in `lib/posts.ts` and `lib/daily.ts`; `lib/feed-utils.ts` and
+`app/sitemap.xml/route.ts` consume the already-filtered `getPublishedPosts()` /
+`getPublishedDailyEntries()` rather than re-implementing the check. One filter, no drift.
 
-content/
-  posts/           # Markdown posts managed by Keystatic
+This is also why backups must never land in a public bucket: an unpublished draft is
+invisible on the site but sits in plain text in `content/`. See [Backup](#backup).
 
-lib/
-  reader.ts        # Keystatic filesystem reader (build-time)
-  renderers.tsx    # Keystatic DocumentRenderer components
-  metadata.ts      # Shared createMetadata() helper
-  reading-time.ts  # Reading time estimator
+Quotes have no `draft` field — everything in `content/quotes/` is public.
 
-components/
-  copy-button.tsx  # Client component for code block copy
+## Structure
 
-.github/
-  workflows/
-    deploy.yml     # CI: validate build, formatting, typecheck, and content
-    backup.yml     # Scheduled: daily content snapshot
-    health.yml     # Scheduled: live-site probe + production drift alarm
-```
+- `app/` — App Router. `(site)/` holds the public pages, `api/` the route handlers,
+  `keystatic/` the CMS UI, `auth/keystatic/` the login and device-management screens.
+- `lib/` — content readers (`posts.ts`, `daily.ts`, `reader.ts`), feed/SEO helpers,
+  plus `auth/` and `webauthn/` for the `/keystatic` gate.
+- `components/` — the two client components that need to be client components.
+- `content/` — the three Keystatic collections above.
+- `public/` — static assets, including a hand-written `robots.txt`.
+- `scripts/` — content normalisers, the content auditor, the R2 image sync, `restore.sh`.
+- `.github/workflows/` — CI and the scheduled jobs (see [Deployment](#deployment)).
+- `middleware.ts` — the `/keystatic` auth gate, at the edge.
+
+Deliberately a list and not an ASCII tree: the tree that used to live here had drifted
+wrong in four places.
 
 ## Running locally
 
@@ -67,61 +53,69 @@ components/
 git clone https://github.com/itsvedantkumar/vedant.to
 cd vedant.to
 npm install
-```
-
-Create `.env.local` from the example:
-
-```bash
 cp .env.example .env.local
-```
-
-Required env vars for local development:
-
-```env
-# Keystatic runs in local mode when these are absent — no OAuth needed for dev
-# (Only required for production / GitHub storage mode)
-KEYSTATIC_GITHUB_CLIENT_ID=
-KEYSTATIC_GITHUB_CLIENT_SECRET=
-KEYSTATIC_SECRET=
-```
-
-```bash
 npm run dev
 ```
 
-The site is at `http://localhost:3000`. The CMS is at `http://localhost:3000/keystatic` — no login required in local mode.
+The site is at `http://localhost:3000`, the CMS at `http://localhost:3000/keystatic`.
+Keystatic runs in local mode when the GitHub credentials are absent, so it writes straight
+to disk and needs no OAuth for dev.
 
-## CMS (Keystatic)
+Env vars are documented in `.env.example`, not here — it explains the semantics of the
+trickier ones (`KEYSTATIC_ENROLL_TOKEN`, `KEYSTATIC_SESSION_SECRET`) better than a table
+could, and a second copy would only rot.
 
-Content lives in `content/posts/` as Markdown files with YAML frontmatter. Keystatic handles editing through a web UI.
+Before pushing:
 
-**In development (local mode):** visit `/keystatic` — writes directly to disk.
+```bash
+npm run check   # tsc --noEmit + scripts/audit-content.mjs
+```
 
-**In production (GitHub mode):** Keystatic commits changes back to the repo via a GitHub OAuth App. Requires `KEYSTATIC_GITHUB_CLIENT_ID`, `KEYSTATIC_GITHUB_CLIENT_SECRET`, and `KEYSTATIC_SECRET` to be set in Vercel environment variables.
+`npm run audit:content:watch` runs the content auditor continuously while writing.
+`npm run format` and `npm run fix-content` clean up formatting and frontmatter.
 
-To set up the GitHub OAuth App:
+## Keystatic auth
 
-1. Go to [github.com/settings/developers](https://github.com/settings/developers) → New OAuth App
-2. Set the callback URL to `https://vedant.to/api/keystatic/github/oauth/callback`
-3. Add the client ID, secret, and a random `KEYSTATIC_SECRET` (`openssl rand -hex 32`) to Vercel
+`/keystatic` is gated by WebAuthn passkeys, with a break-glass password as the recovery
+path. Full design, env vars, and known limitations: **[docs/auth.md](docs/auth.md)**.
 
-## Analytics
+The one thing worth knowing up front: `KEYSTATIC_AUTH_MODE` defaults to `basic`. Anything
+other than the literal string `passkey` keeps the old HTTP Basic Auth prompt, so shipping
+the passkey code is deliberately a no-op until you opt in.
 
-Three layers are active in production:
+## Feeds & SEO
 
-- **Vercel Analytics** — pageviews and web vitals, zero config (injected via `<Analytics />`)
-- **Vercel Speed Insights** — Core Web Vitals per route (injected via edge script)
-- **Google Analytics (GA4)** — set `NEXT_PUBLIC_GA_ID=G-XXXXXXXXXX` in Vercel environment variables to enable
+Three hand-rolled route handlers, all `export const dynamic = 'force-static'`, all sharing
+`lib/feed-utils.ts` so the three outputs can't disagree about what's published:
+
+- `app/rss.xml/` — RSS 2.0
+- `app/feed.json/` — JSON Feed 1.1
+- `app/sitemap.xml/` — sitemap
+
+They are route handlers rather than Next's `sitemap.ts` / `robots.ts` conventions because
+the shared-source-of-truth wiring is easier to see this way. `robots.txt` is a static file
+in `public/`. OG images are generated per-page by `@vercel/og` at `/api/og`. The
+`indexnow.yml` workflow pings IndexNow on every push to `main`, so new posts get crawled in
+minutes instead of days.
 
 ## Deployment
 
-Production deploys should come from Vercel's Git integration on pushes to `main`, not from GitHub Actions. That keeps releases independent from Actions billing/quota failures.
+Production deploys come from Vercel's Git integration on pushes to `main`, **not** from
+GitHub Actions. That keeps releases independent of Actions billing and quota failures — a
+red CI run never blocks a deploy.
 
-GitHub Actions still handles validation and support jobs:
+GitHub Actions handles validation and support jobs only:
 
-- `CI` validates build, formatting, typecheck, and content checks
-- `Production Health` probes the live site and alerts if production falls behind `main`
-- `Setup Vercel Env Vars` is only for syncing env vars to Vercel and forcing a manual redeploy when needed
+| Workflow             | Name                  | Trigger                  | Does                                                                                                                        |
+| -------------------- | --------------------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------- |
+| `ci.yml`             | CI                    | push to `main`, PR       | build, normalize-content, `format:check`, `typecheck`, `npm test`, R2 image sync, Lighthouse CI against `lighthouserc.json` |
+| `health.yml`         | Production Health     | 4×/day                   | probes the live site, alerts if prod lags `main`                                                                            |
+| `backup.yml`         | Daily Content Backup  | daily 00:00 UTC          | tags, zips, and off-sites `content/` (see below)                                                                            |
+| `secret-scan.yml`    | Secret Scan           | push, PR, weekly         | `gitleaks`, weekly over full history                                                                                        |
+| `security-audit.yml` | Security Audit        | manifest changes, weekly | `npm audit`, fails on high/critical                                                                                         |
+| `indexnow.yml`       | IndexNow              | push to `main`           | pings IndexNow so new content is crawled fast                                                                               |
+| `links.yml`          | Link Check            | weekly Mon 07:00 UTC     | `lychee` over `content/**/*.mdoc` and this README                                                                           |
+| `setup-env.yml`      | Setup Vercel Env Vars | manual only              | syncs secrets to Vercel, forces a redeploy                                                                                  |
 
 ## Backup
 
