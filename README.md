@@ -8,7 +8,7 @@ Live at **[vedant.to](https://vedant.to)**
 
 Next.js 15 (App Router) with Keystatic as the CMS, Tailwind for styling, TypeScript
 throughout, deployed on Vercel, with Upstash Redis for rate limiting and Cloudflare R2
-for asset and whisper storage. Node 20.
+for asset and whisper storage. Node 22.
 
 ## Content
 
@@ -106,17 +106,16 @@ red CI run never blocks a deploy.
 
 GitHub Actions handles validation and support jobs only:
 
-| Workflow             | Name                  | Trigger                  | Does                                                                 |
-| -------------------- | --------------------- | ------------------------ | -------------------------------------------------------------------- |
-| `ci.yml`             | CI                    | push to `main`, PR       | build, normalize-content, `format:check`, `typecheck`, R2 image sync |
-| `health.yml`         | Production Health     | 4×/day                   | probes the live site, alerts if prod lags `main`                     |
-| `backup.yml`         | Daily Content Backup  | daily 00:00 UTC          | tags, zips, and off-sites `content/` (see below)                     |
-| `lighthouse.yml`     | Lighthouse            | push to `main`, PR       | Lighthouse CI against `lighthouserc.json`                            |
-| `secret-scan.yml`    | Secret Scan           | push, PR, weekly         | `gitleaks`, weekly over full history                                 |
-| `security-audit.yml` | Security Audit        | manifest changes, weekly | `npm audit`, fails on high/critical                                  |
-| `indexnow.yml`       | IndexNow              | push to `main`           | pings IndexNow so new content is crawled fast                        |
-| `links.yml`          | Link Check            | weekly Mon 07:00 UTC     | `lychee` over `content/**/*.mdoc` and this README                    |
-| `setup-env.yml`      | Setup Vercel Env Vars | manual only              | syncs secrets to Vercel, forces a redeploy                           |
+| Workflow             | Name                  | Trigger                  | Does                                                                                                                        |
+| -------------------- | --------------------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------- |
+| `ci.yml`             | CI                    | push to `main`, PR       | build, normalize-content, `format:check`, `typecheck`, `npm test`, R2 image sync, Lighthouse CI against `lighthouserc.json` |
+| `health.yml`         | Production Health     | 4×/day                   | probes the live site, alerts if prod lags `main`                                                                            |
+| `backup.yml`         | Daily Content Backup  | daily 00:00 UTC          | tags, zips, and off-sites `content/` (see below)                                                                            |
+| `secret-scan.yml`    | Secret Scan           | push, PR, weekly         | `gitleaks`, weekly over full history                                                                                        |
+| `security-audit.yml` | Security Audit        | manifest changes, weekly | `npm audit`, fails on high/critical                                                                                         |
+| `indexnow.yml`       | IndexNow              | push to `main`           | pings IndexNow so new content is crawled fast                                                                               |
+| `links.yml`          | Link Check            | weekly Mon 07:00 UTC     | `lychee` over `content/**/*.mdoc` and this README                                                                           |
+| `setup-env.yml`      | Setup Vercel Env Vars | manual only              | syncs secrets to Vercel, forces a redeploy                                                                                  |
 
 ## Backup
 

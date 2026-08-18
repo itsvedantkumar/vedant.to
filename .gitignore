@@ -45,3 +45,4 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+content/posts/zz-test-fixture-*.mdoc
