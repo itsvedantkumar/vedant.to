@@ -1,4 +1,5 @@
 import { FEED_CACHE_CONTROL, escapeXml, getPublishedContent } from '@/lib/feed-utils';
+import { formatDate } from '@/lib/date';
 import { SITE_URL } from '@/lib/constants';
 
 // Next 15 no longer statically caches GET route handlers by default; the feed
@@ -16,11 +17,7 @@ export async function GET() {
   }));
 
   const dailyItems = daily.map(({ slug, entry }) => ({
-    title: new Date(entry.date!).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    }),
+    title: formatDate(entry.date!, 'long'),
     link: `${SITE_URL}/daily/${slug}`,
     description: '',
     pubDate: new Date(entry.date!).toUTCString(),

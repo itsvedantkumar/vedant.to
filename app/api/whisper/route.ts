@@ -22,6 +22,10 @@ const ratelimit = redis
 const TOKEN_SECRET = process.env.WHISPER_TOKEN_SECRET ?? '';
 const TOKEN_TTL_MS = 30 * 60 * 1000;
 
+// No fallback to R2_BUCKET_NAME: that bucket is served publicly at
+// assets.vedant.to, so a missing var would publish anonymous private messages.
+const WHISPER_BUCKET = process.env.WHISPER_BUCKET_NAME;
+
 async function hmac(secret: string, data: string): Promise<string> {
   const key = await crypto.subtle.importKey(
     'raw',
@@ -120,6 +124,10 @@ export async function GET() {
 
 // --- POST: receive a whisper ---
 export async function POST(req: NextRequest) {
+  if (!WHISPER_BUCKET) {
+    return NextResponse.json({ error: 'storage not configured' }, { status: 503 });
+  }
+
   // Content-Length guard — reject before parsing
   const contentLength = parseInt(req.headers.get('content-length') ?? '0', 10);
   if (contentLength > 4096) {
@@ -189,7 +197,7 @@ export async function POST(req: NextRequest) {
   try {
     await r2.send(
       new PutObjectCommand({
-        Bucket: process.env.WHISPER_BUCKET_NAME ?? process.env.R2_BUCKET_NAME,
+        Bucket: WHISPER_BUCKET,
         Key: key,
         Body: JSON.stringify({ message, ts }),
         ContentType: 'application/json',

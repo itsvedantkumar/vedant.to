@@ -34,11 +34,21 @@ jobs:
           ' < <(
             printf "https://%s/\n" "$HOST"
             printf "https://%s/blog\n" "$HOST"
+            printf "https://%s/daily\n" "$HOST"
+            # Quotes are index-only: app/(site)/quotes has no [slug] route, so
+            # per-quote URLs would submit 404s to IndexNow.
+            printf "https://%s/quotes\n" "$HOST"
             for f in content/posts/*.mdoc; do
               [ -e "$f" ] || continue
               grep -q 'draft: true' "$f" && continue
               slug=$(basename "$f" .mdoc)
               printf "https://%s/blog/%s\n" "$HOST" "$slug"
+            done
+            for f in content/daily/*.mdoc; do
+              [ -e "$f" ] || continue
+              grep -q 'draft: true' "$f" && continue
+              slug=$(basename "$f" .mdoc)
+              printf "https://%s/daily/%s\n" "$HOST" "$slug"
             done
           ))
           echo "Submitting: $URLS"

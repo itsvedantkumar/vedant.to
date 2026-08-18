@@ -18,6 +18,19 @@ export function ogImageUrl(title: string): string {
   return `${SITE_URL}/api/og?title=${encodeURIComponent(title)}`;
 }
 
+/**
+ * Absolute URL for a cover image. Anything that isn't already absolute or
+ * root-relative is unrecognised data, so we return undefined rather than
+ * fabricate a URL — callers fall back to the generated OG image instead of
+ * publishing a 404 into metadata, JSON-LD, or the feed.
+ */
+export function coverImageUrl(coverImage: string | null | undefined): string | undefined {
+  if (!coverImage) return undefined;
+  if (coverImage.startsWith('https://')) return coverImage;
+  if (coverImage.startsWith('/')) return `${SITE_URL}${coverImage}`;
+  return undefined;
+}
+
 export function createMetadata({
   title,
   description,

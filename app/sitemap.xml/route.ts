@@ -5,14 +5,13 @@ import { SITE_URL } from '@/lib/constants';
 
 export const dynamic = 'force-static';
 
+// 'keystatic' covers both /keystatic and /auth/keystatic — matched at any depth.
 const EXCLUDED = new Set([
   'api',
   'admin',
-  'now',
   'keystatic',
   'rss.xml',
   'feed.json',
-  'search-index.json',
   'whisper',
   '_not-found',
 ]);
@@ -49,7 +48,7 @@ function getStaticRoutes(): { url: string; lastModified: string }[] {
 
   return [...routes].map((route) => ({
     url: `${SITE_URL}${route === '/' ? '' : route}`,
-    lastModified: new Date().toISOString().split('T')[0],
+    lastModified: new Date().toISOString(),
   }));
 }
 

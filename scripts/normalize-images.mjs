@@ -20,6 +20,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { findMdocFiles } from './lib/mdoc-utils.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
@@ -37,23 +38,12 @@ function slugifyBasename(name) {
   return slug + ext.toLowerCase();
 }
 
-/** Recursively find all .mdoc files. */
-function findMdoc(dir) {
-  const results = [];
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    const full = path.join(dir, entry.name);
-    if (entry.isDirectory()) results.push(...findMdoc(full));
-    else if (entry.name.endsWith('.mdoc')) results.push(full);
-  }
-  return results;
-}
-
 const IMG_RE = /!\[[^\]]*\]\(([^)]+)\)/g;
 
 let totalFixed = 0;
 let totalMissing = 0;
 
-for (const mdocPath of findMdoc(path.join(ROOT, 'content'))) {
+for (const mdocPath of findMdocFiles(path.join(ROOT, 'content'))) {
   let src = fs.readFileSync(mdocPath, 'utf8');
   let changed = false;
 

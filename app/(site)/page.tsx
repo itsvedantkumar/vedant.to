@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { getPublishedPosts } from '@/lib/posts';
 import { createMetadata } from '@/lib/metadata';
+import { formatDate } from '@/lib/date';
 
 export const metadata: Metadata = {
   ...createMetadata({
@@ -48,11 +49,7 @@ export default async function Home() {
                 className="flex flex-row items-baseline gap-4 group"
               >
                 <span className="text-gray-400 dark:text-gray-500 tabular-nums text-sm w-[100px] shrink-0">
-                  {new Date(entry.publishedAt!).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric',
-                  })}
+                  {formatDate(entry.publishedAt!, 'short')}
                 </span>
                 <span className="text-gray-900 dark:text-gray-100 group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors duration-150">
                   {entry.title}

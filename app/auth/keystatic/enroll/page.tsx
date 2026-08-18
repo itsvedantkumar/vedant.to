@@ -3,6 +3,7 @@
 import { startRegistration, browserSupportsWebAuthn } from '@simplewebauthn/browser';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
+import { formatDate } from '@/lib/date';
 
 type Status = {
   configured: boolean;
@@ -29,11 +30,7 @@ const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
 function when(ts: number | null): string {
   if (!ts) return 'never';
-  return new Date(ts).toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  });
+  return formatDate(new Date(ts).toISOString(), 'short');
 }
 
 export default function EnrollPage() {
