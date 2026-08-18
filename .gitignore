@@ -35,9 +35,12 @@ yarn-error.log*
 # vercel
 .vercel
 
-# claude code (local only — settings.local.json may contain secrets)
+# claude code (local only; IDE config, machine paths, and AI session logs shouldn't be in public repos)
 .claude/worktrees/
+.claude/launch.json
 .claude/settings.local.json
+.claude/context/
+.context
 
 # typescript
 *.tsbuildinfo

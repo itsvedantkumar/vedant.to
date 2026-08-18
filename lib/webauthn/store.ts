@@ -54,7 +54,7 @@ export function isRedisUnavailable(err: unknown): boolean {
   return err instanceof RedisUnavailableError;
 }
 
-export async function listCredentialIds(): Promise<string[]> {
+async function listCredentialIds(): Promise<string[]> {
   return db().smembers(CREDS_SET);
 }
 

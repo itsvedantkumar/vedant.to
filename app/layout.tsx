@@ -71,7 +71,7 @@ export default function RootLayout({
               src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}
               strategy="afterInteractive"
             />
-            <Script src="/ga-init.js" strategy="afterInteractive" />
+            <Script src="/ga-init.js" strategy="afterInteractive" data-ga-id={GA_ID} />
           </>
         )}
       </body>

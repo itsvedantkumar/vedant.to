@@ -7,7 +7,8 @@
  *
  * R2 key mapping:
  *   public/images/posts/slug/file.png → i/slug/file.webp
- *   (strip "images/posts/" prefix → "i/", always .webp extension)
+ *   public/images/daily/file.png      → i/file.webp
+ *   (strip "images/posts/" or "images/daily/" prefix → "i/", always .webp extension)
  *
  * Skips unchanged files by comparing content hash against R2 ETag.
  * Sets immutable cache headers — Cloudflare serves from edge.
@@ -74,11 +75,12 @@ function md5(buf) {
   return crypto.createHash('md5').update(buf).digest('hex');
 }
 
-/** Map local path → R2 key. Converts images/posts/ → i/ and forces .webp for compressible images. */
+/** Map local path → R2 key. Converts images/{posts,daily}/ → i/ and forces .webp for compressible images. */
 function toR2Key(absPath) {
   const rel = path.relative(path.join(ROOT, 'public'), absPath).replace(/\\/g, '/');
-  // images/posts/slug/file.ext → i/slug/file.ext
-  const withPrefix = rel.replace(/^images\/posts\//, 'i/');
+  // Both collections share publicPath https://assets.vedant.to/i/ (keystatic.config.ts),
+  // so both local dirs must flatten to the same i/ prefix.
+  const withPrefix = rel.replace(/^images\/(posts|daily)\//, 'i/');
   const ext = path.extname(withPrefix).toLowerCase();
   return COMPRESS.has(ext)
     ? withPrefix.replace(/\.(png|jpg|jpeg)$/i, '.webp')
@@ -104,11 +106,26 @@ if (!fs.existsSync(IMAGES_DIR)) {
 const files = walk(IMAGES_DIR);
 let uploaded = 0,
   skipped = 0,
-  failed = 0;
+  failed = 0,
+  collisions = 0;
+
+// posts/ and daily/ flatten into the same i/ namespace, so identical basenames
+// across the two dirs would silently overwrite each other. Warn, never clobber.
+const seenKeys = new Map();
 
 for (const absPath of files) {
   const ext = path.extname(absPath).toLowerCase();
   const key = toR2Key(absPath);
+
+  const prevPath = seenKeys.get(key);
+  if (prevPath) {
+    console.warn(
+      `⚠ COLLISION: ${key} ← both ${path.relative(ROOT, prevPath)} and ${path.relative(ROOT, absPath)} — keeping first, skipping second`
+    );
+    collisions++;
+    continue;
+  }
+  seenKeys.set(key, absPath);
 
   let buf;
   let contentType;
@@ -166,6 +183,8 @@ for (const absPath of files) {
 }
 
 console.log(
-  `\nDone: ${uploaded} uploaded, ${skipped} skipped (unchanged), ${failed} failed.`
+  `\nDone: ${uploaded} uploaded, ${skipped} skipped (unchanged), ${failed} failed, ${collisions} key collision(s).`
 );
+// Collisions warn but don't fail: ci.yml runs this on every main push, and one
+// clashing filename shouldn't block a deploy. Fix by renaming the source image.
 process.exit(failed > 0 ? 1 : 0);
