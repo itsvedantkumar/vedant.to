@@ -8,8 +8,8 @@ import { counterAdvances } from '@/lib/webauthn/store';
  * implementation of the same rule. These tests lock the decision table so a
  * future edit to either has to justify itself.
  *
- * NOTE: the Lua itself is NOT exercised here — that needs a real Redis, which
- * this repo has no local instance of. What is covered is the rule it encodes.
+ * The Lua IS exercised against a real Redis by tests/manual/redis-cas.mjs,
+ * including the concurrency case. That one is manual because CI has no Redis.
  */
 describe('counterAdvances', () => {
   test('normal advance is accepted', () => {
