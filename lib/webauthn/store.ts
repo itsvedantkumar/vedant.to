@@ -11,6 +11,14 @@ import { CHALLENGE_TTL_SEC } from '@/lib/auth/session';
 const CREDS_SET = 'ks:wa:creds';
 const credKey = (id: string) => `ks:wa:cred:${id}`;
 const chalKey = (nonce: string) => `ks:wa:chal:${nonce}`;
+/**
+ * The signature counter lives in its own integer key, separate from the record.
+ * It is the one field that needs a compare-and-set, and keeping it scalar means
+ * the Lua below never has to decode/re-encode the credential JSON — cjson would
+ * turn an empty `transports: []` into `{}` and `null` into a sentinel, quietly
+ * changing the record's shape on every authentication.
+ */
+const ctrKey = (id: string) => `ks:wa:ctr:${id}`;
 
 export type StoredCredential = {
   /** base64url credential id */
@@ -76,6 +84,9 @@ export async function listCredentials(): Promise<StoredCredential[]> {
 export async function saveCredential(cred: StoredCredential): Promise<void> {
   const client = db();
   await client.set(credKey(cred.id), cred);
+  // Seed the counter key with the record, so a re-enrolled credential id can
+  // never inherit a stale counter from a previous registration.
+  await client.set(ctrKey(cred.id), cred.counter);
   await client.sadd(CREDS_SET, cred.id);
 }
 
@@ -88,9 +99,73 @@ export async function updateCredential(
   await db().set(credKey(id), { ...existing, ...patch });
 }
 
+/**
+ * Compare-and-set the signature counter, atomically.
+ *
+ * WebAuthn's clone check is read-compare-write, so doing it in application code
+ * races: two concurrent assertions can both read counter=5, both accept 6, and
+ * both write — which is exactly the cloned-authenticator case the check exists
+ * to catch. Redis runs this script atomically, so only one of the two wins.
+ *
+ * `seed` backfills from the credential record the first time a given credential
+ * authenticates after this key existed; without it an existing credential would
+ * start from zero and accept one stale counter.
+ *
+ * Mirrors the spec rule the library uses: a regression only counts when at least
+ * one side is non-zero. Authenticators with synced passkeys (iCloud Keychain,
+ * Google Password Manager) always report 0 and must never trip it.
+ */
+const BUMP_COUNTER_LUA = `
+local cur = redis.call('GET', KEYS[1])
+if cur == false then cur = ARGV[2] end
+cur = tonumber(cur)
+local new = tonumber(ARGV[1])
+if cur == nil or new == nil then return -1 end
+if (new > 0 or cur > 0) and new <= cur then return 0 end
+redis.call('SET', KEYS[1], new)
+return 1
+`;
+
+/**
+ * The exact rule BUMP_COUNTER_LUA implements, in TypeScript so it can be tested.
+ * The Lua is the atomic implementation; this is the specification. Change one
+ * and you must change the other — `tests/counter.test.ts` locks the table.
+ */
+export function counterAdvances(current: number, next: number): boolean {
+  if ((next > 0 || current > 0) && next <= current) return false;
+  return true;
+}
+
+export type CounterBump = 'ok' | 'regressed' | 'error';
+
+export async function bumpCounter(
+  id: string,
+  newCounter: number,
+  seed: number
+): Promise<CounterBump> {
+  let result: unknown;
+  try {
+    result = await db().eval(
+      BUMP_COUNTER_LUA,
+      [ctrKey(id)],
+      [String(newCounter), String(seed)]
+    );
+  } catch (err) {
+    if (isRedisUnavailable(err)) throw err;
+    console.error('[webauthn] counter CAS failed:', err);
+    return 'error';
+  }
+  if (result === 1) return 'ok';
+  if (result === 0) return 'regressed';
+  // -1 means a non-numeric counter reached Redis. Refuse rather than guess:
+  // the caller turns this into a retryable 401, not a suspension.
+  console.error('[webauthn] counter CAS returned', result, 'for', id);
+  return 'error';
+}
+
 export async function deleteCredential(id: string): Promise<void> {
   const client = db();
-  await client.del(credKey(id));
+  await client.del(credKey(id), ctrKey(id));
   await client.srem(CREDS_SET, id);
 }
 
@@ -109,7 +184,7 @@ export async function relinkCredentialId(id: string): Promise<void> {
 }
 
 export async function deleteCredentialRecord(id: string): Promise<void> {
-  await db().del(credKey(id));
+  await db().del(credKey(id), ctrKey(id));
 }
 
 export async function putChallenge(

@@ -23,6 +23,7 @@ import {
   getCredential,
   isRedisUnavailable,
   updateCredential,
+  bumpCounter,
 } from '@/lib/webauthn/store';
 
 export const runtime = 'nodejs';
@@ -102,14 +103,23 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     // Caveat: synced passkeys (iCloud Keychain, Google Password Manager) always
     // report signCount 0; zero on both sides is spec-legal and must NOT suspend,
     // so this only ever fires for hardware keys that do maintain a counter.
+    // The compare and the write happen in one Redis script. Doing them here
+    // would race: two concurrent assertions could both read the old counter,
+    // both accept, and both write — precisely the cloned-authenticator case.
     const newCounter = verification.authenticationInfo.newCounter;
-    if ((newCounter > 0 || cred.counter > 0) && newCounter <= cred.counter) {
+    const bump = await bumpCounter(cred.id, newCounter, cred.counter);
+    if (bump === 'regressed') {
       await updateCredential(cred.id, { suspended: true });
       return failed(403, 'credential suspended');
     }
+    if (bump === 'error') {
+      // Couldn't establish whether the counter advanced. Refuse this attempt
+      // rather than accept on faith; it's retryable and suspends nothing.
+      return failed(401);
+    }
 
     await updateCredential(cred.id, {
-      counter: verification.authenticationInfo.newCounter,
+      counter: newCounter,
       lastUsedAt: Date.now(),
       backedUp: verification.authenticationInfo.credentialBackedUp,
       deviceType: verification.authenticationInfo.credentialDeviceType,
