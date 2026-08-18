@@ -29,6 +29,10 @@ jobs:
           KEYSTATIC_SESSION_SECRET: ${{ secrets.KEYSTATIC_SESSION_SECRET }}
           KEYSTATIC_ENROLL_TOKEN: ${{ secrets.KEYSTATIC_ENROLL_TOKEN }}
           KEYSTATIC_AUTH_MODE: ${{ secrets.KEYSTATIC_AUTH_MODE }}
+          # JSON question bank for /whisper. A secret because the answers are
+          # personal data (dob, tastes) — keeping them out of the repo is what
+          # lets this repo be made public.
+          WHISPER_QUIZ: ${{ secrets.WHISPER_QUIZ }}
         run: |
           set_env() {
             local key=$1
@@ -61,6 +65,7 @@ jobs:
           set_env "KEYSTATIC_SESSION_SECRET"             "$KEYSTATIC_SESSION_SECRET"
           set_env "KEYSTATIC_ENROLL_TOKEN"               "$KEYSTATIC_ENROLL_TOKEN"
           set_env "KEYSTATIC_AUTH_MODE"                  "$KEYSTATIC_AUTH_MODE"
+          set_env "WHISPER_QUIZ"                         "$WHISPER_QUIZ"
 
       - name: Trigger redeploy
         env:
