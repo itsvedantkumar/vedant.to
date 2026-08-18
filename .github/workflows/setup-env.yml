@@ -49,6 +49,10 @@ jobs:
 
           # Public, non-secret values (safe to keep inline):
           set_env "NEXT_PUBLIC_KEYSTATIC_GITHUB_APP_SLUG" "itsvedantkumar-keystatic"
+          # A bucket NAME is not a secret; the R2 credentials that reach it are.
+          # This must stay pointed at a PRIVATE bucket: /api/whisper writes reader
+          # messages here, and it used to fall back to the public assets bucket.
+          set_env "WHISPER_BUCKET_NAME"                   "vedant-whispers"
           # Secrets (sourced from GitHub Actions secrets in the env block above):
           set_env "KEYSTATIC_GITHUB_CLIENT_ID"            "$KEYSTATIC_GITHUB_CLIENT_ID"
           set_env "KEYSTATIC_GITHUB_CLIENT_SECRET"        "$KEYSTATIC_GITHUB_CLIENT_SECRET"
