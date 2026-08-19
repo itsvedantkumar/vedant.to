@@ -7,7 +7,7 @@ import { Ratelimit } from '@upstash/ratelimit';
 import { NextResponse } from 'next/server';
 import { timingSafeEqual } from '@/lib/timing';
 import { SESSION_COOKIE, verifySession, type SessionPayload } from '@/lib/auth/session';
-import { getIP } from '@/lib/request';
+import { getTrustedIP } from '@/lib/request';
 import { redis } from '@/lib/redis';
 
 type HeaderBag = { headers: { get(name: string): string | null } };
@@ -39,15 +39,46 @@ const secretLimit = redis
     })
   : null;
 
-/** False when the caller has exhausted their password/token attempt budget. */
+// Non-IP-keyed backstop, mirroring the whisper quiz limiter. The per-IP bucket
+// above is exactly what a residential proxy pool defeats — rotate the egress IP
+// and every request gets a fresh 5-attempt budget. One global bucket can't be
+// evaded by rotating anything. 50 per 15 min is far above real use (one admin
+// typing one password) and far below a useful brute force.
+const globalSecretLimit = redis
+  ? new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(50, '15 m'),
+      prefix: 'keystatic:pw-global',
+    })
+  : null;
+
+/**
+ * False when the caller has exhausted their password/token attempt budget.
+ *
+ * Fails CLOSED in production: without a limiter store the break-glass password
+ * is an unmetered brute-force oracle, and that password is full CMS access.
+ * Local dev (no Upstash configured) is unaffected and keeps working.
+ */
 export async function limitSecretAttempt(req: HeaderBag): Promise<boolean> {
-  if (!secretLimit) return true;
-  const ip = getIP(req);
-  // Skip 'unknown' per the convention elsewhere: one shared bucket would let a
-  // single bad request lock out everyone behind that fallback key.
-  if (ip === 'unknown') return true;
-  const { success } = await secretLimit.limit(ip);
-  return success;
+  const inProd = process.env.NODE_ENV === 'production';
+  if (!secretLimit || !globalSecretLimit) return !inProd;
+  try {
+    // getTrustedIP, not getIP: this keys a security decision, and getIP's
+    // fallbacks are client-settable — an attacker could mint a fresh bucket per
+    // request just by incrementing an x-forwarded-for header.
+    const ip = getTrustedIP(req);
+    // Skip 'unknown' per the convention elsewhere: one shared bucket would let a
+    // single bad request lock out everyone behind that fallback key. The global
+    // backstop below still meters these.
+    if (ip !== 'unknown') {
+      const { success } = await secretLimit.limit(ip);
+      if (!success) return false;
+    }
+    const { success } = await globalSecretLimit.limit('all');
+    return success;
+  } catch {
+    return !inProd; // Redis outage — same fail-closed reasoning as above.
+  }
 }
 
 export function jsonError(status: number, error: string): NextResponse {

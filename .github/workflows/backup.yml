@@ -21,7 +21,7 @@ jobs:
       R2_BACKUP_BUCKET_NAME: ${{ secrets.R2_BACKUP_BUCKET_NAME }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -32,27 +32,55 @@ jobs:
           git push origin "$TAG" || echo "Tag push skipped"
 
       - name: Zip content and images
-        run: zip -r content-backup.zip content/ public/images/
+        run: |
+          set -euo pipefail
+          # public/images/ is normally absent: Keystatic writes uploads there
+          # locally but publishes CDN URLs, and git does not track empty dirs.
+          # Pass it to zip only when it exists, otherwise zip warns on an
+          # unmatched path.
+          TARGETS="content/"
+          if [ -d public/images ]; then TARGETS="$TARGETS public/images/"; fi
+          # shellcheck disable=SC2086
+          zip -r content-backup.zip $TARGETS
 
       - name: Verify backup integrity
         run: |
+          set -euo pipefail
           unzip -t content-backup.zip > /dev/null
-          COUNT=$(find content -type f | wc -l)
-          IMG_COUNT=$(find public/images -type f | wc -l)
+          COUNT=$(find content -type f | wc -l | tr -d ' ')
+          # Guard with -d rather than swallowing stderr: under `pipefail` a
+          # `find` on a missing dir fails the whole pipeline and kills the step.
+          if [ -d public/images ]; then
+            IMG_COUNT=$(find public/images -type f | wc -l | tr -d ' ')
+          else
+            IMG_COUNT=0
+          fi
           echo "Backed up $COUNT content files and $IMG_COUNT image files"
           if [ "$COUNT" -eq 0 ]; then
             echo "::error::content/ is empty — refusing to publish an empty backup"
             exit 1
           fi
-          if [ "$IMG_COUNT" -eq 0 ]; then
-            echo "::error::public/images/ is empty — refusing to publish an incomplete backup"
+          # public/images/ is deliberately NOT asserted non-empty. The live image
+          # corpus lives in R2 and is captured by the bucket mirror step below;
+          # the local dir is a staging area that is legitimately empty. Asserting
+          # otherwise made this job fail permanently once the orphaned files were
+          # removed.
+          #
+          # The real integrity guard is a count match: every file on disk must
+          # appear in the archive. That still catches a truncated or partial zip,
+          # no matter how many images exist.
+          ZIPPED_CONTENT=$(unzip -Z1 content-backup.zip | grep -c '^content/.*[^/]$' || true)
+          if [ "$ZIPPED_CONTENT" -ne "$COUNT" ]; then
+            echo "::error::archive holds $ZIPPED_CONTENT content files but disk has $COUNT"
             exit 1
           fi
-          # Both trees must actually be present inside the archive, not just on disk.
-          unzip -l content-backup.zip | grep -q 'content/' \
-            || { echo "::error::archive missing content/"; exit 1; }
-          unzip -l content-backup.zip | grep -q 'public/images/' \
-            || { echo "::error::archive missing public/images/"; exit 1; }
+          if [ "$IMG_COUNT" -gt 0 ]; then
+            ZIPPED_IMG=$(unzip -Z1 content-backup.zip | grep -c '^public/images/.*[^/]$' || true)
+            if [ "$ZIPPED_IMG" -ne "$IMG_COUNT" ]; then
+              echo "::error::archive holds $ZIPPED_IMG image files but disk has $IMG_COUNT"
+              exit 1
+            fi
+          fi
 
       - name: Upload content snapshot
         uses: actions/upload-artifact@v4
