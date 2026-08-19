@@ -1,0 +1,11 @@
+"$schema" = "https://conductor.build/schemas/settings.repo.schema.json"
+
+[scripts]
+# Cloud workspaces start from a bare Linux sandbox with no ~/.claude, so pull vstack in.
+# Add this repo's own install step (npm ci, uv sync, ...) to the end of this line.
+setup = "curl -fsSL https://raw.githubusercontent.com/itsvedantkumar/vstack/main/bootstrap.sh | bash"
+run_mode = "concurrent"
+
+[scripts.run.verify]
+command = "./.claude/verify.sh"
+icon = "shield-check"
