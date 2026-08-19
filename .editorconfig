@@ -8,5 +8,7 @@ trim_trailing_whitespace = true
 indent_style = space
 indent_size = 2
 
-[*.md]
+# Trailing whitespace is significant in Markdown/Markdoc (two spaces = hard line
+# break). All prose content in this repo is .mdoc.
+[*.{md,mdoc}]
 trim_trailing_whitespace = false

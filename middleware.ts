@@ -5,9 +5,10 @@ import { getIP } from './lib/request';
 import { redis } from './lib/redis';
 import { timingSafeEqual } from './lib/timing';
 
-// 20 auth attempts per 10 min per IP. Only unauthenticated requests are counted
-// (see below) — the Keystatic UI is chatty enough to blow through this bucket
-// during normal editing if every request were metered.
+// 20 failed auth attempts per 10 min per IP. Metered only after the session and
+// Basic-auth checks have both declined (see below), so a request that carries a
+// valid credential never consumes budget — the Keystatic UI is chatty enough to
+// blow through this bucket during normal editing otherwise.
 const keystaticlimit = redis
   ? new Ratelimit({
       redis,
@@ -125,7 +126,14 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
     if (session) return allow();
   }
 
-  // 2. Rate limit unauthenticated traffic only.
+  // 2. Break-glass password over HTTP Basic. Checked BEFORE the rate limiter:
+  // it's a local compare with no network cost, and in basic mode (the default)
+  // there is no session step above it, so metering first would count every
+  // successfully authed request from the chatty Keystatic UI against the
+  // 20/10min bucket and lock the admin out of their own CMS.
+  if (password && checkBasicAuth(req, password)) return allow();
+
+  // 3. Rate limit what's left — requests that presented no valid credential.
   // Skip when IP is 'unknown': bucketing all unknown IPs together would let
   // one bad request globally lock out every user sharing that fallback key.
   if (keystaticlimit) {
@@ -135,14 +143,11 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
         const { success } = await keystaticlimit.limit(ip);
         if (!success) return deny(429, 'Too Many Requests');
       } catch {
-        // Upstash outage: don't fail closed here. Steps 3/4 are the real gate,
-        // and denying would lock the admin out for no security gain.
+        // Upstash outage: don't fail closed here. Step 4 is the real gate, and
+        // denying would lock the admin out for no security gain.
       }
     }
   }
-
-  // 3. Break-glass password over HTTP Basic.
-  if (password && checkBasicAuth(req, password)) return allow();
 
   // 4. Deny.
   if (AUTH_MODE === 'basic') {
