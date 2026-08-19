@@ -24,13 +24,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  // Content-Length pre-check — reject before parsing body. A malformed header
-  // parsed to NaN, and `NaN > MAX_BYTES` is false, so it slipped through;
-  // require a real number. (The post-parse byteLength check below is the
-  // authority either way — this header is client-supplied.)
+  // Content-Length pre-check — reject before parsing body
+  const contentLength = parseInt(req.headers.get('content-length') ?? '0', 10);
   const MAX_BYTES = 10 * 1024 * 1024; // 10 MB
-  const declaredLength = Number(req.headers.get('content-length') ?? '0');
-  if (!Number.isFinite(declaredLength) || declaredLength > MAX_BYTES) {
+  if (contentLength > MAX_BYTES) {
     return NextResponse.json({ error: 'File too large' }, { status: 413 });
   }
 

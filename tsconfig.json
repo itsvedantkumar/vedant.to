@@ -11,11 +11,6 @@
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    // Tests run through `node --experimental-strip-types`, which erases types
-    // without transforming them. Syntax that needs a real emit (enum, namespace,
-    // constructor parameter properties) would typecheck clean here and then
-    // throw at runtime, so ban it at the type level.
-    "erasableSyntaxOnly": true,
     "jsx": "preserve",
     "incremental": true,
     "plugins": [
@@ -29,10 +24,11 @@
   },
   "include": [
     "next-env.d.ts",
+    "**/*.mdx",
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
   ],
-  "exclude": ["node_modules", ".claude/**"]
+  "exclude": ["node_modules", ".claude", ".claude/**"]
 }

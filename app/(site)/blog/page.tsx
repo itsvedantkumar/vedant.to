@@ -28,10 +28,10 @@ export default async function BlogPage() {
             className="flex flex-row items-baseline gap-4 group"
             href={`/blog/${slug}`}
           >
-            <span className="text-gray-500 dark:text-zinc-400 w-[100px] shrink-0 tabular-nums text-sm">
+            <span className="text-gray-400 dark:text-gray-500 w-[100px] shrink-0 tabular-nums text-sm">
               {formatDate(entry.publishedAt!, 'short')}
             </span>
-            <span className="text-gray-900 dark:text-gray-100 tracking-tight group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-150">
+            <span className="text-gray-900 dark:text-gray-100 tracking-tight group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors duration-150">
               {entry.title}
             </span>
           </Link>

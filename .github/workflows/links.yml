@@ -16,20 +16,10 @@ jobs:
   lychee:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
 
       - name: Check links in content
         uses: lycheeverse/lychee-action@82202c37d2f6a4bc44e038bdf84e6ededef12afa # v2.4.1
         with:
-          # 403/429 are accepted deliberately. Every failure this job has ever
-          # produced was a bot-block from a publisher that refuses datacenter
-          # IPs (merriam-webster, doi.org, researchgate, SSRN, medium,
-          # pewresearch, rand.org, bigthink) — not one was a dead link. Treating
-          # them as failures trained everyone to ignore the job, which defeats
-          # the point. 200/206 still prove reachability; a real 404/410/DNS
-          # failure still fails the build.
-          args: >-
-            --no-progress --max-concurrency 4
-            --accept 200,206,403,429
-            'content/**/*.mdoc' 'README.md'
+          args: --no-progress --max-concurrency 4 'content/**/*.mdoc' 'README.md'
           fail: true
