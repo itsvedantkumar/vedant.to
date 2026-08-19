@@ -3,11 +3,22 @@
 # workspace conventions; UserPromptSubmit gets a two-line digest so the discipline
 # survives long sessions without paying the full block every turn.
 # Portable: no absolute /Users paths, so it also works from a committed repo overlay.
+#
+# VSTACK_PROFILE=skills emits ONLY the skill routing block and nothing else. The plugin
+# build sets it: routing is what makes skills fire, but the token, delegation and autonomy
+# rules are one person's operating policy and have no business being forced on someone who
+# installed a skill pack from a marketplace.
 event=$(/usr/bin/jq -r '.hook_event_name // "SessionStart"' 2>/dev/null </dev/stdin)
 [ -z "$event" ] || [ "$event" = "null" ] && event="SessionStart"
 
 # Per-prompt digest: must stay tiny and fast (no git work) — it runs on every prompt.
+# The skills profile re-pins nothing per prompt; one session-start block is the
+# least a skill pack can inject and still work.
 if [ "$event" = "UserPromptSubmit" ]; then
+  if [ "${VSTACK_PROFILE:-}" = "skills" ]; then
+    /usr/bin/jq -cn --arg e "$event" '{hookSpecificOutput:{hookEventName:$e}}'
+    exit 0
+  fi
   /usr/bin/jq -cn --arg e "$event" --arg c \
 'TOKENS: grep/ranges, not whole files; batch independent tool calls in ONE message.
 DELEGATE: mechanical -> worker/explorer, judgment -> sonnet agents. ACT, do not ask. Skills fire on the situation — call the Skill tool.' \
@@ -37,17 +48,27 @@ Descriptions alone do not reliably trigger the first two lines below, so they ar
   or agent-written code with no second reviewer -> interrogate.
 - repo has no scripted proof it works -> create-verification-skill (it writes the
   .claude/verify.sh the Stop hook runs). That gate stale -> maintain-verification-skill.
-- unattended/overnight/multi-phase work a human reviews later -> show-me-your-work.
+- work runs unattended/overnight, or you are told someone reviews it later -> start
+  show-me-your-work BEFORE doing the work, not after.
+- any feature or change request -> run the chain: brainstorming, then writing-plans, then
+  test-driven-development, then executing-plans.
 - you were corrected, or found a workflow worth keeping -> reflect.
 - PRINCIPLES (load the one that matches, then apply it): before claiming done ->
   prove-it-works. Debugging or adding a try/except guard -> fix-root-causes. Same correction
   twice -> encode-lessons-in-structure. Designing types/signatures -> type-system-discipline.
   Validation/error handling/auth/MCP adapters -> boundary-discipline. Cron, launchd, retry
   loops -> make-operations-idempotent. Sweeps, migrations, stacked commits ->
-  sequence-verifiable-units. Repeated manual edits or checks -> build-the-lever. Prose you write (docs,
-README, PR body, commit msg) -> unslop; docs/RFC/README -> technical-writing.
+  sequence-verifiable-units. Repeated manual edits or checks -> build-the-lever.
 EOF
 )
+
+# Skills profile: keep only the SKILLS block. Everything above it is operating policy.
+if [ "${VSTACK_PROFILE:-}" = "skills" ]; then
+  MSG=$(printf '%s\n' "$MSG" | sed -n '/^SKILLS:/,$p')
+  /usr/bin/jq -cn --arg e "$event" --arg c "$MSG" \
+    '{hookSpecificOutput:{hookEventName:$e,additionalContext:$c}}'
+  exit 0
+fi
 
 # --- workspace conventions: only outside Conductor (the app prepends its own, richer block) ---
 if [ -z "$CONDUCTOR_WORKSPACE_PATH" ]; then
