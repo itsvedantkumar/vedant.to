@@ -20,7 +20,9 @@ test('monthFormat "numeric"', () => {
 test('locale is hardcoded en-US, not the host environment locale', () => {
   // If this module ever grows a locale parameter or reads Intl.NumberFormat
   // defaults from the environment, this test should start failing.
+  // timeZone is pinned here too, or this expectation itself drifts with TZ.
   const withEnUS = new Date('2024-03-05').toLocaleDateString('en-US', {
+    timeZone: 'UTC',
     year: 'numeric',
     month: 'short',
     day: 'numeric',
@@ -31,4 +33,22 @@ test('locale is hardcoded en-US, not the host environment locale', () => {
 
 test('handles end-of-year / single-digit day and month boundaries', () => {
   assert.equal(formatDate('2024-12-01', 'long'), 'December 1, 2024');
+});
+
+test('output does not shift with the host timezone', () => {
+  // 'YYYY-MM-DD' is UTC midnight, so a west-of-UTC host used to render the
+  // previous day. Node re-reads process.env.TZ per Date operation, so flipping
+  // it here exercises the real failure instead of only asserting today's host.
+  const original = process.env.TZ;
+  try {
+    for (const tz of ['UTC', 'America/New_York', 'Pacific/Kiritimati']) {
+      process.env.TZ = tz;
+      assert.equal(formatDate('2024-01-15'), 'Jan 15, 2024', `short in ${tz}`);
+      assert.equal(formatDate('2024-01-15', 'numeric'), '1/15/2024', `numeric in ${tz}`);
+      assert.equal(formatDate('2024-12-01', 'long'), 'December 1, 2024', `long in ${tz}`);
+    }
+  } finally {
+    if (original === undefined) delete process.env.TZ;
+    else process.env.TZ = original;
+  }
 });
