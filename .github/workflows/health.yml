@@ -130,7 +130,7 @@ jobs:
 
       - name: Open or update alert issue
         if: failure()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           ROUTES_DETAILS: ${{ steps.routes.outputs.details }}
           VERCEL_DETAILS: ${{ steps.vercel.outputs.details }}
