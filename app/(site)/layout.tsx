@@ -13,13 +13,6 @@ const navLinks = [
   },
 ];
 
-// Keyboard focus has to be visible on its own (WCAG 2.4.7) — a colour-only
-// hover swap isn't a focus indicator. focus-visible so mouse clicks stay clean.
-// Deliberately not exported: /whisper is a client component, and importing from
-// this server layout would drag it into the client bundle.
-const FOCUS_RING =
-  'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 dark:focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-zinc-950 rounded-sm';
-
 const footerLinks = [
   { name: 'x', url: 'https://x.com/itsvedantkumar' },
   { name: 'linkedin', url: 'https://www.linkedin.com/in/itsvedantkumar' },
@@ -39,7 +32,7 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
                 href={link.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={`text-gray-500 dark:text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 ${FOCUS_RING} transition-colors duration-200 tracking-tight`}
+                className="text-gray-400 dark:text-gray-500 hover:text-blue-500 transition-colors duration-200 tracking-tight"
               >
                 {link.name}
               </a>
@@ -47,7 +40,7 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
               <Link
                 key={link.name}
                 href={link.href}
-                className={`text-gray-500 dark:text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 ${FOCUS_RING} transition-colors duration-200 tracking-tight`}
+                className="text-gray-400 dark:text-gray-500 hover:text-blue-500 transition-colors duration-200 tracking-tight"
               >
                 {link.name}
               </Link>
@@ -63,7 +56,7 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
                 href={link.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={`text-gray-500 dark:text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 ${FOCUS_RING} transition-colors duration-200`}
+                className="text-gray-400 dark:text-gray-500 hover:text-blue-500 transition-colors duration-200"
               >
                 {link.name}
               </a>
@@ -80,7 +73,7 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
               href={link.url}
               target="_blank"
               rel="noopener noreferrer"
-              className={`text-gray-500 dark:text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 ${FOCUS_RING} transition-colors duration-200 text-sm`}
+              className="text-gray-400 dark:text-gray-500 hover:text-blue-500 transition-colors duration-200 text-sm"
             >
               {link.name}
             </a>

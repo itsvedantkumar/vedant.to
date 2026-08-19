@@ -30,20 +30,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   if (!checkOrigin(req)) return jsonError(403, 'bad origin');
   if (!sessionSecret()) return jsonError(503, 'auth misconfigured');
 
-  // Guarded: an Upstash error thrown out here used to escape the handler as a
-  // raw 500 instead of the 503 the rest of this route answers with. Kept above
-  // the main try (rather than inside it) so ordering is unchanged.
-  try {
-    if (ratelimit) {
-      const ip = getIP(req);
-      if (ip !== 'unknown') {
-        const { success } = await ratelimit.limit(ip);
-        if (!success) return jsonError(429, 'too many attempts');
-      }
+  if (ratelimit) {
+    const ip = getIP(req);
+    if (ip !== 'unknown') {
+      const { success } = await ratelimit.limit(ip);
+      if (!success) return jsonError(429, 'too many attempts');
     }
-  } catch (err) {
-    if (isRedisUnavailable(err)) return jsonError(503, 'passkeys unavailable');
-    return jsonError(503, 'authentication unavailable');
   }
 
   try {

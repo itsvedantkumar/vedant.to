@@ -49,20 +49,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const secret = sessionSecret();
   if (!secret) return jsonError(503, 'auth misconfigured');
 
-  // Guarded: an Upstash error thrown out here used to escape the handler as a
-  // raw 500 instead of the 503 the rest of this route answers with. Stays ahead
-  // of requireAdmin on purpose — this bucket meters unauthenticated callers too.
-  try {
-    if (ratelimit) {
-      const ip = getIP(req);
-      if (ip !== 'unknown') {
-        const { success } = await ratelimit.limit(ip);
-        if (!success) return jsonError(429, 'too many attempts');
-      }
+  if (ratelimit) {
+    const ip = getIP(req);
+    if (ip !== 'unknown') {
+      const { success } = await ratelimit.limit(ip);
+      if (!success) return jsonError(429, 'too many attempts');
     }
-  } catch (err) {
-    if (isRedisUnavailable(err)) return jsonError(503, 'passkeys unavailable');
-    return jsonError(503, 'enrollment unavailable');
   }
 
   let body: { password?: unknown } = {};

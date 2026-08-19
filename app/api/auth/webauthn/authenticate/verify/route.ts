@@ -118,10 +118,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       return failed(401);
     }
 
-    // Metadata only. The counter is NOT re-written here: bumpCounter already
-    // committed it atomically, and this path is a non-atomic get+set that would
-    // clobber a concurrent bump with a stale value.
     await updateCredential(cred.id, {
+      counter: newCounter,
       lastUsedAt: Date.now(),
       backedUp: verification.authenticationInfo.credentialBackedUp,
       deviceType: verification.authenticationInfo.credentialDeviceType,

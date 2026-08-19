@@ -5,13 +5,13 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    ignore:
+      # next@15.x hard-pins postcss@8.4.31; no safe upgrade path until Next.js ships it
+      - dependency-name: 'postcss'
     groups:
-      # React ecosystem must move together — peer deps break if split across PRs.
-      # `next` belongs in this group: Next 16 requires React 19, so a split into
-      # two PRs leaves each one red in isolation and neither can be merged.
+      # React ecosystem must move together — peer deps break if split across PRs
       react:
         patterns:
-          - 'next'
           - 'react'
           - 'react-dom'
           - '@types/react'
@@ -25,8 +25,3 @@ updates:
     directory: /
     schedule:
       interval: weekly
-    groups:
-      # One PR for all action bumps instead of one per action.
-      github-actions:
-        patterns:
-          - '*'
