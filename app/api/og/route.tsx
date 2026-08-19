@@ -16,11 +16,18 @@ const ogRatelimit = redis
 
 export async function GET(request: Request) {
   try {
+    // Skip when IP is 'unknown', per every other limiter here: one shared bucket
+    // would let a single caller 429 every social preview on the site.
     const ip = getIP(request);
-    if (ogRatelimit) {
-      const { success } = await ogRatelimit.limit(ip);
-      if (!success) {
-        return new Response('Too Many Requests', { status: 429 });
+    if (ogRatelimit && ip !== 'unknown') {
+      try {
+        const { success } = await ogRatelimit.limit(ip);
+        if (!success) {
+          return new Response('Too Many Requests', { status: 429 });
+        }
+      } catch (err) {
+        // Fail open: a limiter outage must not blank every OG image.
+        console.error('[og] rate limit failed:', err);
       }
     }
 
