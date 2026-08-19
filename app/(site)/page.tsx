@@ -48,10 +48,10 @@ export default async function Home() {
                 href={`/blog/${slug}`}
                 className="flex flex-row items-baseline gap-4 group"
               >
-                <span className="text-gray-400 dark:text-gray-500 tabular-nums text-sm w-[100px] shrink-0">
+                <span className="text-gray-500 dark:text-zinc-400 tabular-nums text-sm w-[100px] shrink-0">
                   {formatDate(entry.publishedAt!, 'short')}
                 </span>
-                <span className="text-gray-900 dark:text-gray-100 group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors duration-150">
+                <span className="text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-150">
                   {entry.title}
                 </span>
               </Link>
@@ -62,7 +62,7 @@ export default async function Home() {
         )}
         <Link
           href="/blog"
-          className="inline-block mt-4 text-sm text-blue-500 hover:text-blue-600 transition-colors duration-150"
+          className="inline-block mt-4 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors duration-150"
         >
           All posts →
         </Link>

@@ -2,7 +2,7 @@ import { PutObjectCommand } from '@aws-sdk/client-s3';
 import { Ratelimit } from '@upstash/ratelimit';
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
-import { getIP } from '@/lib/request';
+import { getIP, getTrustedIP } from '@/lib/request';
 import { r2 } from '@/lib/r2';
 import { redis } from '@/lib/redis';
 import { timingSafeEqual } from '@/lib/timing';
@@ -71,6 +71,9 @@ const getRatelimit = redis
 // answer a different one, and can't tamper with the id at all.
 const TOKEN_SECRET = process.env.WHISPER_TOKEN_SECRET ?? '';
 const TOKEN_TTL_MS = 30 * 60 * 1000;
+
+// A whisper is 1000 chars max, so 4 KB of JSON is already generous.
+const MAX_BODY_BYTES = 4096;
 
 // No fallback to R2_BUCKET_NAME: that bucket is served publicly at
 // assets.vedant.to, so a missing var would publish anonymous private messages.
@@ -150,11 +153,18 @@ async function burnToken(token: string): Promise<boolean> {
   // Fail-closed in prod — without Redis a valid token is replayable ~600×
   // within its 30-min TTL, exhausting Resend quota and filling R2.
   if (redis) {
-    const burned = await redis.set(`whisper:token:${sig}`, 1, {
-      nx: true,
-      ex: TOKEN_TTL_MS / 1000 + 60,
-    });
-    if (burned === null) return false; // already used
+    try {
+      const burned = await redis.set(`whisper:token:${sig}`, 1, {
+        nx: true,
+        ex: TOKEN_TTL_MS / 1000 + 60,
+      });
+      if (burned === null) return false; // already used
+    } catch (err) {
+      // Outage mid-burn: single use can't be proven, so refuse in prod rather
+      // than let the token be replayed. Uncaught, this would have been a 500.
+      console.error('[whisper] token burn failed:', err);
+      return process.env.NODE_ENV !== 'production';
+    }
   } else if (process.env.NODE_ENV === 'production') {
     return false; // no dedup store → refuse rather than allow replay
   }
@@ -203,10 +213,17 @@ const WRONG_GUESS_WINDOW_S = 600;
 /** Wrong guesses from this IP in the 10 min since its first one, this one included. */
 async function countWrongGuess(ip: string): Promise<number> {
   if (!redis) return 0;
-  const key = `whisper:wrong:${ip}`;
-  const n = await redis.incr(key);
-  if (n === 1) await redis.expire(key, WRONG_GUESS_WINDOW_S); // TTL on create only → fixed window
-  return n;
+  try {
+    const key = `whisper:wrong:${ip}`;
+    const n = await redis.incr(key);
+    if (n === 1) await redis.expire(key, WRONG_GUESS_WINDOW_S); // TTL on create only → fixed window
+    return n;
+  } catch (err) {
+    // 0 = "not enough wrong guesses yet", so an outage skips the proxy lookup
+    // instead of 500ing. Fail-open matches the rest of this path.
+    console.error('[whisper] wrong-guess count failed:', err);
+    return 0;
+  }
 }
 
 /**
@@ -218,23 +235,33 @@ async function countWrongGuess(ip: string): Promise<number> {
 async function isVpnOrProxyCached(ip: string): Promise<boolean> {
   if (!redis) return isVpnOrProxy(ip);
   const key = `whisper:proxy:${ip}`;
-  // 'yes'/'no', not '1'/'0': Upstash JSON-parses values on read, so numeric
-  // strings would come back as numbers.
-  const cached = await redis.get<string>(key);
-  // A cached 'unknown' is honoured too (short TTL): during a proxycheck outage
-  // this stops every guess turning into another doomed external call.
-  if (cached === 'yes' || cached === 'no' || cached === 'unknown')
-    return cached === 'yes';
-  const verdict = await proxyVerdict(ip);
-  await redis.set(key, verdict, {
-    ex: verdict === 'unknown' ? PROXY_UNKNOWN_TTL_S : PROXY_VERDICT_TTL_S,
-  });
-  return verdict === 'yes'; // 'unknown' → fail-open
+  try {
+    // 'yes'/'no', not '1'/'0': Upstash JSON-parses values on read, so numeric
+    // strings would come back as numbers.
+    const cached = await redis.get<string>(key);
+    // A cached 'unknown' is honoured too (short TTL): during a proxycheck outage
+    // this stops every guess turning into another doomed external call.
+    if (cached === 'yes' || cached === 'no' || cached === 'unknown')
+      return cached === 'yes';
+    const verdict = await proxyVerdict(ip);
+    await redis.set(key, verdict, {
+      ex: verdict === 'unknown' ? PROXY_UNKNOWN_TTL_S : PROXY_VERDICT_TTL_S,
+    });
+    return verdict === 'yes'; // 'unknown' → fail-open
+  } catch (err) {
+    // Cache unavailable → fall back to the uncached lookup, which fails open on
+    // its own errors. Never a 500.
+    console.error('[whisper] proxy cache failed:', err);
+    return isVpnOrProxy(ip);
+  }
 }
 
-// Question is derived per IP per hour rather than picked at random. What this
-// actually buys: re-rolling GET from ONE IP is useless — same question every
-// time. What it does NOT stop: anyone with N egress IPs (cheap residential
+// Question is derived per IP per hour rather than picked at random, keyed on the
+// PLATFORM-VERIFIED IP: keying on the spoofable one would have let a client roll
+// a new question per request just by editing a header, which is the whole
+// property this is meant to have. What this actually buys: re-rolling GET from
+// ONE IP is useless — same question every time. What it does NOT stop: anyone
+// with N egress IPs (cheap residential
 // proxies) gets N independent rolls per hour and reads the question text
 // straight out of the GET body, so shopping for the low-entropy question is
 // still possible at the cost of a proxy pool. GET stays free of the proxycheck
@@ -270,19 +297,23 @@ async function msgHash(msg: string): Promise<string> {
 // --- GET: issue a submission proof token + the question to ask ---
 // Only the question TEXT and its opaque id go out. Answers never leave the server.
 export async function GET(req: NextRequest) {
-  const ip = getIP(req);
+  const ip = getIP(req); // rate limiting only — spoofable by design
   // Skip when IP is 'unknown': one shared bucket would lock out every visitor.
-  // Fails OPEN when redis is null — a limiter outage must not take the page
-  // down, and POST already fails closed in prod without redis, so nothing that
-  // this endpoint hands out can be cashed in anyway.
+  // Fails OPEN when redis is null or errors — a limiter outage must not take the
+  // page down, and POST already fails closed in prod without redis, so nothing
+  // that this endpoint hands out can be cashed in anyway.
   if (getRatelimit && ip !== 'unknown') {
-    const { success } = await getRatelimit.limit(ip);
-    if (!success) {
-      return NextResponse.json({ error: 'slow down' }, { status: 429 });
+    try {
+      const { success } = await getRatelimit.limit(ip);
+      if (!success) {
+        return NextResponse.json({ error: 'slow down' }, { status: 429 });
+      }
+    } catch (err) {
+      console.error('[whisper] GET rate limit failed:', err);
     }
   }
 
-  const q = await questionForClient(ip);
+  const q = await questionForClient(getTrustedIP(req));
   // No bank configured (WHISPER_QUIZ missing or malformed) — fail closed rather
   // than serve an ungated form.
   if (!q) {
@@ -308,9 +339,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'storage not configured' }, { status: 503 });
   }
 
-  // Content-Length guard — reject before parsing
-  const contentLength = parseInt(req.headers.get('content-length') ?? '0', 10);
-  if (contentLength > 4096) {
+  // Content-Length guard — reject before parsing. A missing header parsed to 0
+  // and a malformed one to NaN, and `NaN > MAX` is false, so both walked past
+  // this check; require a real number instead.
+  const declaredLength = Number(req.headers.get('content-length') ?? '0');
+  if (!Number.isFinite(declaredLength) || declaredLength > MAX_BODY_BYTES) {
     return NextResponse.json({ error: 'too large' }, { status: 413 });
   }
 
@@ -332,7 +365,19 @@ export async function POST(req: NextRequest) {
     quizOnly?: boolean;
   };
   try {
-    body = await req.json();
+    // Read as text first: Content-Length is client-supplied, so the only honest
+    // size check is on the bytes that actually arrived.
+    const raw = await req.text();
+    if (new TextEncoder().encode(raw).length > MAX_BODY_BYTES) {
+      return NextResponse.json({ error: 'too large' }, { status: 413 });
+    }
+    const parsed: unknown = JSON.parse(raw);
+    // `null` and bare scalars are valid JSON; without this every field read
+    // below would throw on them.
+    if (!parsed || typeof parsed !== 'object') {
+      return NextResponse.json({ error: 'bad request' }, { status: 400 });
+    }
+    body = parsed;
   } catch {
     return NextResponse.json({ error: 'bad request' }, { status: 400 });
   }
@@ -368,15 +413,27 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'invalid token' }, { status: 403 });
   }
 
+  // Two IPs, two jobs (see lib/request.ts): `ip` is best-effort and spoofable,
+  // fine for throttling; `trustedIp` is platform-verified and is the only one
+  // allowed to key a security decision or an identity.
   const ip = getIP(req);
+  const trustedIp = getTrustedIP(req);
 
   if (!isCorrectAnswer((body.quizAnswer ?? '').slice(0, 200), question)) {
     // Throttle only wrong guesses: keeps typos free while capping brute force
     // over a small answer space. Skip when IP is 'unknown' (see below).
     if (quizRatelimit && ip !== 'unknown') {
-      const { success } = await quizRatelimit.limit(ip);
-      if (!success) {
-        return NextResponse.json({ error: 'slow down' }, { status: 429 });
+      try {
+        const { success } = await quizRatelimit.limit(ip);
+        if (!success) {
+          return NextResponse.json({ error: 'slow down' }, { status: 429 });
+        }
+      } catch (err) {
+        // Same fail-closed-in-prod reasoning as the !redis branch below.
+        console.error('[whisper] quiz rate limit failed:', err);
+        if (process.env.NODE_ENV === 'production') {
+          return NextResponse.json({ error: 'slow down' }, { status: 429 });
+        }
       }
     } else if (!redis && process.env.NODE_ENV === 'production') {
       // Fail-closed in prod, same as burnToken — with no limiter store the quiz
@@ -387,9 +444,16 @@ export async function POST(req: NextRequest) {
     // Non-IP-keyed backstop: the per-IP limiter above is exactly what a proxy
     // pool defeats, so cap total wrong guesses site-wide as well.
     if (globalQuizRatelimit) {
-      const { success } = await globalQuizRatelimit.limit('all');
-      if (!success) {
-        return NextResponse.json({ error: 'slow down' }, { status: 429 });
+      try {
+        const { success } = await globalQuizRatelimit.limit('all');
+        if (!success) {
+          return NextResponse.json({ error: 'slow down' }, { status: 429 });
+        }
+      } catch (err) {
+        console.error('[whisper] global quiz rate limit failed:', err);
+        if (process.env.NODE_ENV === 'production') {
+          return NextResponse.json({ error: 'slow down' }, { status: 429 });
+        }
       }
     }
 
@@ -399,11 +463,14 @@ export async function POST(req: NextRequest) {
     // visitor who answers correctly. A VPN user who typos three times is
     // blocked here, which matches the submission path: it already refuses VPN
     // IPs outright, so they could not have submitted anyway.
+    // The counter stays on the throttling IP (it's part of the guess throttle),
+    // but the verdict itself is a block decision, so it keys on trustedIp.
     if (
       redis &&
       ip !== 'unknown' &&
+      trustedIp !== 'unknown' &&
       (await countWrongGuess(ip)) >= PROXY_CHECK_AFTER_WRONG_GUESSES &&
-      (await isVpnOrProxyCached(ip))
+      (await isVpnOrProxyCached(trustedIp))
     ) {
       return NextResponse.json({ error: 'forbidden' }, { status: 403 });
     }
@@ -427,33 +494,52 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'too short' }, { status: 400 });
   }
 
-  // Block VPN/proxy/datacenter IPs — fail-open on API timeout
-  if (await isVpnOrProxy(ip)) {
+  // Block VPN/proxy/datacenter IPs — fail-open on API timeout. trustedIp only:
+  // a spoofed header would otherwise let anyone pick an IP the lookup clears.
+  if (await isVpnOrProxy(trustedIp)) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   }
 
-  // Rate limit before storing — every real submission counts against the quota.
-  // Skip when IP is 'unknown': a single shared bucket would lock out all users.
-  if (ratelimit && ip !== 'unknown') {
-    const { success } = await ratelimit.limit(ip);
-    if (!success) {
-      return NextResponse.json({ error: 'slow down' }, { status: 429 });
+  // Rate limit before storing — every real submission counts against the quota,
+  // so it keys on trustedIp: on the spoofable one, 3-per-24h was a header edit
+  // away from unlimited. Skip 'unknown': one shared bucket locks out everyone.
+  if (ratelimit && trustedIp !== 'unknown') {
+    try {
+      const { success } = await ratelimit.limit(trustedIp);
+      if (!success) {
+        return NextResponse.json({ error: 'slow down' }, { status: 429 });
+      }
+    } catch (err) {
+      // Fail closed in prod: unmetered, this is the endpoint that sends mail.
+      console.error('[whisper] submission rate limit failed:', err);
+      if (process.env.NODE_ENV === 'production') {
+        return NextResponse.json({ error: 'slow down' }, { status: 429 });
+      }
     }
   }
 
-  // Burn the token last, so only a submission that reaches storage spends it.
+  // Dedup BEFORE the burn: both are Redis writes, and burning first meant an
+  // outage here spent the user's single-use token, dropped the message, and
+  // still 500'd. This way the worst case of a dedup failure is a duplicate.
+  // Silent drop for an exact duplicate message from the same IP within 24h.
+  if (redis) {
+    try {
+      const hash = await msgHash(message);
+      const dedupKey = `whisper:dedup:${trustedIp}:${hash}`;
+      const seen = await redis.set(dedupKey, 1, { nx: true, ex: 86400 });
+      if (seen === null) {
+        return NextResponse.json({ ok: true }); // silent — don't confirm dedup to sender
+      }
+    } catch (err) {
+      // Non-fatal: dedup is spam hygiene, not a security control. A Redis blip
+      // must not cost someone their message.
+      console.error('[whisper] dedup check failed:', err);
+    }
+  }
+
+  // Burn the token late, so only a submission that gets this far spends it.
   if (!(await burnToken(token))) {
     return NextResponse.json({ error: 'invalid token' }, { status: 403 });
-  }
-
-  // Dedup: silent drop for exact duplicate message from same IP within 24h
-  if (redis) {
-    const hash = await msgHash(message);
-    const dedupKey = `whisper:dedup:${ip}:${hash}`;
-    const seen = await redis.set(dedupKey, 1, { nx: true, ex: 86400 });
-    if (seen === null) {
-      return NextResponse.json({ ok: true }); // silent — don't confirm dedup to sender
-    }
   }
 
   const ts = new Date().toISOString();

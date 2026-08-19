@@ -13,7 +13,7 @@ jobs:
       # Required: `vercel deploy --prod` below uploads the working directory and
       # builds it remotely. Without a checkout the dir is empty, so it would
       # deploy an empty app (404 on every route). This step makes the source present.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set Keystatic env vars on Vercel
         env:
@@ -33,6 +33,18 @@ jobs:
           # personal data (dob, tastes) — keeping them out of the repo is what
           # lets this repo be made public.
           WHISPER_QUIZ: ${{ secrets.WHISPER_QUIZ }}
+          KEYSTATIC_ALERT_EMAIL: ${{ secrets.KEYSTATIC_ALERT_EMAIL }}
+          KEYSTATIC_RP_ID: ${{ secrets.KEYSTATIC_RP_ID }}
+          # Inlined into the client bundle at build time, not read at runtime, so
+          # it must exist on Vercel *before* the build or analytics silently no-op
+          # with nothing in the logs to explain it.
+          NEXT_PUBLIC_GA_ID: ${{ secrets.NEXT_PUBLIC_GA_ID }}
+          WHISPER_TOKEN_SECRET: ${{ secrets.WHISPER_TOKEN_SECRET }}
+          WHISPER_TO_EMAIL: ${{ secrets.WHISPER_TO_EMAIL }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          PROXYCHECK_API_KEY: ${{ secrets.PROXYCHECK_API_KEY }}
+          UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
+          UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
         run: |
           set_env() {
             local key=$1
@@ -66,6 +78,15 @@ jobs:
           set_env "KEYSTATIC_ENROLL_TOKEN"               "$KEYSTATIC_ENROLL_TOKEN"
           set_env "KEYSTATIC_AUTH_MODE"                  "$KEYSTATIC_AUTH_MODE"
           set_env "WHISPER_QUIZ"                         "$WHISPER_QUIZ"
+          set_env "KEYSTATIC_ALERT_EMAIL"                "$KEYSTATIC_ALERT_EMAIL"
+          set_env "KEYSTATIC_RP_ID"                      "$KEYSTATIC_RP_ID"
+          set_env "NEXT_PUBLIC_GA_ID"                    "$NEXT_PUBLIC_GA_ID"
+          set_env "WHISPER_TOKEN_SECRET"                 "$WHISPER_TOKEN_SECRET"
+          set_env "WHISPER_TO_EMAIL"                     "$WHISPER_TO_EMAIL"
+          set_env "RESEND_API_KEY"                       "$RESEND_API_KEY"
+          set_env "PROXYCHECK_API_KEY"                   "$PROXYCHECK_API_KEY"
+          set_env "UPSTASH_REDIS_REST_URL"               "$UPSTASH_REDIS_REST_URL"
+          set_env "UPSTASH_REDIS_REST_TOKEN"             "$UPSTASH_REDIS_REST_TOKEN"
 
       - name: Trigger redeploy
         env:
