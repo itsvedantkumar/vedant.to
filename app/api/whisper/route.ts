@@ -1,10 +1,10 @@
 import { PutObjectCommand } from '@aws-sdk/client-s3';
-import { Ratelimit } from '@upstash/ratelimit';
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { getIP, getTrustedIP } from '@/lib/request';
 import { r2 } from '@/lib/r2';
 import { redis } from '@/lib/redis';
+import { makeRatelimit } from '@/lib/ratelimit';
 import { timingSafeEqual } from '@/lib/timing';
 import {
   findQuestion,
@@ -17,25 +17,13 @@ import {
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 // 3 requests per IP per 24h sliding window
-const ratelimit = redis
-  ? new Ratelimit({
-      redis,
-      limiter: Ratelimit.slidingWindow(3, '24 h'),
-      prefix: 'whisper',
-    })
-  : null;
+const ratelimit = makeRatelimit('whisper', 3, '24 h');
 
 // Wrong quiz answers are cheap and retryable (a typo must not cost a submission
 // slot), so they need their own throttle or the gate becomes a brute-force
 // oracle over a tiny answer space. Only spent on a WRONG guess — correct
 // answers never consume it, so a fumbling human can still submit.
-const quizRatelimit = redis
-  ? new Ratelimit({
-      redis,
-      limiter: Ratelimit.slidingWindow(10, '10 m'),
-      prefix: 'whisper-quiz',
-    })
-  : null;
+const quizRatelimit = makeRatelimit('whisper-quiz', 10, '10 m');
 
 // Backstop for the per-IP quiz limiter, which IP rotation via a proxy pool
 // defeats outright. One global bucket can't be evaded by rotating anything.
@@ -44,24 +32,12 @@ const quizRatelimit = redis
 // actual distributed brute force. Tradeoff: while it's tripped, a genuine typo
 // also gets a 429 — but a CORRECT answer never touches this limiter, so the
 // gate degrades for fumblers instead of closing for everyone.
-const globalQuizRatelimit = redis
-  ? new Ratelimit({
-      redis,
-      limiter: Ratelimit.slidingWindow(100, '10 m'),
-      prefix: 'whisper-quiz-global',
-    })
-  : null;
+const globalQuizRatelimit = makeRatelimit('whisper-quiz-global', 100, '10 m');
 
 // GET is unauthenticated and mints tokens, so it needs its own cap. 20 per
 // 10 min per IP: a human reloading the page a few times is nowhere near it,
 // while bulk token minting and question probing now cost real IPs.
-const getRatelimit = redis
-  ? new Ratelimit({
-      redis,
-      limiter: Ratelimit.slidingWindow(20, '10 m'),
-      prefix: 'whisper-get',
-    })
-  : null;
+const getRatelimit = makeRatelimit('whisper-get', 20, '10 m');
 
 // --- Submission proof token (HMAC-SHA256, 30-minute TTL) ---
 // GET /api/whisper issues a token; POST validates it.
@@ -186,6 +162,7 @@ async function proxyVerdict(ip: string): Promise<ProxyVerdict> {
       ? `&key=${process.env.PROXYCHECK_API_KEY}`
       : '';
     const res = await fetch(`https://proxycheck.io/v2/${ip}?vpn=1&asn=1${key}`, {
+      cache: 'no-store',
       signal: AbortSignal.timeout(2000),
     });
     if (!res.ok) return 'unknown';

@@ -30,11 +30,16 @@ const LOGIN_PATH = '/auth/keystatic';
 // Never emitted in production builds.
 const DEV_EVAL = process.env.NODE_ENV === 'production' ? '' : " 'unsafe-eval'";
 
-function buildCSP(isKeystatic: boolean): string {
+function buildCSP(isKeystatic: boolean, nonce?: string): string {
   if (isKeystatic) {
+    // Nonce-based script-src: unlike the public routes below, /keystatic is
+    // already forced dynamic (see app/keystatic/layout.tsx) so every request
+    // gets a fresh nonce that matches what's rendered — no stale-nonce/SSG
+    // mismatch. See docs/csp-nonce.md for why the public routes don't do this.
+    const scriptSrc = nonce ? `'self' 'nonce-${nonce}'` : "'self' 'unsafe-inline'";
     return [
       "default-src 'self'",
-      `script-src 'self' 'unsafe-inline'${DEV_EVAL}`,
+      `script-src ${scriptSrc}${DEV_EVAL}`,
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' blob: data: https://avatars.githubusercontent.com",
       "font-src 'self' data:",
@@ -59,14 +64,35 @@ function buildCSP(isKeystatic: boolean): string {
   ].join('; ');
 }
 
-function allow(): NextResponse {
-  const res = NextResponse.next({});
-  res.headers.set('Content-Security-Policy', buildCSP(true));
+/** Random per-request nonce, base64-encoded per the CSP spec's nonce-value grammar. */
+function makeNonce(): string {
+  return Buffer.from(crypto.randomUUID()).toString('base64');
+}
+
+/**
+ * Allows the request through to the actual Keystatic route render. The nonce
+ * is forwarded on the *request* headers (not just the response) because
+ * Next.js reads it from there to nonce its own internally-generated inline
+ * scripts (RSC bootstrap, etc.) — see the Next.js CSP docs' middleware
+ * pattern. Requires /keystatic to be force-dynamic: a statically prerendered
+ * page would bake in a stale nonce that could never match a later request's.
+ */
+function allow(req: NextRequest): NextResponse {
+  const nonce = makeNonce();
+  const csp = buildCSP(true, nonce);
+  const requestHeaders = new Headers(req.headers);
+  requestHeaders.set('x-nonce', nonce);
+  requestHeaders.set('Content-Security-Policy', csp);
+  const res = NextResponse.next({ request: { headers: requestHeaders } });
+  res.headers.set('Content-Security-Policy', csp);
   return res;
 }
 
 function deny(status: number, body: string, extra?: HeadersInit): NextResponse {
   const res = new NextResponse(body, { status, headers: extra });
+  // No page render happens on a deny path (redirect/error body only), so no
+  // nonce is needed here — 'unsafe-inline' is harmless on a response with no
+  // inline scripts of ours to begin with, and keeps this helper nonce-free.
   res.headers.set('Content-Security-Policy', buildCSP(true));
   res.headers.set('Cache-Control', 'no-store');
   return res;
@@ -123,7 +149,7 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
       req.cookies.get(SESSION_COOKIE)?.value,
       sessionSecret
     );
-    if (session) return allow();
+    if (session) return allow(req);
   }
 
   // 2. Break-glass password over HTTP Basic. Checked BEFORE the rate limiter:
@@ -131,7 +157,7 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
   // there is no session step above it, so metering first would count every
   // successfully authed request from the chatty Keystatic UI against the
   // 20/10min bucket and lock the admin out of their own CMS.
-  if (password && checkBasicAuth(req, password)) return allow();
+  if (password && checkBasicAuth(req, password)) return allow(req);
 
   // 3. Rate limit what's left — requests that presented no valid credential.
   // Skip when IP is 'unknown': bucketing all unknown IPs together would let
