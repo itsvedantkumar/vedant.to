@@ -1,5 +1,4 @@
 import { generateRegistrationOptions } from '@simplewebauthn/server';
-import { Ratelimit } from '@upstash/ratelimit';
 import { NextRequest, NextResponse } from 'next/server';
 import {
   checkContentType,
@@ -29,18 +28,12 @@ import {
   putChallenge,
 } from '@/lib/webauthn/store';
 import { getIP } from '@/lib/request';
-import { redis } from '@/lib/redis';
+import { makeRatelimit } from '@/lib/ratelimit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const ratelimit = redis
-  ? new Ratelimit({
-      redis,
-      limiter: Ratelimit.slidingWindow(5, '1 h'),
-      prefix: 'keystatic:enroll',
-    })
-  : null;
+const ratelimit = makeRatelimit('keystatic:enroll', 5, '1 h');
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   if (!checkOrigin(req)) return jsonError(403, 'bad origin');

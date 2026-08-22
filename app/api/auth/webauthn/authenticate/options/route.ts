@@ -1,5 +1,4 @@
 import { generateAuthenticationOptions } from '@simplewebauthn/server';
-import { Ratelimit } from '@upstash/ratelimit';
 import { NextRequest, NextResponse } from 'next/server';
 import { checkOrigin, jsonError, sessionSecret } from '@/lib/auth/guard';
 import { CHALLENGE_TTL_SEC, challengeCookie } from '@/lib/auth/session';
@@ -11,20 +10,14 @@ import {
   putChallenge,
 } from '@/lib/webauthn/store';
 import { getIP } from '@/lib/request';
-import { redis } from '@/lib/redis';
+import { makeRatelimit } from '@/lib/ratelimit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 // Generous: passkey attempts are cryptographically useless to an attacker, so
 // this bucket only caps Redis load.
-const ratelimit = redis
-  ? new Ratelimit({
-      redis,
-      limiter: Ratelimit.slidingWindow(30, '10 m'),
-      prefix: 'keystatic:wa',
-    })
-  : null;
+const ratelimit = makeRatelimit('keystatic:wa', 30, '10 m');
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   if (!checkOrigin(req)) return jsonError(403, 'bad origin');

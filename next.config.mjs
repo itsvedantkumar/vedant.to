@@ -37,7 +37,13 @@ const nextConfig = {
     ];
   },
   async headers() {
-    // CSP is set per-request by middleware ('unsafe-inline', no nonce) — not here.
+    // CSP is set per-request by middleware.ts, not here. /keystatic gets a
+    // nonce-based script-src (that route is force-dynamic, so a fresh nonce
+    // every request is safe); public routes stay on 'unsafe-inline' because
+    // they're statically prerendered and a nonce baked into static HTML at
+    // build time would never match a later request's — see middleware.ts's
+    // buildCSP()/allow() for the split and why it was tried and reverted once
+    // for public routes.
     // These are static headers applied on all envs (preview included).
     return [
       {

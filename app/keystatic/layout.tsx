@@ -1,3 +1,10 @@
+// Forced dynamic so every request gets a fresh CSP nonce from middleware.ts
+// (buildCSP/allow()) that actually matches what's rendered — a statically
+// prerendered page would bake in one build-time nonce that could never equal
+// a later request's, breaking hydration. Cheap here: /keystatic is an
+// authenticated admin tool, not cached/public content.
+export const dynamic = 'force-dynamic';
+
 export default function KeystaticLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
