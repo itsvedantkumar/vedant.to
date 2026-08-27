@@ -2,7 +2,9 @@ name: Daily Content Backup
 
 on:
   schedule:
-    - cron: '0 0 * * *'
+    # Off the hour: GitHub drops scheduled runs under load, and midnight UTC
+    # on the hour is peak contention. 2026-08-27's run never fired.
+    - cron: '17 3 * * *'
   workflow_dispatch:
 
 concurrency:
