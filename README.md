@@ -11,7 +11,7 @@ Live at **[vedant.to](https://vedant.to)**. To run your own copy, start at
 
 ## Stack
 
-Next.js 15 (App Router) with Keystatic as the CMS, Tailwind for styling, TypeScript
+Next.js 16 (App Router) with Keystatic as the CMS, Tailwind CSS 4 for styling, TypeScript
 throughout, deployed on Vercel, with Upstash Redis for rate limiting and Cloudflare R2
 for asset and whisper storage. Node 22.
 
@@ -118,7 +118,7 @@ Three hand-rolled route handlers, all `export const dynamic = 'force-static'`, a
 
 They are route handlers rather than Next's `sitemap.ts` / `robots.ts` conventions because
 the shared-source-of-truth wiring is easier to see this way. `robots.txt` is a static file
-in `public/`. OG images are generated per-page by `@vercel/og` at `/api/og`. The
+in `public/`. OG images are generated per-page by `next/og` at `/api/og`. The
 `indexnow.yml` workflow pings IndexNow on every push to `main`, so new posts get crawled in
 minutes instead of days.
 
@@ -197,7 +197,7 @@ configuration and mean nothing in your fork.
 Paste this into Claude Code, Cursor, or any agent with repo access, in a fresh fork:
 
 ```text
-This repo is a fork of itsvedantkumar/vedant.to, a Next.js 15 + Keystatic blog. Rebrand it
+This repo is a fork of itsvedantkumar/vedant.to, a Next.js 16 + Keystatic blog. Rebrand it
 for me and leave the architecture alone.
 
 My details:
