@@ -9,6 +9,7 @@ import { createMetadata } from '@/lib/metadata';
 import { normalizeDoc } from '@/lib/normalize-doc';
 import { formatDate } from '@/lib/date';
 import { FOCUS_RING } from '@/lib/styles';
+import { PostConsoleArt } from '@/components/post-console-art';
 
 export const revalidate = false;
 
@@ -63,6 +64,7 @@ export default async function DailyEntry({
 
   return (
     <section>
+      <PostConsoleArt slug={slug} />
       <h1 className="text-2xl font-medium tracking-tight mb-8">{dateLabel}</h1>
       <article>
         <DocumentRenderer document={content} renderers={renderers} />
