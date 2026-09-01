@@ -155,6 +155,64 @@ function detectFrontmatterCDNAssetExtensions(lines, offset) {
   return issues;
 }
 
+/**
+ * Posts that predate the excerpt check, listed by slug.
+ *
+ * These four ship an empty RSS <description> and an empty JSON feed summary
+ * today. They are named here rather than waved through by lowering the check to
+ * a warning, because a warning on a gate nobody has to satisfy is how the link
+ * checker sat broken for three months: muted, green-adjacent, and providing no
+ * coverage. An explicit list fails loudly for every NEW post, keeps the debt
+ * countable, and empties itself as excerpts get written.
+ *
+ * To close one out: add an `excerpt:` to the post's frontmatter and delete its
+ * slug from this list. When the list is empty, delete the list.
+ */
+const POSTS_WITHOUT_EXCERPTS = new Set([
+  'guilt-of-not-working',
+  'is-it-bad-to-be-cocky',
+  'loose-lips-sink-ships',
+  'the-case-against-for-human-connection',
+]);
+
+function detectMissingExcerpt(lines, offset, slug) {
+  const issues = [];
+  let draft = false;
+  let excerptLine = -1;
+  let excerptValue = '';
+  for (let i = 0; i < lines.length; i++) {
+    if (/^draft:\s*true\s*$/.test(lines[i])) draft = true;
+    const match = lines[i].match(/^excerpt:\s*(.*)$/);
+    if (!match) continue;
+    excerptLine = i;
+    let value = match[1].trim();
+    if (/^[>|][+-]?$/.test(value)) {
+      // block scalar (>-, |, …): value is the indented continuation lines
+      value = '';
+      for (let j = i + 1; j < lines.length && /^\s+\S/.test(lines[j]); j++) {
+        value += lines[j].trim();
+      }
+    }
+    excerptValue = value.replace(/^(['"])(.*)\1$/, '$2').trim();
+  }
+  if (draft) return issues;
+  if (POSTS_WITHOUT_EXCERPTS.has(slug)) return issues;
+  if (excerptLine === -1) {
+    issues.push({
+      line: 1,
+      message: `Published post has no excerpt (RSS <description> and JSON feed summary fall back to the title). Add an excerpt to the frontmatter.`,
+      severity: 'error',
+    });
+  } else if (excerptValue === '') {
+    issues.push({
+      line: excerptLine + 1 + offset,
+      message: `Published post has an empty excerpt (RSS <description> and JSON feed summary fall back to the title). Fill in the excerpt.`,
+      severity: 'error',
+    });
+  }
+  return issues;
+}
+
 const DETECTORS = [
   detectLooseLists,
   detectNestedLists,
@@ -182,6 +240,15 @@ function auditFile(filePath) {
   const allIssues = [];
 
   allIssues.push(...detectFrontmatterCDNAssetExtensions(frontmatter.split('\n'), 0));
+
+  // Only posts carry an excerpt field (daily entries and quotes have none).
+  if (
+    path.relative(ROOT, filePath).startsWith(path.join('content', 'posts') + path.sep)
+  ) {
+    // Posts are flat files: content/posts/<slug>.mdoc
+    const slug = path.basename(filePath, '.mdoc');
+    allIssues.push(...detectMissingExcerpt(frontmatter.split('\n'), 0, slug));
+  }
 
   for (const seg of segments) {
     if (seg.type === 'code') continue;
