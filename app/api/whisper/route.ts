@@ -514,6 +514,12 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // Fail closed before burning the token: a half-configured R2 env exports
+  // `r2` as null, and the sender should get a retryable 503, not a spent token.
+  if (!r2) {
+    return NextResponse.json({ error: 'storage unavailable' }, { status: 503 });
+  }
+
   // Burn the token late, so only a submission that gets this far spends it.
   if (!(await burnToken(token))) {
     return NextResponse.json({ error: 'invalid token' }, { status: 403 });
