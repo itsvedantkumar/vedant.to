@@ -1,7 +1,7 @@
 import { FEED_CACHE_CONTROL, escapeXml, getSortedFeedItems } from '@/lib/feed-utils';
 import { SITE_URL } from '@/lib/constants';
 
-// Next 15 no longer statically caches GET route handlers by default; the feed
+// Next 15 and later no longer statically cache GET route handlers by default; the feed
 // is build-time content, so opt back into static generation.
 export const dynamic = 'force-static';
 

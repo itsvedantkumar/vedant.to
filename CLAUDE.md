@@ -43,7 +43,7 @@ Format:
 
 ---
 
-**Stack:** Next.js 15.5 (App Router, React Server Components), TypeScript, Tailwind CSS. Node 22.
+**Stack:** Next.js 16.3 (App Router, React Server Components), React 19, TypeScript, Tailwind CSS 4. Node 22.
 
 **CMS:** Keystatic. GitHub storage in prod, local in dev. Posts live in `content/posts/*`; post images in `public/images/posts/`. Prefer editing content via `/keystatic`, not by hand, unless asked.
 
