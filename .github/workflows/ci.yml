@@ -20,7 +20,15 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: ./.github/actions/build-next
+      # Cheap static gates run before the Next build so a formatting typo or
+      # type error fails in seconds, not after a full build. setup-node + npm ci
+      # here are re-run inside build-next below; both are cached/idempotent.
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - run: npm ci
 
       - name: Normalize content
         run: node scripts/normalize-content.mjs && git diff --exit-code
@@ -36,6 +44,8 @@ jobs:
 
       - name: Test
         run: npm test
+
+      - uses: ./.github/actions/build-next
 
       - name: Sync images to R2
         if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')

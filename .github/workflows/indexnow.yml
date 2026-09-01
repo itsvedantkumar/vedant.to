@@ -1,13 +1,15 @@
 name: IndexNow
 
-# Pings IndexNow (Bing, Yandex, Seznam, …) on every push to main so new/changed
-# posts get crawled within minutes instead of days. The key is public by design
-# and is served at /<key>.txt. Google ignores IndexNow — submit the sitemap once
-# in Google Search Console for that engine.
+# Pings IndexNow (Bing, Yandex, Seznam, …) after each successful production
+# deploy so new/changed posts get crawled within minutes instead of days.
+# Triggered by deployment_status, not push: Vercel deploys via its own Git
+# integration (no Actions deploy workflow exists) and reports deployment state
+# back to GitHub, so this fires only once the URLs are actually live — a push
+# trigger would race the deploy and submit URLs that still 404. The key is
+# public by design and is served at /<key>.txt. Google ignores IndexNow —
+# submit the sitemap once in Google Search Console for that engine.
 on:
-  push:
-    branches:
-      - main
+  deployment_status:
   workflow_dispatch:
 
 permissions:
@@ -19,6 +21,12 @@ concurrency:
 
 jobs:
   ping:
+    # deployment_status fires for every state and environment; only ping when a
+    # Production deploy succeeded (Vercel names the environment "Production").
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.deployment_status.state == 'success' &&
+       github.event.deployment_status.environment == 'Production')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
