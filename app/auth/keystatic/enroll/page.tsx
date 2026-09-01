@@ -210,7 +210,7 @@ export default function EnrollPage() {
               placeholder="password"
               aria-label="password"
               autoComplete="current-password"
-              className="w-full bg-transparent border-b border-gray-200 dark:border-zinc-800 pb-2 text-sm text-gray-800 dark:text-zinc-200 placeholder-gray-300 dark:placeholder-zinc-700 focus:outline-none focus:border-gray-400 dark:focus:border-zinc-600 transition-colors"
+              className="w-full bg-transparent border-b border-gray-200 dark:border-zinc-800 pb-2 text-sm text-gray-800 dark:text-zinc-200 placeholder-gray-300 dark:placeholder-zinc-700 focus:outline-hidden focus:border-gray-400 dark:focus:border-zinc-600 transition-colors"
             />
           )}
         <input
@@ -220,7 +220,7 @@ export default function EnrollPage() {
           placeholder="device name (e.g. macbook touch id)"
           aria-label="device name"
           maxLength={64}
-          className="w-full bg-transparent border-b border-gray-200 dark:border-zinc-800 pb-2 text-sm text-gray-800 dark:text-zinc-200 placeholder-gray-300 dark:placeholder-zinc-700 focus:outline-none focus:border-gray-400 dark:focus:border-zinc-600 transition-colors"
+          className="w-full bg-transparent border-b border-gray-200 dark:border-zinc-800 pb-2 text-sm text-gray-800 dark:text-zinc-200 placeholder-gray-300 dark:placeholder-zinc-700 focus:outline-hidden focus:border-gray-400 dark:focus:border-zinc-600 transition-colors"
         />
         <button
           type="submit"

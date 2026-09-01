@@ -5,7 +5,7 @@ import { highlight } from 'sugar-high';
 import { SITE_URL } from '@/lib/constants';
 
 const linkClass =
-  'text-blue-500 hover:text-blue-700 dark:text-gray-400 hover:dark:text-gray-300 dark:underline dark:underline-offset-2 dark:decoration-gray-800';
+  'text-blue-500 hover:text-blue-700 dark:text-gray-400 dark:hover:text-gray-300 dark:underline dark:underline-offset-2 dark:decoration-gray-800';
 
 type Dims = { width: number; height: number };
 
