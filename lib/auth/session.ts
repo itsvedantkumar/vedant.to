@@ -1,10 +1,13 @@
 /**
  * Stateless admin session cookie for the /keystatic gate.
  *
- * Edge-safe by construction: this module must import NOTHING but Web Crypto,
- * TextEncoder and atob/btoa. It is shared with middleware.ts, which runs on the
- * Edge runtime — pulling in Redis, Node builtins or @simplewebauthn here would
- * break the middleware bundle.
+ * Dependency-free by construction: this module imports NOTHING but Web Crypto,
+ * TextEncoder and atob/btoa. proxy.ts runs on the Node.js runtime as of Next 16
+ * (proxy cannot be configured onto the Edge runtime), so Node builtins would no
+ * longer break the bundle the way they did when this was edge middleware. The
+ * discipline stays anyway: nine modules import this one, including proxy.ts,
+ * which is on the path of every /keystatic request, and pulling Redis or
+ * @simplewebauthn in here would put them all on that path too.
  *
  * Format:  <b64url(payload JSON)>.<b64url(HMAC-SHA256 of part 0)>
  *
@@ -81,7 +84,8 @@ export async function signSession(
 /**
  * Returns the payload when the cookie is well-formed, correctly signed and
  * unexpired. Returns null on ANY problem — never throws. An exception thrown
- * inside Edge middleware fails the request in ways that are hard to reason about.
+ * inside proxy.ts fails the whole request rather than declining the cookie,
+ * which would turn a malformed cookie into a 500 on the auth gate.
  */
 export async function verifySession(
   cookie: string | undefined,

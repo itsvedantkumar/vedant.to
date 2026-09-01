@@ -1,7 +1,7 @@
 /**
  * Integration test for the break-glass basic-auth rate limiter.
  *
- * middleware.ts shipped this bug twice in one day. Version 1 compared the
+ * proxy.ts shipped this bug twice in one day. Version 1 compared the
  * password before the limiter, so every request was a free guess. Version 2
  * gated on `getRemaining()` and spent with `limit()` only on failure — a
  * TOCTOU, because getRemaining is a plain read while limit is an atomic Lua
@@ -13,7 +13,7 @@
  * against a real Redis behind the same Upstash-REST-shaped proxy as
  * tests/manual/redis-cas.mjs.
  *
- * Manual because CI has no Redis. Run it when touching the middleware gate or
+ * Manual because CI has no Redis. Run it when touching the proxy auth gate or
  * lib/ratelimit.ts:
  *
  *   brew install redis
@@ -162,7 +162,7 @@ const checkAtLeast = (name, got, floor) => {
 };
 
 // Case 1 — atomic gate: 5*N concurrent limit() calls, exactly N admitted.
-// This is the property version 3 of the middleware relies on.
+// This is the property version 3 of the gate relies on.
 {
   const rl = await freshLimiter('test:throttle:atomic');
   const results = await Promise.all(Array.from({ length: ATTEMPTS }, () => rl.limit(ID)));

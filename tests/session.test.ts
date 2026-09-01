@@ -1,6 +1,6 @@
 // Covers lib/auth/session.ts signSession/verifySession — the HMAC-signed,
 // stateless admin session cookie that every /api/auth/* route and
-// middleware.ts trusts. This is the actual authentication boundary: a bug
+// proxy.ts trusts. This is the actual authentication boundary: a bug
 // here means either legitimate sessions get rejected, or a tampered/expired
 // token gets accepted.
 import { test } from 'node:test';
@@ -92,7 +92,7 @@ test('an oversized cookie is rejected outright (pathological-input guard)', asyn
 });
 
 test('regression: verifySession never throws on adversarial input', async () => {
-  // verifySession's docstring promises "never throws" because Edge middleware
+  // verifySession's docstring promises "never throws" because the auth gate
   // fails hard on an unhandled exception. Any of these used to be plausible
   // crash inputs (bad base64, non-JSON payload, wrong types).
   const adversarialCookies = [

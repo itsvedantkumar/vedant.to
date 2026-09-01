@@ -11,7 +11,7 @@ a rarely-touched recovery role.
 
 ## Request flow
 
-`middleware.ts` gates everything under `/keystatic` and `/api/keystatic`, in this order:
+`proxy.ts` gates everything under `/keystatic` and `/api/keystatic`, in this order:
 
 1. **Fail-closed precheck.** A missing `KEYSTATIC_SESSION_SECRET` means 503 for everyone.
 2. **Session cookie.** A valid `ks_session` passes through.
@@ -23,14 +23,14 @@ The rate limiter sits _behind_ the session check deliberately. Metering every `/
 request against 20/10min throttled normal editing, because Keystatic's admin UI is chatty. It
 now meters login attempts only.
 
-An earlier version of this middleware had a real hole: with `KEYSTATIC_AUTH_PASSWORD` unset it
+An earlier version of this gate had a real hole: with `KEYSTATIC_AUTH_PASSWORD` unset it
 fell through and left `/keystatic` wide open. The precheck now denies instead.
 
 ## Key files
 
 | File                                   | Role                                                            |
 | -------------------------------------- | --------------------------------------------------------------- |
-| `middleware.ts`                        | The edge gate. Auth-mode switch (`AUTH_MODE` const).            |
+| `proxy.ts`                             | The auth gate. Auth-mode switch (`AUTH_MODE` const).            |
 | `lib/auth/session.ts`                  | Stateless HMAC-SHA256 `ks_session` cookie. Edge-safe.           |
 | `lib/auth/guard.ts`                    | `requireAdmin`, `checkOrigin`, `checkContentType`, rate bucket. |
 | `lib/auth/enrollment.ts`               | `enrollmentBlockedReason`, the step-up rule.                    |
@@ -42,9 +42,11 @@ fell through and left `/keystatic` wide open. The precheck now denies instead.
 | `app/auth/keystatic/{page,layout}.tsx` | Login UI.                                                       |
 | `app/auth/keystatic/enroll/page.tsx`   | Device management.                                              |
 
-`lib/auth/session.ts` uses only Web Crypto and `atob`/`btoa`, nothing Node-specific, because
-it runs in Edge middleware. `verifySession` returns `null` on any problem and never throws: an
-exception in Edge middleware fails the request unpredictably.
+`lib/auth/session.ts` uses only Web Crypto and `atob`/`btoa`, nothing Node-specific. That was
+required when the gate was edge middleware. As of Next 16 `proxy.ts` runs on the Node.js
+runtime and cannot be configured otherwise, so the rule is now a deliberate choice rather than
+a constraint: nine modules import this one. `verifySession` returns `null` on any problem and
+never throws, so a malformed cookie is declined instead of 500ing the gate.
 
 ## Design decisions
 
