@@ -56,7 +56,7 @@ too. `npm run fix-images` rewrites it, and `npm run check` fails if one was miss
 - `public/` holds static assets, including a hand-written `robots.txt`.
 - `scripts/` holds content normalisers, the content auditor, the R2 image sync, `restore.sh`.
 - `.github/workflows/` holds CI and the scheduled jobs (see [Deployment](#deployment)).
-- `middleware.ts` is the `/keystatic` auth gate, at the edge.
+- `proxy.ts` is the `/keystatic` auth gate. It runs on the Node.js runtime.
 
 Deliberately a list and not an ASCII tree: the tree that used to live here had drifted
 wrong in four places.
@@ -164,15 +164,15 @@ table in [Make it yours](#2-make-it-yours) is the complete list of what to chang
 
 `lib/constants.ts` is the intended single source of truth (`SITE_URL`, `ASSETS_URL`,
 `SITE_NAME`, `AUTHOR`, `TWITTER_HANDLE`). It is not yet the _only_ source: the same values
-are hardcoded in the files below, because `.mjs` configs and edge middleware cannot import
-a TypeScript module cleanly. Consolidating these is the main work in turning this into a
+are hardcoded in the files below, because a `.mjs` config cannot import a TypeScript module
+cleanly. Consolidating these is the main work in turning this into a
 real template.
 
 | Where                                                                  | What                                                     |
 | ---------------------------------------------------------------------- | -------------------------------------------------------- |
 | `lib/constants.ts`                                                     | site URL, asset URL, name, author, social handle         |
 | `lib/json-ld.ts`                                                       | contact email in the `Person` schema, **on every page**  |
-| `next.config.mjs`, `middleware.ts`                                     | the asset host, in `images` config and CSP               |
+| `next.config.mjs`, `proxy.ts`                                          | the asset host, in `images` config and CSP               |
 | `keystatic.config.ts`                                                  | GitHub `owner`/`name`, asset public path                 |
 | `lib/webauthn/config.ts`                                               | passkey relying-party ID, user name, and allowed origins |
 | `lib/auth/guard.ts`, `app/api/whisper/route.ts`                        | the origin allowlist                                     |
@@ -210,7 +210,7 @@ Do this:
 1. Replace every occurrence of "Vedant", "Vedant Kumar", "vedant.to", "assets.vedant.to",
    "itsvedantkumar", and every vedant.to email address with my values. Start from
    lib/constants.ts, then work through lib/json-ld.ts, lib/metadata.ts, lib/webauthn/config.ts,
-   lib/auth/guard.ts, lib/auth/notify.ts, keystatic.config.ts, next.config.mjs, middleware.ts,
+   lib/auth/guard.ts, lib/auth/notify.ts, keystatic.config.ts, next.config.mjs, proxy.ts,
    app/layout.tsx, app/(site)/layout.tsx, app/(site)/page.tsx, app/api/og/route.tsx,
    app/api/whisper/route.ts, app/manifest.ts, app/rss.xml/route.ts, app/feed.json/route.ts,
    scripts/sync-images-to-r2.mjs, package.json, LICENSE, SECURITY.md, public/robots.txt,

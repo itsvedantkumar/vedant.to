@@ -1,8 +1,12 @@
-import { ImageResponse } from '@vercel/og';
+import { ImageResponse } from 'next/og';
 import { makeRatelimit } from '@/lib/ratelimit';
 import { getIP } from '@/lib/request';
 
-export const runtime = 'edge';
+// Node.js runtime, not 'edge'. Next 16 deprecated the Edge runtime, and
+// ImageResponse is satori + resvg-wasm, which run the same either way. The
+// generation cost is CPU, not cold-start, so the regional Node function is not
+// the slower choice here.
+export const runtime = 'nodejs';
 
 // 60 requests per minute sliding window — OG image generation is CPU-heavy
 const ogRatelimit = makeRatelimit('og', 60, '1 m');

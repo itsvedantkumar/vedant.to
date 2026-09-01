@@ -6,10 +6,10 @@ const isProd = process.env.NODE_ENV === 'production';
 const DEV_EVAL = isProd ? '' : " 'unsafe-eval'";
 
 // CSP for every public route. Static: it takes no per-request input, so it
-// belongs in a build-time header rather than in middleware, where producing it
-// cost an edge invocation on every page view, feed fetch and image request.
+// belongs in a build-time header rather than in the proxy, where producing it
+// cost a function invocation on every page view, feed fetch and image request.
 // /keystatic and /api/keystatic are excluded here and get a nonce-based policy
-// from middleware.ts instead — two CSP headers on one response would be
+// from proxy.ts instead — two CSP headers on one response would be
 // intersected by the browser and break the CMS.
 const PUBLIC_CSP = [
   "default-src 'self'",
@@ -62,7 +62,7 @@ const nextConfig = {
   },
   async headers() {
     // Public CSP is the static PUBLIC_CSP above. Only /keystatic and
-    // /api/keystatic get a per-request policy, from middleware.ts, because
+    // /api/keystatic get a per-request policy, from proxy.ts, because
     // theirs carries a nonce (that route is force-dynamic, so a fresh nonce
     // every request is safe). Public routes stay on 'unsafe-inline' because
     // they're statically prerendered and a nonce baked into static HTML at
@@ -71,10 +71,10 @@ const nextConfig = {
     // These are static headers applied on all envs (preview included).
     return [
       {
-        // Same exclusions middleware's matcher used to carry, so the set of
+        // Same exclusions the proxy's matcher used to carry, so the set of
         // responses that carry a public CSP is unchanged: build output, the
         // favicon, /images and /.well-known never had one, and the two
-        // keystatic prefixes get theirs from middleware.
+        // keystatic prefixes get theirs from proxy.ts.
         source:
           '/((?!_next/static|_next/image|favicon\\.ico|images/|\\.well-known/|keystatic|api/keystatic).*)',
         headers: [{ key: 'Content-Security-Policy', value: PUBLIC_CSP }],

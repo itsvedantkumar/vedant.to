@@ -71,7 +71,7 @@ function makeNonce(): string {
  * Allows the request through to the actual Keystatic route render. The nonce
  * is forwarded on the *request* headers (not just the response) because
  * Next.js reads it from there to nonce its own internally-generated inline
- * scripts (RSC bootstrap, etc.) — see the Next.js CSP docs' middleware
+ * scripts (RSC bootstrap, etc.) — see the Next.js CSP docs' proxy
  * pattern. Requires /keystatic to be force-dynamic: a statically prerendered
  * page would bake in a stale nonce that could never match a later request's.
  */
@@ -117,7 +117,7 @@ function isNavigation(req: NextRequest): boolean {
   return (req.headers.get('accept') ?? '').includes('text/html');
 }
 
-export async function middleware(req: NextRequest): Promise<NextResponse> {
+export async function proxy(req: NextRequest): Promise<NextResponse> {
   const { pathname, search } = req.nextUrl;
 
   const password = process.env.KEYSTATIC_AUTH_PASSWORD;
@@ -263,8 +263,8 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
 
 export const config = {
   // Only the gated paths. This used to match every route so it could set the
-  // public CSP header, which put an edge invocation on every page view, image
-  // and feed fetch to emit a constant string; that header is static in
+  // public CSP header, which put an invocation on every page view, image and
+  // feed fetch to emit a constant string; that header is static in
   // next.config.mjs now. Matching by prefix rather than by file extension keeps
   // /keystatic/*.png gated too — excluding assets by extension would drop auth
   // on those requests.

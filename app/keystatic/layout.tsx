@@ -1,4 +1,4 @@
-// Forced dynamic so every request gets a fresh CSP nonce from middleware.ts
+// Forced dynamic so every request gets a fresh CSP nonce from proxy.ts
 // (buildCSP/allow()) that actually matches what's rendered — a statically
 // prerendered page would bake in one build-time nonce that could never equal
 // a later request's, breaking hydration. Cheap here: /keystatic is an

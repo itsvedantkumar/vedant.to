@@ -33,7 +33,7 @@ export default function KeystaticLoginPage() {
   }, []);
 
   function done() {
-    // Full navigation, not a client route push — middleware has to see the cookie.
+    // Full navigation, not a client route push — the proxy has to see the cookie.
     window.location.href = safeNext(
       new URLSearchParams(window.location.search).get('next')
     );
