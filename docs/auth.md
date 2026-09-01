@@ -30,7 +30,7 @@ fell through and left `/keystatic` wide open. The precheck now denies instead.
 
 | File                                   | Role                                                            |
 | -------------------------------------- | --------------------------------------------------------------- |
-| `middleware.ts`                        | The edge gate. Auth-mode switch at `:23`.                       |
+| `middleware.ts`                        | The edge gate. Auth-mode switch (`AUTH_MODE` const).            |
 | `lib/auth/session.ts`                  | Stateless HMAC-SHA256 `ks_session` cookie. Edge-safe.           |
 | `lib/auth/guard.ts`                    | `requireAdmin`, `checkOrigin`, `checkContentType`, rate bucket. |
 | `lib/auth/enrollment.ts`               | `enrollmentBlockedReason` — the step-up rule.                   |

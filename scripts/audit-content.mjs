@@ -114,11 +114,34 @@ function detectMultiParaListItems(lines, offset) {
   return issues;
 }
 
+function detectCDNAssetExtensions(lines, offset) {
+  const issues = [];
+  const IMG_RE = /!\[[^\]]*\]\(([^)]+)\)/g;
+  for (let i = 0; i < lines.length; i++) {
+    let match;
+    while ((match = IMG_RE.exec(lines[i])) !== null) {
+      const url = match[1];
+      if (
+        /^https:\/\/assets\.vedant\.to\//i.test(url) &&
+        /\.(png|jpg|jpeg)$/i.test(url)
+      ) {
+        issues.push({
+          line: i + 1 + offset,
+          message: `Image ref has wrong extension (points to ${url.split('/').pop()}). Run \`npm run fix-images\` to rewrite to .webp.`,
+          severity: 'error',
+        });
+      }
+    }
+  }
+  return issues;
+}
+
 const DETECTORS = [
   detectLooseLists,
   detectNestedLists,
   detectUnisolatedImages,
   detectMultiParaListItems,
+  detectCDNAssetExtensions,
 ];
 
 // ── audit one file ─────────────────────────────────────────────────────────

@@ -1,5 +1,29 @@
 const isProd = process.env.NODE_ENV === 'production';
 
+// Next's dev-only react-refresh runtime evaluates code with eval(), so without
+// this nothing hydrates under `npm run dev` — every client component is inert.
+// Never emitted in production builds.
+const DEV_EVAL = isProd ? '' : " 'unsafe-eval'";
+
+// CSP for every public route. Static: it takes no per-request input, so it
+// belongs in a build-time header rather than in middleware, where producing it
+// cost an edge invocation on every page view, feed fetch and image request.
+// /keystatic and /api/keystatic are excluded here and get a nonce-based policy
+// from middleware.ts instead — two CSP headers on one response would be
+// intersected by the browser and break the CMS.
+const PUBLIC_CSP = [
+  "default-src 'self'",
+  `script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com https://www.googletagmanager.com${DEV_EVAL}`,
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' blob: data: https://assets.vedant.to https://www.google-analytics.com",
+  "font-src 'self' data:",
+  "connect-src 'self' https://va.vercel-scripts.com https://www.google-analytics.com https://analytics.google.com https://www.googletagmanager.com",
+  "frame-ancestors 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "object-src 'none'",
+].join('; ');
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   pageExtensions: ['ts', 'tsx'],
@@ -37,15 +61,24 @@ const nextConfig = {
     ];
   },
   async headers() {
-    // CSP is set per-request by middleware.ts, not here. /keystatic gets a
-    // nonce-based script-src (that route is force-dynamic, so a fresh nonce
-    // every request is safe); public routes stay on 'unsafe-inline' because
+    // Public CSP is the static PUBLIC_CSP above. Only /keystatic and
+    // /api/keystatic get a per-request policy, from middleware.ts, because
+    // theirs carries a nonce (that route is force-dynamic, so a fresh nonce
+    // every request is safe). Public routes stay on 'unsafe-inline' because
     // they're statically prerendered and a nonce baked into static HTML at
-    // build time would never match a later request's — see middleware.ts's
-    // buildCSP()/allow() for the split and why it was tried and reverted once
-    // for public routes.
+    // build time would never match a later request's — that was tried and
+    // reverted once.
     // These are static headers applied on all envs (preview included).
     return [
+      {
+        // Same exclusions middleware's matcher used to carry, so the set of
+        // responses that carry a public CSP is unchanged: build output, the
+        // favicon, /images and /.well-known never had one, and the two
+        // keystatic prefixes get theirs from middleware.
+        source:
+          '/((?!_next/static|_next/image|favicon\\.ico|images/|\\.well-known/|keystatic|api/keystatic).*)',
+        headers: [{ key: 'Content-Security-Policy', value: PUBLIC_CSP }],
+      },
       {
         source: '/api/keystatic(.*)',
         headers: [
