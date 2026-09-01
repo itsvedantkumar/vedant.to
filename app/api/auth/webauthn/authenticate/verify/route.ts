@@ -23,6 +23,7 @@ import {
   getCredential,
   isRedisUnavailable,
   updateCredential,
+  suspendCredential,
   bumpCounter,
 } from '@/lib/webauthn/store';
 
@@ -109,7 +110,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const newCounter = verification.authenticationInfo.newCounter;
     const bump = await bumpCounter(cred.id, newCounter, cred.counter);
     if (bump === 'regressed') {
-      await updateCredential(cred.id, { suspended: true });
+      // suspendCredential writes a separate key (suspKey), not credKey, so the
+      // metadata write below — on a concurrent request signing the accepted
+      // counter — can never race it back to unset. See lib/webauthn/store.ts.
+      await suspendCredential(cred.id);
       return failed(403, 'credential suspended');
     }
     if (bump === 'error') {

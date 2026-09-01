@@ -19,6 +19,20 @@ const chalKey = (nonce: string) => `ks:wa:chal:${nonce}`;
  * changing the record's shape on every authentication.
  */
 const ctrKey = (id: string) => `ks:wa:ctr:${id}`;
+/**
+ * `suspended` lives in its own key for the same reason the counter does:
+ * updateCredential is a plain read-modify-write on credKey, and two callers
+ * on the same unauthenticated verify path race on it — bumpCounter's clone
+ * check writing `{suspended: true}` and the success path writing
+ * `{lastUsedAt, backedUp, deviceType}`. If suspended stayed inside the JSON
+ * record, a metadata writer that read the record *before* the suspend write
+ * would overwrite it back to unset, silently un-suspending a clone-suspect
+ * credential. Splitting it out means the metadata write never touches this
+ * key, so it cannot carry a stale copy of it — no CAS needed here, unlike
+ * ctrKey, because suspension is one-directional (false -> true only) and a
+ * plain SET is already race-free for that.
+ */
+const suspKey = (id: string) => `ks:wa:susp:${id}`;
 
 export type StoredCredential = {
   /** base64url credential id */
@@ -71,7 +85,15 @@ export async function countCredentials(): Promise<number> {
 }
 
 export async function getCredential(id: string): Promise<StoredCredential | null> {
-  return db().get<StoredCredential>(credKey(id));
+  const client = db();
+  const [record, susp] = await Promise.all([
+    client.get<StoredCredential>(credKey(id)),
+    client.get<boolean>(suspKey(id)),
+  ]);
+  if (!record) return null;
+  // suspKey is authoritative once set. Falls back to a legacy embedded
+  // `suspended` field (pre-split records) when suspKey hasn't been written.
+  return susp ? { ...record, suspended: true } : record;
 }
 
 export async function listCredentials(): Promise<StoredCredential[]> {
@@ -87,16 +109,37 @@ export async function saveCredential(cred: StoredCredential): Promise<void> {
   // Seed the counter key with the record, so a re-enrolled credential id can
   // never inherit a stale counter from a previous registration.
   await client.set(ctrKey(cred.id), cred.counter);
+  // Same reasoning for suspension: a re-enrolled id must start trusted, not
+  // inherit a clone-suspect flag left behind by whatever used this id before.
+  await client.del(suspKey(cred.id));
   await client.sadd(CREDS_SET, cred.id);
 }
 
+/**
+ * `suspended` is deliberately excluded from the patch type: it has its own
+ * key (suspKey) and its own setter (suspendCredential) below, precisely so
+ * this read-modify-write can never be the thing that carries a stale copy of
+ * it back to unset. See suspKey's comment for the race this closes.
+ */
 export async function updateCredential(
   id: string,
-  patch: Partial<StoredCredential>
+  patch: Partial<Omit<StoredCredential, 'suspended'>>
 ): Promise<void> {
   const existing = await getCredential(id);
   if (!existing) return;
   await db().set(credKey(id), { ...existing, ...patch });
+}
+
+/**
+ * Mark a credential suspended. A plain SET, not a CAS: suspension only ever
+ * moves false -> true, so there is nothing to compare against — unlike the
+ * counter, two concurrent callers writing `true` cannot disagree. Writing to
+ * suspKey instead of credKey is what keeps this safe from updateCredential's
+ * read-modify-write: that path never touches this key, so it cannot clobber
+ * a suspension that happened between its read and its write.
+ */
+export async function suspendCredential(id: string): Promise<void> {
+  await db().set(suspKey(id), true);
 }
 
 /**
@@ -165,7 +208,7 @@ export async function bumpCounter(
 
 export async function deleteCredential(id: string): Promise<void> {
   const client = db();
-  await client.del(credKey(id), ctrKey(id));
+  await client.del(credKey(id), ctrKey(id), suspKey(id));
   await client.srem(CREDS_SET, id);
 }
 
@@ -184,7 +227,7 @@ export async function relinkCredentialId(id: string): Promise<void> {
 }
 
 export async function deleteCredentialRecord(id: string): Promise<void> {
-  await db().del(credKey(id), ctrKey(id));
+  await db().del(credKey(id), ctrKey(id), suspKey(id));
 }
 
 export async function putChallenge(
