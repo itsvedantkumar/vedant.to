@@ -11,6 +11,13 @@ import { timingSafeEqual } from './lib/timing';
 // blow through this bucket during normal editing otherwise.
 const keystaticlimit = makeRatelimit('keystatic:auth', 20, '10 m');
 
+// Global backstop for the break-glass password. Deliberately SHARES the bucket
+// limitSecretAttempt uses in lib/auth/guard.ts ('keystatic:pw-global', 50 per
+// 15m): one credential gets one budget, so an attacker who can reach both this
+// path and /api/auth/password does not get 50 attempts at each. Sized to match
+// guard.ts rather than inventing a second number for the same secret.
+const keystaticGlobalLimit = makeRatelimit('keystatic:pw-global', 50, '15 m');
+
 // Rollout/rollback switch. Defaults to 'basic' — the pre-passkey HTTP Basic
 // Auth behaviour — so deploying this code changes nothing until
 // KEYSTATIC_AUTH_MODE=passkey is set deliberately, once passkeys are enrolled
@@ -22,7 +29,9 @@ const LOGIN_PATH = '/auth/keystatic';
 // Next's dev-only react-refresh runtime evaluates code with eval(), so without
 // this nothing hydrates under `npm run dev` — every client component is inert.
 // Never emitted in production builds.
-const DEV_EVAL = process.env.NODE_ENV === 'production' ? '' : " 'unsafe-eval'";
+const IS_PROD = process.env.NODE_ENV === 'production';
+
+const DEV_EVAL = IS_PROD ? '' : " 'unsafe-eval'";
 
 /**
  * CSP for /keystatic and /api/keystatic. Public routes get theirs statically
@@ -142,6 +151,11 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
   // 3. Rate limit what's left — requests that presented no valid credential.
   // Skip when IP is 'unknown': bucketing all unknown IPs together would let
   // one bad request globally lock out every user sharing that fallback key.
+  //
+  // Both limiters sit BELOW the Basic-auth check on purpose. Metering above it
+  // would count the Keystatic UI's own chatty request volume during normal
+  // editing, and a global bucket drained that way locks out every admin at once
+  // instead of one IP.
   if (keystaticlimit) {
     const ip = getIP(req);
     if (ip !== 'unknown') {
@@ -149,9 +163,31 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
         const { success } = await keystaticlimit.limit(ip);
         if (!success) return deny(429, 'Too Many Requests');
       } catch {
-        // Upstash outage: don't fail closed here. Step 4 is the real gate, and
-        // denying would lock the admin out for no security gain.
+        // Per-IP metering is best effort. The global backstop below is the one
+        // that has to hold, so an outage here does not decide the request.
       }
+    }
+  }
+
+  // Global backstop. Per-IP metering alone is unmetered against a distributed
+  // attempt from rotating addresses, and this password is full CMS access.
+  //
+  // Fails CLOSED in production, matching limitSecretAttempt in lib/auth/guard.ts,
+  // which guards the same credential on /api/auth/password. Those two paths had
+  // opposite outage behaviour until now, and fail-open is the weaker of the two
+  // during exactly the outage an attacker would wait for.
+  //
+  // The cost, stated rather than discovered later: while Upstash is down the
+  // break-glass password stops working. A passkey session still gets in at step
+  // 1, which is HMAC-only and touches no network, so this is survivable as long
+  // as a passkey is enrolled. Enroll a second one before relying on it.
+  if (IS_PROD) {
+    if (!keystaticGlobalLimit) return deny(503, 'Auth rate limiter unavailable');
+    try {
+      const { success } = await keystaticGlobalLimit.limit('all');
+      if (!success) return deny(429, 'Too Many Requests');
+    } catch {
+      return deny(503, 'Auth rate limiter unavailable');
     }
   }
 
