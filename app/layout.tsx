@@ -5,8 +5,9 @@ import Script from 'next/script';
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import { siteSchema, person } from '@/lib/json-ld';
+import { ogImageUrl } from '@/lib/metadata';
 import { EasterEgg } from '@/components/easter-egg';
-import { SITE_URL, AUTHOR, TWITTER_HANDLE } from '@/lib/constants';
+import { SITE_URL, SITE_NAME, AUTHOR, TWITTER_HANDLE } from '@/lib/constants';
 
 const inter = Inter({ subsets: ['latin'], display: 'swap' });
 const GA_ID = process.env.NEXT_PUBLIC_GA_ID;
@@ -36,12 +37,12 @@ export const metadata: Metadata = {
     siteName: 'Vedant',
     locale: 'en_US',
     type: 'website',
-    images: [{ url: `${SITE_URL}/api/og?title=Vedant`, width: 1200, height: 630 }],
+    images: [{ url: ogImageUrl(SITE_NAME), width: 1200, height: 630 }],
   },
   twitter: {
     card: 'summary_large_image',
     creator: TWITTER_HANDLE,
-    images: [`${SITE_URL}/api/og?title=Vedant`],
+    images: [ogImageUrl(SITE_NAME)],
   },
   robots: { index: true, follow: true },
 };

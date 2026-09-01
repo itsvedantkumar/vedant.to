@@ -11,7 +11,9 @@ import { getTrustedIP } from '@/lib/request';
 import { redis } from '@/lib/redis';
 
 type HeaderBag = { headers: { get(name: string): string | null } };
-type CookieBag = { cookies: { get(name: string): { value: string } | undefined } };
+type CookieBag = {
+  cookies: { get(name: string): { value: string } | undefined };
+};
 
 export type AdminGranted = {
   ok: true;
@@ -92,7 +94,9 @@ export function jsonError(status: number, error: string): NextResponse {
 export function checkOrigin(req: HeaderBag): boolean {
   const origin = req.headers.get('origin') ?? '';
   if (process.env.NODE_ENV === 'production') {
-    if (/^https:\/\/([a-z0-9-]+\.)*vedant\.to$/.test(origin)) return true;
+    // Exact origin only — a wildcard subdomain match would let any delegated
+    // or dangling *.vedant.to CNAME become a valid CSRF origin.
+    if (/^https:\/\/vedant\.to$/.test(origin)) return true;
     // Preview deploys only. Accepting any *.vercel.app in production would
     // admit an attacker-hosted page on that shared domain.
     return (
@@ -101,6 +105,17 @@ export function checkOrigin(req: HeaderBag): boolean {
     );
   }
   return /^(https:\/\/vedant\.to|https?:\/\/localhost(:\d+)?)$/.test(origin);
+}
+
+/**
+ * Origin guard for idempotent reads. A missing Origin header is allowed —
+ * browsers omit it on same-origin GET navigations/fetches, and a read leaks
+ * nothing to a cross-site caller that CORS doesn't already block. A present
+ * but wrong Origin is still rejected. Mutating verbs keep checkOrigin.
+ */
+export function checkOriginOrAbsent(req: HeaderBag): boolean {
+  if (!req.headers.get('origin')) return true;
+  return checkOrigin(req);
 }
 
 /** Forces a CORS preflight, which blocks cross-site HTML-form POSTs. */

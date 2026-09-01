@@ -1,19 +1,20 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { SITE_NAME } from '@/lib/constants';
 import { getPublishedPosts } from '@/lib/posts';
-import { createMetadata } from '@/lib/metadata';
+import { createMetadata, ogImageUrl } from '@/lib/metadata';
 import { formatDate } from '@/lib/date';
 
 export const metadata: Metadata = {
   ...createMetadata({
-    title: 'Vedant',
+    title: SITE_NAME,
     description:
       "I'm a contrarian chasing polymathy. I love watching movies, listening to music, and absorbing culture. I plan to dedicate my life to advancing human civilisation.",
     path: '/',
-    image: 'https://vedant.to/api/og?title=Vedant',
+    image: ogImageUrl(SITE_NAME),
   }),
   // absolute bypasses the '%s — Vedant' template so homepage doesn't become 'Vedant — Vedant'
-  title: { absolute: 'Vedant' },
+  title: { absolute: SITE_NAME },
 };
 
 export const revalidate = false;

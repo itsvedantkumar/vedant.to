@@ -1,6 +1,6 @@
-import { Ratelimit } from '@upstash/ratelimit';
 import { NextRequest, NextResponse } from 'next/server';
 import { SESSION_COOKIE, verifySession } from './lib/auth/session';
+import { makeRatelimit } from './lib/ratelimit';
 import { getIP } from './lib/request';
 import { redis } from './lib/redis';
 import { timingSafeEqual } from './lib/timing';
@@ -9,13 +9,7 @@ import { timingSafeEqual } from './lib/timing';
 // Basic-auth checks have both declined (see below), so a request that carries a
 // valid credential never consumes budget — the Keystatic UI is chatty enough to
 // blow through this bucket during normal editing otherwise.
-const keystaticlimit = redis
-  ? new Ratelimit({
-      redis,
-      limiter: Ratelimit.slidingWindow(20, '10 m'),
-      prefix: 'keystatic:auth',
-    })
-  : null;
+const keystaticlimit = makeRatelimit('keystatic:auth', 20, '10 m');
 
 // Rollout/rollback switch. Defaults to 'basic' — the pre-passkey HTTP Basic
 // Auth behaviour — so deploying this code changes nothing until
@@ -30,37 +24,32 @@ const LOGIN_PATH = '/auth/keystatic';
 // Never emitted in production builds.
 const DEV_EVAL = process.env.NODE_ENV === 'production' ? '' : " 'unsafe-eval'";
 
-function buildCSP(isKeystatic: boolean, nonce?: string): string {
-  if (isKeystatic) {
-    // Nonce-based script-src: unlike the public routes below, /keystatic is
-    // already forced dynamic (see app/keystatic/layout.tsx) so every request
-    // gets a fresh nonce that matches what's rendered — no stale-nonce/SSG
-    // mismatch. See docs/csp-nonce.md for why the public routes don't do this.
-    const scriptSrc = nonce ? `'self' 'nonce-${nonce}'` : "'self' 'unsafe-inline'";
-    return [
-      "default-src 'self'",
-      `script-src ${scriptSrc}${DEV_EVAL}`,
-      "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' blob: data: https://avatars.githubusercontent.com",
-      "font-src 'self' data:",
-      "connect-src 'self' https://api.github.com https://raw.githubusercontent.com",
-      "frame-ancestors 'self'",
-      "base-uri 'self'",
-      "object-src 'none'",
-      "form-action 'self'",
-    ].join('; ');
-  }
+/**
+ * CSP for /keystatic and /api/keystatic. Public routes get theirs statically
+ * from next.config.mjs: that policy takes no per-request input, so emitting it
+ * here would put an edge invocation on every page view to produce a constant
+ * string. The two are deliberately different — this one trusts GitHub's API and
+ * avatars because the CMS talks to them, and the public one must not.
+ *
+ * Nonce-based script-src works here because /keystatic is force-dynamic
+ * (app/keystatic/layout.tsx), so every request gets a fresh nonce matching what
+ * was just rendered. Public routes are statically prerendered, so a nonce baked
+ * in at build time could never match a later request — which is why they stay
+ * on 'unsafe-inline'.
+ */
+function buildCSP(nonce?: string): string {
+  const scriptSrc = nonce ? `'self' 'nonce-${nonce}'` : "'self' 'unsafe-inline'";
   return [
     "default-src 'self'",
-    `script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com https://www.googletagmanager.com${DEV_EVAL}`,
+    `script-src ${scriptSrc}${DEV_EVAL}`,
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' blob: data: https://assets.vedant.to https://www.google-analytics.com",
+    "img-src 'self' blob: data: https://avatars.githubusercontent.com",
     "font-src 'self' data:",
-    "connect-src 'self' https://va.vercel-scripts.com https://www.google-analytics.com https://analytics.google.com https://www.googletagmanager.com",
-    "frame-ancestors 'none'",
+    "connect-src 'self' https://api.github.com https://raw.githubusercontent.com",
+    "frame-ancestors 'self'",
     "base-uri 'self'",
-    "form-action 'self'",
     "object-src 'none'",
+    "form-action 'self'",
   ].join('; ');
 }
 
@@ -79,7 +68,7 @@ function makeNonce(): string {
  */
 function allow(req: NextRequest): NextResponse {
   const nonce = makeNonce();
-  const csp = buildCSP(true, nonce);
+  const csp = buildCSP(nonce);
   const requestHeaders = new Headers(req.headers);
   requestHeaders.set('x-nonce', nonce);
   requestHeaders.set('Content-Security-Policy', csp);
@@ -93,7 +82,7 @@ function deny(status: number, body: string, extra?: HeadersInit): NextResponse {
   // No page render happens on a deny path (redirect/error body only), so no
   // nonce is needed here — 'unsafe-inline' is harmless on a response with no
   // inline scripts of ours to begin with, and keeps this helper nonce-free.
-  res.headers.set('Content-Security-Policy', buildCSP(true));
+  res.headers.set('Content-Security-Policy', buildCSP());
   res.headers.set('Cache-Control', 'no-store');
   return res;
 }
@@ -121,15 +110,6 @@ function isNavigation(req: NextRequest): boolean {
 
 export async function middleware(req: NextRequest): Promise<NextResponse> {
   const { pathname, search } = req.nextUrl;
-  const isKeystatic =
-    pathname.startsWith('/keystatic') || pathname.startsWith('/api/keystatic');
-
-  if (!isKeystatic) {
-    // All public routes: per-request CSP
-    const res = NextResponse.next({});
-    res.headers.set('Content-Security-Policy', buildCSP(false));
-    return res;
-  }
 
   const password = process.env.KEYSTATIC_AUTH_PASSWORD;
   const sessionSecret = process.env.KEYSTATIC_SESSION_SECRET;
@@ -192,7 +172,7 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
     url.pathname = LOGIN_PATH;
     url.search = `?next=${encodeURIComponent(pathname + search)}`;
     const res = NextResponse.redirect(url, 307);
-    res.headers.set('Content-Security-Policy', buildCSP(true));
+    res.headers.set('Content-Security-Policy', buildCSP());
     res.headers.set('Cache-Control', 'no-store');
     return res;
   }
@@ -203,8 +183,11 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
 }
 
 export const config = {
-  // Everything except Next.js build output, the favicon, /images, and
-  // /.well-known. Excluding by file extension instead would skip any
-  // /keystatic/*.png too — dropping auth and CSP on those requests.
-  matcher: ['/((?!_next/static|_next/image|favicon\\.ico|images/|\\.well-known/).*)'],
+  // Only the gated paths. This used to match every route so it could set the
+  // public CSP header, which put an edge invocation on every page view, image
+  // and feed fetch to emit a constant string; that header is static in
+  // next.config.mjs now. Matching by prefix rather than by file extension keeps
+  // /keystatic/*.png gated too — excluding assets by extension would drop auth
+  // on those requests.
+  matcher: ['/keystatic', '/keystatic/:path*', '/api/keystatic', '/api/keystatic/:path*'],
 };

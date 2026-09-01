@@ -23,7 +23,10 @@ jobs:
       - uses: ./.github/actions/build-next
 
       - name: Normalize content
-        run: node scripts/normalize-content.mjs
+        run: node scripts/normalize-content.mjs && git diff --exit-code
+
+      - name: Audit content
+        run: node scripts/audit-content.mjs
 
       - name: Check formatting
         run: npm run format:check
