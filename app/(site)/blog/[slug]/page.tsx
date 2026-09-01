@@ -106,40 +106,7 @@ export default async function BlogPost({
           />
         )}
       <article>
-        {/*
-          Cast is load-bearing, not laziness — proven via `npx tsc --noEmit`
-          with an explicit `Renderers` annotation on lib/renderers.tsx:
-          `@keystatic/core` resolves its `Renderers` type against its own
-          nested `@types/react@19.2.16` (pulled in via `@keystar/ui`), while
-          this repo's root `@types/react@18.3.28` types every renderer
-          function in lib/renderers.tsx. React 19 narrowed `ReactElement`'s
-          default prop generic from `any` to `unknown`
-          (node_modules/@types/react/index.d.ts:329 vs
-          node_modules/@keystar/ui/node_modules/@types/react/index.d.ts:326),
-          so `ReactElement<unknown, ...>` built from root types fails
-          Keystatic's nested `ReactNode` union on almost every entry (bold,
-          italic, code, link, paragraph, heading, blockquote, list). `tsc`
-          itself refuses a direct single-step cast here (TS2352: "neither
-          type sufficiently overlaps"), so going through `unknown` is the
-          compiler-mandated route, not a stylistic shortcut.
-          Separately, lib/renderers.tsx's `block.table` destructures
-          `{ children }`, but Keystatic's real contract is
-          `Component<{ head?, body }>` — table_head/table_body/table_row/
-          table_cell in lib/renderers.tsx are dead keys DocumentRenderer
-          never calls. That's a preexisting runtime bug, not a typing one;
-          fixing it would change table rendering, which is out of scope
-          for this cast-only pass.
-          Remove this cast once either (a) @keystatic/core's dependency
-          tree dedupes to the root @types/react version, or (b) the table
-          renderer is rewritten to match { head, body } — then re-run
-          `npx tsc --noEmit` and see what, if anything, still fails.
-        */}
-        <DocumentRenderer
-          document={content}
-          renderers={
-            renderers as unknown as Parameters<typeof DocumentRenderer>[0]['renderers']
-          }
-        />
+        <DocumentRenderer document={content} renderers={renderers} />
       </article>
 
       {(newer || older) && (

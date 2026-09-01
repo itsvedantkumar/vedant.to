@@ -16,7 +16,7 @@
     // constructor parameter properties) would typecheck clean here and then
     // throw at runtime, so ban it at the type level.
     "erasableSyntaxOnly": true,
-    "jsx": "preserve",
+    "jsx": "react-jsx",
     "incremental": true,
     "plugins": [
       {
