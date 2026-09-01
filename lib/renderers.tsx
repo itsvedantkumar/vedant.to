@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { cache } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { highlight } from 'sugar-high';
@@ -6,6 +6,120 @@ import { SITE_URL } from '@/lib/constants';
 
 const linkClass =
   'text-blue-500 hover:text-blue-700 dark:text-gray-400 hover:dark:text-gray-300 dark:underline dark:underline-offset-2 dark:decoration-gray-800';
+
+type Dims = { width: number; height: number };
+
+/** WebP dimensions from the RIFF header (VP8X / lossy VP8 / lossless VP8L). */
+function parseWebP(b: Uint8Array): Dims | null {
+  if (b.length < 30) return null;
+  const ascii = (o: number, n: number) =>
+    String.fromCharCode(...Array.from(b.subarray(o, o + n)));
+  if (ascii(0, 4) !== 'RIFF' || ascii(8, 4) !== 'WEBP') return null;
+  const chunk = ascii(12, 4);
+  if (chunk === 'VP8X') {
+    return {
+      width: 1 + (b[24] | (b[25] << 8) | (b[26] << 16)),
+      height: 1 + (b[27] | (b[28] << 8) | (b[29] << 16)),
+    };
+  }
+  if (chunk === 'VP8 ') {
+    if (b[23] !== 0x9d || b[24] !== 0x01 || b[25] !== 0x2a) return null;
+    return {
+      width: (b[26] | (b[27] << 8)) & 0x3fff,
+      height: (b[28] | (b[29] << 8)) & 0x3fff,
+    };
+  }
+  if (chunk === 'VP8L') {
+    if (b[20] !== 0x2f) return null;
+    const bits = b[21] | (b[22] << 8) | (b[23] << 16) | (b[24] << 24);
+    return { width: 1 + (bits & 0x3fff), height: 1 + ((bits >> 14) & 0x3fff) };
+  }
+  return null;
+}
+
+/** PNG dimensions from the IHDR chunk. */
+function parsePNG(b: Uint8Array): Dims | null {
+  if (b.length < 24) return null;
+  if (b[0] !== 0x89 || b[1] !== 0x50 || b[2] !== 0x4e || b[3] !== 0x47) return null;
+  const be32 = (o: number) =>
+    ((b[o] << 24) | (b[o + 1] << 16) | (b[o + 2] << 8) | b[o + 3]) >>> 0;
+  return { width: be32(16), height: be32(20) };
+}
+
+// Body images are remote CDN URLs (assets.vedant.to), so there is no local
+// file to statically import dimensions from. Probe the first bytes of the
+// image instead. These renderers only run in RSC pages that are fully static
+// (`revalidate = false`), so the probe happens at build time, not per request.
+// react cache() dedupes repeated srcs within a render pass.
+/**
+ * The probe fails open: a build that cannot reach the CDN still renders, just
+ * without intrinsic dimensions, so the layout shift this code exists to remove
+ * comes back. Name the src and the reason in the build log rather than leaving
+ * that silent. A warning is the right level here, not a thrown error — failing
+ * the whole build over one CDN blip trades a layout shift for an outage.
+ */
+function warnProbeFailed(src: string, reason: string): null {
+  console.warn(
+    `renderers: image dimension probe failed for ${src} (${reason}); ` +
+      'rendering it without width/height, which reintroduces layout shift for that image.'
+  );
+  return null;
+}
+
+const probeImageDims = cache(async (src: string): Promise<Dims | null> => {
+  if (!/^https?:\/\//.test(src)) return null;
+  try {
+    const res = await fetch(src, {
+      headers: { range: 'bytes=0-255' },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) return warnProbeFailed(src, `HTTP ${res.status}`);
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    // Content pipeline normalizes CDN images to .webp (scripts/normalize-images.mjs);
+    // PNG covers stragglers. Anything else falls through to the width-0 fallback.
+    return (
+      parseWebP(bytes) ??
+      parsePNG(bytes) ??
+      warnProbeFailed(src, 'unrecognized image header')
+    );
+  } catch (err) {
+    return warnProbeFailed(src, err instanceof Error ? err.message : String(err));
+  }
+});
+
+/**
+ * Async server component: real width/height give the browser an intrinsic
+ * aspect ratio, so `h-auto` reserves the right space before the file loads and
+ * scrolling into an image causes no layout shift. If the probe fails (offline
+ * build, non-http src), fall back to width/height 0 — the pre-fix behavior,
+ * where CSS alone sizes the image.
+ */
+async function BodyImage({
+  src,
+  alt,
+  title,
+  sizes,
+  className,
+}: {
+  src: string;
+  alt: string;
+  title?: string;
+  sizes: string;
+  className: string;
+}) {
+  const dims = await probeImageDims(src);
+  return (
+    <Image
+      src={src}
+      alt={alt ?? ''}
+      title={title}
+      width={dims?.width ?? 0}
+      height={dims?.height ?? 0}
+      sizes={sizes}
+      className={className}
+    />
+  );
+}
 
 export const renderers = {
   inline: {
@@ -21,11 +135,9 @@ export const renderers = {
     // Fallback: image can appear in inline context if inserted inside a paragraph.
     // Render it as a block-style image rather than throwing.
     image: ({ src, alt }: { src: string; alt: string }) => (
-      <Image
+      <BodyImage
         src={src}
-        alt={alt ?? ''}
-        width={0}
-        height={0}
+        alt={alt}
         sizes="(max-width: 768px) 100vw, 768px"
         className="max-w-full h-auto rounded-lg"
       />
@@ -121,12 +233,10 @@ export const renderers = {
     ),
     divider: () => <hr />,
     image: ({ src, alt, title }: { src: string; alt: string; title?: string }) => (
-      <Image
+      <BodyImage
         src={src}
-        alt={alt ?? ''}
+        alt={alt}
         title={title}
-        width={0}
-        height={0}
         sizes="100vw"
         className="w-full h-auto rounded-lg mt-8 mb-8"
       />
