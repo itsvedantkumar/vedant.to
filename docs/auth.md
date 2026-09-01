@@ -93,6 +93,35 @@ literal string `passkey` opts in. Shipping the code is deliberately a no-op: if 
 were `passkey`, the deploy would 503 `/keystatic` the moment it landed, before
 `KEYSTATIC_SESSION_SECRET` existed on Vercel. Rollback needs no data migration.
 
+Production runs `passkey`, verified against the live site on 2026-09-02. You can tell which
+mode a deployment is in without reading its env: in `basic` mode every deny carries
+`WWW-Authenticate`, so a plain `curl -sI https://vedant.to/keystatic` that answers 401 with
+no such header is in `passkey` mode.
+
+## Verifying the gate is live
+
+The gate runs in `proxy.ts`, and as of Next 16 a proxy file always runs on the Node.js
+runtime. It cannot be put on the Edge runtime: a route-segment `runtime` export in a proxy
+file throws at build time.
+
+That has one trap. `.next/server/middleware-manifest.json` is **empty** after a build,
+because proxy compiles to the Node server rather than the edge server. Reading only that
+file suggests the auth gate has vanished. It has not. Look in
+`.next/server/functions-config-manifest.json`, under `/_middleware`, which carries
+`runtime: nodejs` and the four matchers.
+
+Better, check the running site instead of a manifest. Against production:
+
+```
+curl -sI https://vedant.to/keystatic                     # 401, cache-control: no-store
+curl -sI -H 'Accept: text/html' https://vedant.to/keystatic
+                                                          # 307 -> /auth/keystatic?next=%2Fkeystatic
+curl -sI -H 'Accept: text/html' 'https://vedant.to/keystatic?basic=1'
+                                                          # 401 + WWW-Authenticate: Basic
+```
+
+A 200 from any of those means the gate is not doing its job.
+
 ## Storing the public key, a landmine
 
 In `lib/webauthn/store.ts`:
