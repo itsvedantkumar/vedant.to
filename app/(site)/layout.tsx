@@ -89,7 +89,7 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
         </footer>
       </div>
       {/* Mobile sticky footer */}
-      <footer className="md:hidden fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-zinc-950/90 backdrop-blur border-t border-gray-100 dark:border-zinc-800 px-8 py-3">
+      <footer className="md:hidden fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-zinc-950/90 backdrop-blur-sm border-t border-gray-100 dark:border-zinc-800 px-8 py-3">
         <div className="flex justify-center space-x-6 tracking-tight">
           {footerLinks.map((link) => (
             <a
