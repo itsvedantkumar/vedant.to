@@ -5,4 +5,4 @@ useDefault = true
   description = "Allowlist for intentionally public values"
   # IndexNow key is public by design — served at /<key>.txt for domain verification
   # and referenced in .github/workflows/indexnow.yml. Allowlisted to prevent false positives.
-  commits = ["cd6c46aee2ac592a30c93b8ceb5fa2aad32987d7"]
+  commits = ["2766905b2d5b288e6245d37bc794a78bcc5ddd48"]
