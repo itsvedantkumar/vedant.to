@@ -65,6 +65,17 @@ export default async function DailyEntry({
     <section>
       <h1 className="text-2xl font-medium tracking-tight mb-8">{dateLabel}</h1>
       <article>
+        {/*
+          Cast is load-bearing: @keystatic/core resolves its `Renderers`
+          type against its own nested @types/react@19.2.16 (pulled in via
+          @keystar/ui), while this repo's root @types/react@18.3.28 types
+          lib/renderers.tsx. React 19 narrowed ReactElement's default prop
+          generic from `any` to `unknown`, so `tsc` refuses a direct
+          single-step cast (TS2352: "neither type sufficiently overlaps")
+          on almost every renderer entry. Full incompatibility + the
+          removal condition are documented at the matching cast in
+          app/(site)/blog/[slug]/page.tsx.
+        */}
         <DocumentRenderer
           document={content}
           renderers={
