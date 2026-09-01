@@ -22,8 +22,8 @@ const FOCUS_RING =
 
 const footerLinks = [
   { name: 'x', url: 'https://x.com/itsvedantkumar' },
+  { name: 'gh', url: 'https://github.com/itsvedantkumar' },
   { name: 'linkedin', url: 'https://www.linkedin.com/in/itsvedantkumar' },
-  { name: 'rss', url: '/rss.xml' },
   { name: 'cal', url: 'https://calendar.app.google/nB6tr8kyTD2mwkCa8' },
 ];
 
