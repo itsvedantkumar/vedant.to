@@ -13,7 +13,7 @@ jobs:
       # Required: `vercel deploy --prod` below uploads the working directory and
       # builds it remotely. Without a checkout the dir is empty, so it would
       # deploy an empty app (404 on every route). This step makes the source present.
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set Keystatic env vars on Vercel
         env:
@@ -54,7 +54,9 @@ jobs:
               return
             fi
             local payload
-            payload=$(python3 -c "import json,sys; print(json.dumps({'key':sys.argv[1],'value':sys.argv[2],'type':'encrypted','target':['production','preview']}))" "$key" "$value")
+            # Key/value travel via env, not argv — argv is world-readable on the
+            # runner (/proc/*/cmdline), env is not.
+            payload=$(SET_ENV_KEY="$key" SET_ENV_VALUE="$value" python3 -c "import json,os; print(json.dumps({'key':os.environ['SET_ENV_KEY'],'value':os.environ['SET_ENV_VALUE'],'type':'encrypted','target':['production','preview']}))")
             curl -s -X POST \
               "https://api.vercel.com/v10/projects/$VERCEL_PROJECT_ID/env?upsert=true" \
               -H "Authorization: Bearer $VERCEL_TOKEN" \
@@ -93,4 +95,6 @@ jobs:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-        run: npx vercel deploy --prod --token "$VERCEL_TOKEN" --yes
+        # Pinned: an unpinned npx resolves latest from npm at run time and would
+        # hand a compromised release this job's production deploy token.
+        run: npx vercel@59.11.0 deploy --prod --token "$VERCEL_TOKEN" --yes

@@ -118,6 +118,11 @@ export async function POST(req: NextRequest) {
   const ext = ALLOWED_TYPES[contentType];
   const key = `${crypto.randomUUID()}${ext}`;
 
+  // Fail closed: a half-configured R2 env exports `r2` as null.
+  if (!r2 || !process.env.R2_BUCKET_NAME) {
+    return NextResponse.json({ error: 'storage unavailable' }, { status: 503 });
+  }
+
   try {
     await r2.send(
       new PutObjectCommand({

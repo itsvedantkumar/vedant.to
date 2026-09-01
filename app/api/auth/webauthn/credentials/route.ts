@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { checkOrigin, jsonError, requireAdmin } from '@/lib/auth/guard';
+import {
+  checkOrigin,
+  checkOriginOrAbsent,
+  jsonError,
+  requireAdmin,
+} from '@/lib/auth/guard';
 import { notifySecurityEvent, requestContext } from '@/lib/auth/notify';
 import { isPasswordConfigured } from '@/lib/webauthn/config';
 import {
@@ -20,6 +25,8 @@ const NO_STORE = { 'Cache-Control': 'no-store' };
 
 /** Enrolled devices. Never returns publicKey. */
 export async function GET(req: NextRequest): Promise<NextResponse> {
+  if (!checkOriginOrAbsent(req)) return jsonError(403, 'bad origin');
+
   const auth = await requireAdmin(req);
   if (!auth.ok) return jsonError(auth.status, auth.error);
 

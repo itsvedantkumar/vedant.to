@@ -42,11 +42,28 @@ const IMG_RE = /!\[[^\]]*\]\(([^)]+)\)/g;
 
 let totalFixed = 0;
 let totalMissing = 0;
+let totalCDNRewritten = 0;
 
 for (const mdocPath of findMdocFiles(path.join(ROOT, 'content'))) {
   let src = fs.readFileSync(mdocPath, 'utf8');
   let changed = false;
 
+  // Pass 1: Rewrite CDN image refs to .webp (https://assets.vedant.to/i/*.{png,jpg,jpeg} → *.webp)
+  src = src.replace(IMG_RE, (match, rawRef) => {
+    if (
+      /^https:\/\/assets\.vedant\.to\//i.test(rawRef) &&
+      /\.(png|jpg|jpeg)$/i.test(rawRef)
+    ) {
+      totalCDNRewritten++;
+      changed = true;
+      const newRef = rawRef.replace(/\.(png|jpg|jpeg)$/i, '.webp');
+      const altText = match.slice(2, match.indexOf(']'));
+      return `![${altText}](${newRef})`;
+    }
+    return match;
+  });
+
+  // Pass 2: Handle local file slugification and renaming
   src = src.replace(IMG_RE, (match, rawRef) => {
     // rawRef is the raw string inside the parens, e.g. /images/posts/slug/image%20%281%29.png
     // Absolute URLs (CDN / external) are not local files — skip them entirely.
@@ -111,13 +128,16 @@ for (const mdocPath of findMdocFiles(path.join(ROOT, 'content'))) {
   }
 }
 
-if (totalFixed === 0 && totalMissing === 0) {
+if (totalFixed === 0 && totalMissing === 0 && totalCDNRewritten === 0) {
   // Silence when nothing to do (normal pre-commit case)
   process.exit(0);
 }
 
 if (totalMissing > 0) {
   console.warn(`\n⚠  ${totalMissing} missing image(s) — check paths above.`);
+}
+if (totalCDNRewritten > 0) {
+  console.log(`\n✓  ${totalCDNRewritten} CDN ref(s) rewritten to .webp.`);
 }
 if (totalFixed > 0) {
   console.log(`\n✓  ${totalFixed} image ref(s) normalized.`);

@@ -1,18 +1,11 @@
-import { Ratelimit } from '@upstash/ratelimit';
 import { ImageResponse } from '@vercel/og';
-import { redis } from '@/lib/redis';
+import { makeRatelimit } from '@/lib/ratelimit';
 import { getIP } from '@/lib/request';
 
 export const runtime = 'edge';
 
 // 60 requests per minute sliding window — OG image generation is CPU-heavy
-const ogRatelimit = redis
-  ? new Ratelimit({
-      redis,
-      limiter: Ratelimit.slidingWindow(60, '1 m'),
-      prefix: 'og',
-    })
-  : null;
+const ogRatelimit = makeRatelimit('og', 60, '1 m');
 
 export async function GET(request: Request) {
   try {
