@@ -264,35 +264,55 @@ export const renderers = {
         </ul>
       );
     },
-    table: ({ children }: { children: React.ReactNode }) => (
+    // Keystatic's real contract (@keystatic/core renderer.d.ts) is a single
+    // `table` renderer receiving `{ head?, body }` — not a `children`-based
+    // tree of table_head/table_body/table_row/table_cell renderers. Those
+    // keys aren't part of the Renderers type and DocumentRenderer never
+    // invokes them; it walks the raw document nodes itself and only ever
+    // calls `renderers.block.table` with the already-assembled head/body.
+    table: ({
+      head,
+      body,
+    }: {
+      head?: { children: React.ReactNode; colSpan?: number; rowSpan?: number }[];
+      body: { children: React.ReactNode; colSpan?: number; rowSpan?: number }[][];
+    }) => (
       <div className="overflow-x-auto my-6">
         <table className="w-full text-sm border-collapse text-gray-800 dark:text-zinc-300">
-          {children}
+          {head && (
+            <thead className="border-b border-gray-200 dark:border-zinc-700">
+              <tr>
+                {head.map((cell, i) => (
+                  <th
+                    key={i}
+                    colSpan={cell.colSpan}
+                    rowSpan={cell.rowSpan}
+                    className="py-2 pr-4 text-left font-medium text-gray-900 dark:text-zinc-100"
+                  >
+                    {cell.children}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+          )}
+          <tbody>
+            {body.map((row, i) => (
+              <tr key={i} className="border-b border-gray-100 dark:border-zinc-800">
+                {row.map((cell, j) => (
+                  <td
+                    key={j}
+                    colSpan={cell.colSpan}
+                    rowSpan={cell.rowSpan}
+                    className="py-2 pr-4"
+                  >
+                    {cell.children}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
         </table>
       </div>
     ),
-    table_head: ({ children }: { children: React.ReactNode }) => (
-      <thead className="border-b border-gray-200 dark:border-zinc-700">{children}</thead>
-    ),
-    table_body: ({ children }: { children: React.ReactNode }) => (
-      <tbody>{children}</tbody>
-    ),
-    table_row: ({ children }: { children: React.ReactNode }) => (
-      <tr className="border-b border-gray-100 dark:border-zinc-800">{children}</tr>
-    ),
-    table_cell: ({
-      children,
-      header,
-    }: {
-      children: React.ReactNode;
-      header?: boolean;
-    }) =>
-      header ? (
-        <th className="py-2 pr-4 text-left font-medium text-gray-900 dark:text-zinc-100">
-          {children}
-        </th>
-      ) : (
-        <td className="py-2 pr-4">{children}</td>
-      ),
   },
 };
