@@ -14,6 +14,21 @@ interface PageMetadataOptions {
   updatedAt?: string | null;
 }
 
+/**
+ * Feed discovery links, emitted as <link rel="alternate"> in <head>.
+ *
+ * Exported and reused by app/layout.tsx rather than declared in both:
+ * Next merges metadata shallowly per top-level key, so a page that sets
+ * `alternates` for its canonical URL replaces the root layout's
+ * `alternates` object entirely and silently drops these. Every page here
+ * sets a canonical, so declaring the types only at the root meant no page
+ * ever emitted them.
+ */
+export const FEED_TYPES = {
+  'application/rss+xml': '/rss.xml',
+  'application/feed+json': '/feed.json',
+} as const;
+
 export function ogImageUrl(title: string): string {
   return `${SITE_URL}/api/og?title=${encodeURIComponent(title)}`;
 }
@@ -45,7 +60,7 @@ export function createMetadata({
   return {
     title,
     description,
-    alternates: { canonical: path },
+    alternates: { canonical: path, types: FEED_TYPES },
     openGraph: {
       title,
       description,

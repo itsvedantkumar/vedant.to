@@ -4,7 +4,7 @@ import { Inter } from 'next/font/google';
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import { siteSchema, person } from '@/lib/json-ld';
-import { ogImageUrl } from '@/lib/metadata';
+import { ogImageUrl, FEED_TYPES } from '@/lib/metadata';
 import { EasterEgg } from '@/components/easter-egg';
 import { SITE_URL, SITE_NAME, AUTHOR, TWITTER_HANDLE } from '@/lib/constants';
 
@@ -25,12 +25,7 @@ export const metadata: Metadata = {
   description: "Hi I'm Vedant",
   authors: [{ name: person.name, url: person.url }],
   creator: AUTHOR,
-  alternates: {
-    types: {
-      'application/rss+xml': '/rss.xml',
-      'application/feed+json': '/feed.json',
-    },
-  },
+  alternates: { types: FEED_TYPES },
   openGraph: {
     siteName: 'Vedant',
     locale: 'en_US',
