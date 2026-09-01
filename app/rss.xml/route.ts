@@ -1,5 +1,4 @@
-import { FEED_CACHE_CONTROL, escapeXml, getPublishedContent } from '@/lib/feed-utils';
-import { formatDate } from '@/lib/date';
+import { FEED_CACHE_CONTROL, escapeXml, getSortedFeedItems } from '@/lib/feed-utils';
 import { SITE_URL } from '@/lib/constants';
 
 // Next 15 no longer statically caches GET route handlers by default; the feed
@@ -7,27 +6,9 @@ import { SITE_URL } from '@/lib/constants';
 export const dynamic = 'force-static';
 
 export async function GET() {
-  const { posts, daily } = await getPublishedContent();
+  const allItems = await getSortedFeedItems();
 
-  const postItems = posts.map(({ slug, entry }) => ({
-    title: entry.title,
-    link: `${SITE_URL}/blog/${slug}`,
-    description: entry.excerpt ?? '',
-    pubDate: new Date(entry.publishedAt).toUTCString(),
-  }));
-
-  const dailyItems = daily.map(({ slug, entry }) => ({
-    title: formatDate(entry.date, 'long'),
-    link: `${SITE_URL}/daily/${slug}`,
-    description: '',
-    pubDate: new Date(entry.date).toUTCString(),
-  }));
-
-  const allItems = [...postItems, ...dailyItems].sort(
-    (a, b) => new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime()
-  );
-
-  const lastBuildDate = allItems[0]?.pubDate ?? new Date().toUTCString();
+  const lastBuildDate = allItems[0]?.date.toUTCString() ?? new Date().toUTCString();
 
   const rssFeed = `<?xml version="1.0" encoding="UTF-8" ?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
@@ -43,10 +24,10 @@ export async function GET() {
         (item) => `
     <item>
       <title>${escapeXml(item.title)}</title>
-      <link>${escapeXml(item.link)}</link>
-      <guid isPermaLink="true">${escapeXml(item.link)}</guid>
-      <description>${escapeXml(item.description)}</description>
-      <pubDate>${item.pubDate}</pubDate>
+      <link>${escapeXml(item.url)}</link>
+      <guid isPermaLink="true">${escapeXml(item.url)}</guid>
+      <description>${escapeXml(item.excerpt)}</description>
+      <pubDate>${item.date.toUTCString()}</pubDate>
     </item>`
       )
       .join('')}
