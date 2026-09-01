@@ -4,6 +4,7 @@ import { SITE_NAME } from '@/lib/constants';
 import { getPublishedPosts } from '@/lib/posts';
 import { createMetadata, ogImageUrl } from '@/lib/metadata';
 import { formatDate } from '@/lib/date';
+import { FOCUS_RING } from '@/lib/styles';
 
 export const metadata: Metadata = {
   ...createMetadata({
@@ -47,10 +48,10 @@ export default async function Home() {
               <Link
                 key={slug}
                 href={`/blog/${slug}`}
-                className="flex flex-row items-baseline gap-4 group"
+                className={`flex flex-row items-baseline gap-4 group ${FOCUS_RING}`}
               >
                 <span className="text-gray-500 dark:text-zinc-400 tabular-nums text-sm w-[100px] shrink-0">
-                  {formatDate(entry.publishedAt!, 'short')}
+                  {formatDate(entry.publishedAt, 'short')}
                 </span>
                 <span className="text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-150">
                   {entry.title}
@@ -63,7 +64,7 @@ export default async function Home() {
         )}
         <Link
           href="/blog"
-          className="inline-block mt-4 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors duration-150"
+          className={`inline-block mt-4 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors duration-150 ${FOCUS_RING}`}
         >
           All posts →
         </Link>

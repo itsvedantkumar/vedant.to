@@ -1,11 +1,16 @@
 import Link from 'next/link';
+import { FOCUS_RING } from '@/lib/styles';
 
 const navLinks = [
   { name: 'home', href: '/' },
   { name: 'blog', href: '/blog' },
   { name: 'daily', href: '/daily' },
   { name: 'quotes', href: '/quotes' },
-  { name: 'letterboxd', href: 'https://letterboxd.com/itsvedantkumar/', external: true },
+  {
+    name: 'letterboxd',
+    href: 'https://letterboxd.com/itsvedantkumar/',
+    external: true,
+  },
   {
     name: 'spotify',
     href: 'https://open.spotify.com/user/gh4xje04nt4gjokd86fklfwuw',
@@ -13,18 +18,29 @@ const navLinks = [
   },
 ];
 
-// Keyboard focus has to be visible on its own (WCAG 2.4.7) — a colour-only
-// hover swap isn't a focus indicator. focus-visible so mouse clicks stay clean.
-// Deliberately not exported: /whisper is a client component, and importing from
-// this server layout would drag it into the client bundle.
-const FOCUS_RING =
-  'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 dark:focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-zinc-950 rounded-sm';
-
+// Two- and three-letter visible labels ("x", "gh") say nothing out of context,
+// so each link carries an aria-label naming the real destination (WCAG 2.4.4).
 const footerLinks = [
-  { name: 'x', url: 'https://x.com/itsvedantkumar' },
-  { name: 'gh', url: 'https://github.com/itsvedantkumar' },
-  { name: 'linkedin', url: 'https://www.linkedin.com/in/itsvedantkumar' },
-  { name: 'cal', url: 'https://calendar.app.google/nB6tr8kyTD2mwkCa8' },
+  {
+    name: 'x',
+    url: 'https://x.com/itsvedantkumar',
+    ariaLabel: 'X (Twitter) profile',
+  },
+  {
+    name: 'gh',
+    url: 'https://github.com/itsvedantkumar',
+    ariaLabel: 'GitHub profile',
+  },
+  {
+    name: 'linkedin',
+    url: 'https://www.linkedin.com/in/itsvedantkumar',
+    ariaLabel: 'LinkedIn profile',
+  },
+  {
+    name: 'cal',
+    url: 'https://calendar.app.google/nB6tr8kyTD2mwkCa8',
+    ariaLabel: 'booking calendar',
+  },
 ];
 
 export default function SiteLayout({ children }: { children: React.ReactNode }) {
@@ -63,6 +79,7 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
                 href={link.url}
                 target="_blank"
                 rel="noopener noreferrer"
+                aria-label={link.ariaLabel}
                 className={`text-gray-500 dark:text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 ${FOCUS_RING} transition-colors duration-200`}
               >
                 {link.name}
@@ -80,6 +97,7 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
               href={link.url}
               target="_blank"
               rel="noopener noreferrer"
+              aria-label={link.ariaLabel}
               className={`text-gray-500 dark:text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 ${FOCUS_RING} transition-colors duration-200 text-sm`}
             >
               {link.name}

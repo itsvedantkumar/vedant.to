@@ -8,6 +8,7 @@ import { renderers } from '@/lib/renderers';
 import { createMetadata } from '@/lib/metadata';
 import { normalizeDoc } from '@/lib/normalize-doc';
 import { formatDate } from '@/lib/date';
+import { FOCUS_RING } from '@/lib/styles';
 
 export const revalidate = false;
 
@@ -77,13 +78,13 @@ export default async function DailyEntry({
           {older ? (
             <Link
               href={`/daily/${older.slug}`}
-              className="group max-w-[45%] text-gray-500 hover:text-blue-500 dark:text-gray-400"
+              className={`group max-w-[45%] text-gray-500 hover:text-blue-500 dark:text-gray-400 ${FOCUS_RING}`}
             >
               <span className="block text-xs text-gray-400 dark:text-gray-600">
                 ← Older
               </span>
               <span className="text-gray-900 dark:text-gray-100">
-                {formatDate(older.entry.date!, 'short')}
+                {formatDate(older.entry.date, 'short')}
               </span>
             </Link>
           ) : (
@@ -92,13 +93,13 @@ export default async function DailyEntry({
           {newer ? (
             <Link
               href={`/daily/${newer.slug}`}
-              className="group max-w-[45%] text-right text-gray-500 hover:text-blue-500 dark:text-gray-400"
+              className={`group max-w-[45%] text-right text-gray-500 hover:text-blue-500 dark:text-gray-400 ${FOCUS_RING}`}
             >
               <span className="block text-xs text-gray-400 dark:text-gray-600">
                 Newer →
               </span>
               <span className="text-gray-900 dark:text-gray-100">
-                {formatDate(newer.entry.date!, 'short')}
+                {formatDate(newer.entry.date, 'short')}
               </span>
             </Link>
           ) : (

@@ -1,17 +1,11 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { FOCUS_RING } from '@/lib/styles';
 
 // No question bank here on purpose: it used to ship dob + personal answers to
 // every visitor in the JS bundle. GET /api/whisper now hands out one question's
 // text + opaque id, and the server checks the answer (see lib/whisper-quiz.ts).
-
-// Mirrors the ring in app/(site)/layout.tsx. Kept as a local copy on purpose:
-// importing it from that server layout would pull the layout into this client
-// bundle. Keyboard focus must be visible on its own (WCAG 2.4.7) — the 1px
-// border swap these fields had is not an indicator.
-const FOCUS_RING =
-  'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 dark:focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-zinc-950';
 
 export default function WhisperPage() {
   const [question, setQuestion] = useState('');
@@ -46,7 +40,10 @@ export default function WhisperPage() {
   }
 
   /** Fetch a fresh token + question. Returns null if the request failed. */
-  async function fetchToken(): Promise<{ token: string; question: string } | null> {
+  async function fetchToken(): Promise<{
+    token: string;
+    question: string;
+  } | null> {
     try {
       const d = await fetch('/api/whisper').then((r) => r.json());
       if (!d?.token) return null;
@@ -97,7 +94,11 @@ export default function WhisperPage() {
     setWrongAnswer(false);
     setCheckError(false);
     try {
-      const check = { quizOnly: true, quizAnswer: answer, token: tokenRef.current };
+      const check = {
+        quizOnly: true,
+        quizAnswer: answer,
+        token: tokenRef.current,
+      };
       const res = await postWhisper(check);
       if (res.ok) {
         acceptedAnswerRef.current = answer;
@@ -164,7 +165,13 @@ export default function WhisperPage() {
     return (
       <div>
         <h1 className="font-medium text-2xl mb-2 tracking-tight">whisper</h1>
-        <p className="text-gray-500 dark:text-zinc-400 text-sm">sent :)</p>
+        {/* The whole form is replaced by this view, so no pre-existing live
+            region survives to announce into. role="status" (implicit polite
+            live region) on the inserted confirmation is the WCAG 4.1.3 pattern
+            for success messages. */}
+        <p role="status" className="text-gray-500 dark:text-zinc-400 text-sm">
+          sent :)
+        </p>
       </div>
     );
   }
@@ -200,19 +207,22 @@ export default function WhisperPage() {
             className={`w-full bg-transparent border-b border-gray-200 dark:border-zinc-800 pb-2 text-sm text-gray-800 dark:text-zinc-200 placeholder-gray-500 dark:placeholder-zinc-500 focus:border-gray-400 dark:focus:border-zinc-600 transition-colors ${FOCUS_RING}`}
           />
           <div className="flex items-center justify-between">
-            {wrongAnswer ? (
-              <span className="text-xs text-red-600 dark:text-red-400">wrong.</span>
-            ) : checkError ? (
-              <span className="text-xs text-red-600 dark:text-red-400">
-                something went wrong. try again.
-              </span>
-            ) : (
-              <span />
-            )}
+            {/* This slot always rendered a span (empty when no error), so the
+                live region can exist before the message does — text swapped
+                into an already-mounted region is what screen readers announce
+                most reliably (WCAG 4.1.3). role="alert" (assertive) because
+                both messages are errors blocking the user's current task. */}
+            <span role="alert" className="text-xs text-red-600 dark:text-red-400">
+              {wrongAnswer
+                ? 'wrong.'
+                : checkError
+                  ? 'something went wrong. try again.'
+                  : null}
+            </span>
             <button
               type="submit"
               disabled={!tokenReady || !answer.trim() || checking}
-              className={`text-sm text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-zinc-100 disabled:opacity-30 transition-colors tracking-tight rounded-sm ${FOCUS_RING}`}
+              className={`text-sm text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-zinc-100 disabled:opacity-30 transition-colors tracking-tight ${FOCUS_RING}`}
             >
               submit →
             </button>
@@ -242,13 +252,17 @@ export default function WhisperPage() {
                 text.trim().length < 5 ||
                 state === 'sending'
               }
-              className={`text-sm text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-zinc-100 disabled:opacity-30 transition-colors tracking-tight rounded-sm ${FOCUS_RING}`}
+              className={`text-sm text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-zinc-100 disabled:opacity-30 transition-colors tracking-tight ${FOCUS_RING}`}
             >
               {state === 'sending' ? 'sending...' : 'send →'}
             </button>
           </div>
+          {/* Conditional mount rather than a persistent region: an always-
+              rendered empty <p> would add a phantom gap-4 slot below the send
+              row. role="alert" is announced on insertion into the DOM, which
+              covers the mount case. */}
           {state === 'error' && (
-            <p className="text-xs text-red-600 dark:text-red-400">
+            <p role="alert" className="text-xs text-red-600 dark:text-red-400">
               something went wrong. try again.
             </p>
           )}

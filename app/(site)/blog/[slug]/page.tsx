@@ -13,6 +13,7 @@ import { normalizeDoc } from '@/lib/normalize-doc';
 import { PostConsoleArt } from '@/components/post-console-art';
 import { ASSETS_URL } from '@/lib/constants';
 import { formatDate } from '@/lib/date';
+import { FOCUS_RING } from '@/lib/styles';
 
 export const revalidate = false;
 
@@ -119,9 +120,9 @@ export default async function BlogPost({
           {older ? (
             <Link
               href={`/blog/${older.slug}`}
-              className="group max-w-[45%] text-gray-500 hover:text-blue-500 dark:text-gray-400"
+              className={`group max-w-[45%] text-gray-500 hover:text-blue-500 dark:text-gray-400 ${FOCUS_RING}`}
             >
-              <span className="block text-xs text-gray-400 dark:text-gray-600">
+              <span className="block text-xs text-gray-500 dark:text-zinc-400">
                 ← Older
               </span>
               <span className="text-gray-900 dark:text-gray-100">
@@ -134,9 +135,9 @@ export default async function BlogPost({
           {newer ? (
             <Link
               href={`/blog/${newer.slug}`}
-              className="group max-w-[45%] text-right text-gray-500 hover:text-blue-500 dark:text-gray-400"
+              className={`group max-w-[45%] text-right text-gray-500 hover:text-blue-500 dark:text-gray-400 ${FOCUS_RING}`}
             >
-              <span className="block text-xs text-gray-400 dark:text-gray-600">
+              <span className="block text-xs text-gray-500 dark:text-zinc-400">
                 Newer →
               </span>
               <span className="text-gray-900 dark:text-gray-100">

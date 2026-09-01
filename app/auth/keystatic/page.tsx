@@ -4,6 +4,7 @@ import { startAuthentication, browserSupportsWebAuthn } from '@simplewebauthn/br
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { safeNext } from '@/lib/auth/next-param';
+import { FOCUS_RING } from '@/lib/styles';
 
 type Status = {
   configured: boolean;
@@ -129,12 +130,12 @@ export default function KeystaticLoginPage() {
               aria-label="password"
               autoComplete="current-password"
               autoFocus
-              className="w-full bg-transparent border-b border-gray-200 dark:border-zinc-800 pb-2 text-sm text-gray-800 dark:text-zinc-200 placeholder-gray-300 dark:placeholder-zinc-700 focus:outline-none focus:border-gray-400 dark:focus:border-zinc-600 transition-colors"
+              className={`w-full bg-transparent border-b border-gray-200 dark:border-zinc-800 pb-2 text-sm text-gray-800 dark:text-zinc-200 placeholder-gray-300 dark:placeholder-zinc-700 focus:border-gray-400 dark:focus:border-zinc-600 transition-colors ${FOCUS_RING}`}
             />
             <button
               type="submit"
               disabled={!password || state === 'sending'}
-              className="self-end text-sm text-gray-400 dark:text-zinc-500 hover:text-gray-900 dark:hover:text-zinc-100 disabled:opacity-30 transition-colors tracking-tight"
+              className={`self-end text-sm text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-zinc-100 disabled:opacity-30 transition-colors tracking-tight ${FOCUS_RING}`}
             >
               unlock →
             </button>
@@ -143,18 +144,22 @@ export default function KeystaticLoginPage() {
           <button
             type="button"
             onClick={() => setShowPassword(true)}
-            className="text-sm text-gray-400 dark:text-zinc-500 hover:text-gray-900 dark:hover:text-zinc-100 transition-colors tracking-tight"
+            className={`text-sm text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-zinc-100 transition-colors tracking-tight ${FOCUS_RING}`}
           >
             use password instead
           </button>
         ))}
 
-      {state === 'error' && <p className="text-xs text-red-400">{error}</p>}
+      {state === 'error' && (
+        <p role="alert" className="text-xs text-red-400">
+          {error}
+        </p>
+      )}
 
-      <p className="text-xs text-gray-300 dark:text-zinc-700">
+      <p className="text-xs text-gray-500 dark:text-zinc-400">
         <Link
           href="/auth/keystatic/enroll"
-          className="hover:text-blue-500 transition-colors"
+          className={`hover:text-blue-500 transition-colors ${FOCUS_RING}`}
         >
           manage devices
         </Link>
