@@ -38,7 +38,6 @@ jobs:
           # Inlined into the client bundle at build time, not read at runtime, so
           # it must exist on Vercel *before* the build or analytics silently no-op
           # with nothing in the logs to explain it.
-          NEXT_PUBLIC_GA_ID: ${{ secrets.NEXT_PUBLIC_GA_ID }}
           WHISPER_TOKEN_SECRET: ${{ secrets.WHISPER_TOKEN_SECRET }}
           WHISPER_TO_EMAIL: ${{ secrets.WHISPER_TO_EMAIL }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
@@ -82,7 +81,6 @@ jobs:
           set_env "WHISPER_QUIZ"                         "$WHISPER_QUIZ"
           set_env "KEYSTATIC_ALERT_EMAIL"                "$KEYSTATIC_ALERT_EMAIL"
           set_env "KEYSTATIC_RP_ID"                      "$KEYSTATIC_RP_ID"
-          set_env "NEXT_PUBLIC_GA_ID"                    "$NEXT_PUBLIC_GA_ID"
           set_env "WHISPER_TOKEN_SECRET"                 "$WHISPER_TOKEN_SECRET"
           set_env "WHISPER_TO_EMAIL"                     "$WHISPER_TO_EMAIL"
           set_env "RESEND_API_KEY"                       "$RESEND_API_KEY"

@@ -1,7 +1,6 @@
 import './globals.css';
 import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
-import Script from 'next/script';
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import { siteSchema, person } from '@/lib/json-ld';
@@ -10,7 +9,6 @@ import { EasterEgg } from '@/components/easter-egg';
 import { SITE_URL, SITE_NAME, AUTHOR, TWITTER_HANDLE } from '@/lib/constants';
 
 const inter = Inter({ subsets: ['latin'], display: 'swap' });
-const GA_ID = process.env.NEXT_PUBLIC_GA_ID;
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -66,15 +64,6 @@ export default function RootLayout({
         <EasterEgg />
         <Analytics />
         <SpeedInsights />
-        {process.env.NODE_ENV === 'production' && GA_ID && (
-          <>
-            <Script
-              src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}
-              strategy="afterInteractive"
-            />
-            <Script src="/ga-init.js" strategy="afterInteractive" data-ga-id={GA_ID} />
-          </>
-        )}
       </body>
     </html>
   );

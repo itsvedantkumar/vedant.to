@@ -136,6 +136,25 @@ function detectCDNAssetExtensions(lines, offset) {
   return issues;
 }
 
+function detectFrontmatterCDNAssetExtensions(lines, offset) {
+  const issues = [];
+  const URL_RE = /https:\/\/assets\.vedant\.to\/\S+/gi;
+  for (let i = 0; i < lines.length; i++) {
+    let match;
+    while ((match = URL_RE.exec(lines[i])) !== null) {
+      const url = match[0];
+      if (!/\.webp$/i.test(url)) {
+        issues.push({
+          line: i + 1 + offset,
+          message: `Frontmatter ref has wrong extension (points to ${url.split('/').pop()}). Run \`npm run fix-images\` to rewrite to .webp.`,
+          severity: 'error',
+        });
+      }
+    }
+  }
+  return issues;
+}
+
 const DETECTORS = [
   detectLooseLists,
   detectNestedLists,
@@ -156,9 +175,13 @@ function auditFile(filePath) {
   }
 
   const { frontmatter, body } = splitMdoc(raw);
-  const fmLines = frontmatter.split('\n').length;
+  // frontmatter ends with '\n', so split leaves a trailing empty string —
+  // subtract it or every body line number comes out one too high
+  const fmLines = frontmatter.split('\n').length - 1;
   const segments = splitByFencedCode(body);
   const allIssues = [];
+
+  allIssues.push(...detectFrontmatterCDNAssetExtensions(frontmatter.split('\n'), 0));
 
   for (const seg of segments) {
     if (seg.type === 'code') continue;

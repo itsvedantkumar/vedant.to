@@ -63,6 +63,23 @@ for (const mdocPath of findMdocFiles(path.join(ROOT, 'content'))) {
     return match;
   });
 
+  // Pass 1b: Rewrite frontmatter coverImage CDN refs the same way. The value is
+  // a bare URL, either inline or on the next line after a folded `>-` scalar.
+  src = src.replace(
+    /^(coverImage:[ \t]*(?:>-[ \t]*\n[ \t]+)?)([^\n]+)$/m,
+    (match, prefix, rawRef) => {
+      if (
+        /^https:\/\/assets\.vedant\.to\//i.test(rawRef) &&
+        /\.(png|jpg|jpeg)$/i.test(rawRef)
+      ) {
+        totalCDNRewritten++;
+        changed = true;
+        return prefix + rawRef.replace(/\.(png|jpg|jpeg)$/i, '.webp');
+      }
+      return match;
+    }
+  );
+
   // Pass 2: Handle local file slugification and renaming
   src = src.replace(IMG_RE, (match, rawRef) => {
     // rawRef is the raw string inside the parens, e.g. /images/posts/slug/image%20%281%29.png

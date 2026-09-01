@@ -1,6 +1,6 @@
 # vedant.to
 
-Personal site of Vedant Kumar — essays, a daily log, and a quote collection.
+Personal site of Vedant Kumar. Essays, a daily log, and a quote collection.
 
 [![CI](https://github.com/itsvedantkumar/vedant.to/actions/workflows/ci.yml/badge.svg)](https://github.com/itsvedantkumar/vedant.to/actions/workflows/ci.yml)
 [![Node 22](https://img.shields.io/badge/node-22.x-informational)](.nvmrc)
@@ -29,7 +29,7 @@ Three Keystatic collections, all stored as flat files in the repo:
 | Quotes     | `content/quotes/` | `.yaml` |
 
 Posts and daily entries both carry a `draft` boolean. **`draft: true` hides an entry
-everywhere** — site listings, RSS, JSON Feed, and the sitemap. It is enforced once, at the
+everywhere**: site listings, RSS, JSON Feed, and the sitemap. It is enforced once, at the
 source, in `lib/posts.ts` and `lib/daily.ts`; `lib/feed-utils.ts` and
 `app/sitemap.xml/route.ts` consume the already-filtered `getPublishedPosts()` /
 `getPublishedDailyEntries()` rather than re-implementing the check. One filter, no drift.
@@ -37,7 +37,7 @@ source, in `lib/posts.ts` and `lib/daily.ts`; `lib/feed-utils.ts` and
 This is also why backups must never land in a public bucket: an unpublished draft is
 invisible on the site but sits in plain text in `content/`. See [Backup](#backup).
 
-Quotes have no `draft` field — everything in `content/quotes/` is public.
+Quotes have no `draft` field. Everything in `content/quotes/` is public.
 
 Images referenced from content live on the CDN, not in the repo. Keystatic writes an
 upload to `public/images/`, `scripts/sync-images-to-r2.mjs` converts it to WebP and pushes
@@ -47,16 +47,16 @@ too. `npm run fix-images` rewrites it, and `npm run check` fails if one was miss
 
 ## Structure
 
-- `app/` — App Router. `(site)/` holds the public pages, `api/` the route handlers,
+- `app/` is the App Router. `(site)/` holds the public pages, `api/` the route handlers,
   `keystatic/` the CMS UI, `auth/keystatic/` the login and device-management screens.
-- `lib/` — content readers (`posts.ts`, `daily.ts`, `reader.ts`), feed/SEO helpers,
+- `lib/` holds the content readers (`posts.ts`, `daily.ts`, `reader.ts`), feed/SEO helpers,
   plus `auth/` and `webauthn/` for the `/keystatic` gate.
-- `components/` — the two client components that need to be client components.
-- `content/` — the three Keystatic collections above.
-- `public/` — static assets, including a hand-written `robots.txt`.
-- `scripts/` — content normalisers, the content auditor, the R2 image sync, `restore.sh`.
-- `.github/workflows/` — CI and the scheduled jobs (see [Deployment](#deployment)).
-- `middleware.ts` — the `/keystatic` auth gate, at the edge.
+- `components/` holds the two client components that need to be client components.
+- `content/` holds the three Keystatic collections above.
+- `public/` holds static assets, including a hand-written `robots.txt`.
+- `scripts/` holds content normalisers, the content auditor, the R2 image sync, `restore.sh`.
+- `.github/workflows/` holds CI and the scheduled jobs (see [Deployment](#deployment)).
+- `middleware.ts` is the `/keystatic` auth gate, at the edge.
 
 Deliberately a list and not an ASCII tree: the tree that used to live here had drifted
 wrong in four places.
@@ -75,7 +75,7 @@ The site is at `http://localhost:3000`, the CMS at `http://localhost:3000/keysta
 Keystatic runs in local mode when the GitHub credentials are absent, so it writes straight
 to disk and needs no OAuth for dev.
 
-Env vars are documented in `.env.example`, not here — it explains the semantics of the
+Env vars are documented in `.env.example`, not here. It explains the semantics of the
 trickier ones (`KEYSTATIC_ENROLL_TOKEN`, `KEYSTATIC_SESSION_SECRET`) better than a table
 could, and a second copy would only rot.
 
@@ -104,17 +104,17 @@ other than the literal string `passkey` keeps the old HTTP Basic Auth prompt, so
 the passkey code is deliberately a no-op until you opt in.
 
 If the passkey gate is the only part you want, it lives standalone as a runnable Next.js
-app at **[itsvedantkumar/keystatic-passkeys](https://github.com/itsvedantkumar/keystatic-passkeys)**
-— same code, none of this site around it.
+app at **[itsvedantkumar/keystatic-passkeys](https://github.com/itsvedantkumar/keystatic-passkeys)**,
+same code, none of this site around it.
 
-## Feeds & SEO
+## Feeds and SEO
 
 Three hand-rolled route handlers, all `export const dynamic = 'force-static'`, all sharing
 `lib/feed-utils.ts` so the three outputs can't disagree about what's published:
 
-- `app/rss.xml/` — RSS 2.0
-- `app/feed.json/` — JSON Feed 1.1
-- `app/sitemap.xml/` — sitemap
+- `app/rss.xml/`, RSS 2.0
+- `app/feed.json/`, JSON Feed 1.1
+- `app/sitemap.xml/`, sitemap
 
 They are route handlers rather than Next's `sitemap.ts` / `robots.ts` conventions because
 the shared-source-of-truth wiring is easier to see this way. `robots.txt` is a static file
@@ -125,7 +125,7 @@ minutes instead of days.
 ## Deployment
 
 Production deploys come from Vercel's Git integration on pushes to `main`, **not** from
-GitHub Actions. That keeps releases independent of Actions billing and quota failures — a
+GitHub Actions. That keeps releases independent of Actions billing and quota failures. A
 red CI run never blocks a deploy.
 
 GitHub Actions handles validation and support jobs only:
@@ -134,7 +134,7 @@ GitHub Actions handles validation and support jobs only:
 | -------------------- | --------------------- | ------------------------ | -------------------------------------------------------------------------------------------------------------- |
 | `ci.yml`             | CI                    | push to `main`, PR       | build, normalize-content, audit-content, `format:check`, `typecheck`, `npm test`, R2 image sync, Lighthouse CI |
 | `health.yml`         | Production Health     | 4×/day                   | probes the live site, alerts if prod lags `main`                                                               |
-| `backup.yml`         | Daily Content Backup  | daily 00:00 UTC          | tags, zips, and off-sites `content/` (see below)                                                               |
+| `backup.yml`         | Daily Content Backup  | daily 03:17 UTC          | tags, zips, and off-sites `content/` (see below)                                                               |
 | `secret-scan.yml`    | Secret Scan           | push, PR, weekly         | `gitleaks`, weekly over full history                                                                           |
 | `security-audit.yml` | Security Audit        | manifest changes, weekly | `npm audit`, fails on high/critical                                                                            |
 | `indexnow.yml`       | IndexNow              | push to `main`           | pings IndexNow so new content is crawled fast                                                                  |
@@ -147,7 +147,7 @@ GitHub Actions handles validation and support jobs only:
 
 This is a personal site rather than a template, so the button gets you a running copy of
 **my** site, and the steps below turn it into yours. Nothing here is hidden. The identity
-table is the complete list of what to change.
+table in [Make it yours](#2-make-it-yours) is the complete list of what to change.
 
 ### 1. Get it running
 
@@ -171,7 +171,7 @@ real template.
 | Where                                                                  | What                                                     |
 | ---------------------------------------------------------------------- | -------------------------------------------------------- |
 | `lib/constants.ts`                                                     | site URL, asset URL, name, author, social handle         |
-| `lib/json-ld.ts`                                                       | contact email in the `Person` schema — **on every page** |
+| `lib/json-ld.ts`                                                       | contact email in the `Person` schema, **on every page**  |
 | `next.config.mjs`, `middleware.ts`                                     | the asset host, in `images` config and CSP               |
 | `keystatic.config.ts`                                                  | GitHub `owner`/`name`, asset public path                 |
 | `lib/webauthn/config.ts`                                               | passkey relying-party ID, user name, and allowed origins |
@@ -179,7 +179,7 @@ real template.
 | `lib/auth/notify.ts`                                                   | the `from` address and subject prefix on security alerts |
 | `scripts/sync-images-to-r2.mjs`                                        | R2 bucket and key prefix                                 |
 | `public/robots.txt`, `public/.well-known/security.txt`                 | sitemap URL, contact, expiry                             |
-| `.github/workflows/indexnow.yml` + `public/<key>.txt`                  | IndexNow key — regenerate, don't reuse mine              |
+| `.github/workflows/indexnow.yml` + `public/<key>.txt`                  | IndexNow key. Regenerate, don't reuse mine               |
 | `.github/workflows/health.yml`                                         | the probed base URL and the homepage string it greps     |
 | `.env.production`                                                      | the GA measurement ID                                    |
 | `package.json`, `LICENSE`, `SECURITY.md`                               | project name, author, copyright, reporting address       |
@@ -188,7 +188,7 @@ real template.
 **Rip out what isn't yours.** `/whisper` is an anonymous-message endpoint gated by a
 personal-trivia quiz; the questions live in the `WHISPER_QUIZ` env var (deliberately not in
 the repo), so it fails closed with a 503 until you set your own. `components/` holds two
-easter eggs — `post-console-art.tsx` prints ASCII art to the devtools console for four
+easter eggs. `post-console-art.tsx` prints ASCII art to the devtools console for four
 specific slugs and calls `console.clear()`. `CLAUDE.md` and `.claude/` are my agent
 configuration and mean nothing in your fork.
 
@@ -239,13 +239,12 @@ what it does.
 | Service                 | Needed for                        | Without it                                          |
 | ----------------------- | --------------------------------- | --------------------------------------------------- |
 | GitHub OAuth app        | `/keystatic` in production        | The build fails; CI uses placeholders               |
-| Vercel                  | Hosting                           | —                                                   |
+| Vercel                  | Hosting                           | No hosting                                          |
 | Upstash Redis           | Rate limiting, passkey storage    | Limits are skipped; `/keystatic` still fails closed |
 | Cloudflare R2 (public)  | Image hosting                     | Uploads return 503                                  |
 | Cloudflare R2 (private) | Daily backups, whisper messages   | `backup.yml` and `/api/whisper` fail                |
 | Resend                  | Security alerts and whisper email | Alerts are dropped                                  |
 | proxycheck.io           | VPN detection on `/whisper`       | The check is skipped                                |
-| Google Analytics        | Traffic stats                     | No analytics script is emitted                      |
 
 Three env vars get a production build to pass: `KEYSTATIC_GITHUB_CLIENT_ID`,
 `KEYSTATIC_GITHUB_CLIENT_SECRET`, and `KEYSTATIC_SECRET`. Add `KEYSTATIC_AUTH_PASSWORD`
@@ -261,14 +260,14 @@ call for a visible shared source of truth, but the conventions are less code.
 
 ## Backup
 
-A scheduled GitHub Actions workflow runs daily at midnight UTC:
+A scheduled GitHub Actions workflow runs daily at 03:17 UTC:
 
 - Creates a `backup/YYYY-MM-DD` git tag pointing to the current commit
 - Zips `content/` (and `public/images/` when it exists) and uploads it as a workflow
   artifact, retained 90 days. `public/images/` is normally **absent**: Keystatic writes
   uploads there, `sync-images-to-r2.mjs` pushes them to R2 on the next push to `main`, and
   the local copies are then redundant. The image corpus of record is R2, covered by the
-  bucket mirror below — not by the zip.
+  bucket mirror below, not by the zip.
 - Copies the same zip off-GitHub to `s3://$R2_BACKUP_BUCKET_NAME/backups/content-YYYY-MM-DD.zip`
 - Mirrors the live asset bucket to `s3://$R2_BACKUP_BUCKET_NAME/r2-assets/`, capturing objects
   that exist only in R2 (API uploads, whisper messages) and have no copy in the repo
@@ -276,7 +275,7 @@ A scheduled GitHub Actions workflow runs daily at midnight UTC:
 Trigger a manual backup anytime from the Actions tab → "Daily Content Backup" → Run workflow.
 
 Backups go to a **private** bucket (`R2_BACKUP_BUCKET_NAME`), never to `R2_BUCKET_NAME`. The
-latter is the live asset bucket, fronted by the public domain `assets.vedant.to` — anything
+latter is the live asset bucket, fronted by the public domain `assets.vedant.to`. Anything
 written there is world-readable, and backups can contain unpublished drafts. Keep these
 separate.
 

@@ -27,11 +27,12 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# local env files — ignore all .env variants; commit only .env.example / .env.production
+# local env files: ignore every .env variant, commit only .env.example
 .env
 .env.local
 .env*.local
 .env.development
+.env.production
 
 # vercel
 .vercel

@@ -106,24 +106,38 @@ export default function EnrollPage() {
 
   async function revoke(id: string) {
     setError('');
-    const res = await fetch(
-      `/api/auth/webauthn/credentials?id=${encodeURIComponent(id)}`,
-      {
-        method: 'DELETE',
+    try {
+      const res = await fetch(
+        `/api/auth/webauthn/credentials?id=${encodeURIComponent(id)}`,
+        {
+          method: 'DELETE',
+        }
+      );
+      if (!res.ok) {
+        setState('error');
+        setError((await res.json()).error ?? 'could not remove');
+        return;
       }
-    );
-    if (!res.ok) {
+      await refresh();
+    } catch (err) {
       setState('error');
-      setError((await res.json()).error ?? 'could not remove');
-      return;
+      setError(err instanceof Error ? err.message : 'could not remove');
     }
-    await refresh();
   }
 
   async function logout() {
-    await fetch('/api/auth/logout', { method: 'POST', headers: JSON_HEADERS });
-    await refresh();
-    setCredentials(null);
+    setError('');
+    try {
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: JSON_HEADERS,
+      });
+      await refresh();
+      setCredentials(null);
+    } catch (err) {
+      setState('error');
+      setError(err instanceof Error ? err.message : 'could not log out');
+    }
   }
 
   return (

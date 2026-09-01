@@ -97,8 +97,13 @@ export function findQuestion(id: string): QuizQuestion | undefined {
 }
 
 /** Same normalization the client used to do: trim, lowercase, collapse whitespace. */
+function normalize(s: string): string {
+  return s.trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+/** Both sides go through normalize() so stored whitespace can't make a question unanswerable. */
 export function isCorrectAnswer(input: string, q: QuizQuestion): boolean {
-  const normalized = input.trim().toLowerCase().replace(/\s+/g, ' ');
+  const normalized = normalize(input);
   if (!normalized) return false;
-  return q.answers.some((a) => a.toLowerCase() === normalized);
+  return q.answers.some((a) => normalize(a) === normalized);
 }

@@ -13,11 +13,11 @@ const DEV_EVAL = isProd ? '' : " 'unsafe-eval'";
 // intersected by the browser and break the CMS.
 const PUBLIC_CSP = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com https://www.googletagmanager.com${DEV_EVAL}`,
+  `script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com${DEV_EVAL}`,
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' blob: data: https://assets.vedant.to https://www.google-analytics.com",
+  "img-src 'self' blob: data: https://assets.vedant.to",
   "font-src 'self' data:",
-  "connect-src 'self' https://va.vercel-scripts.com https://www.google-analytics.com https://analytics.google.com https://www.googletagmanager.com",
+  "connect-src 'self' https://va.vercel-scripts.com",
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",
