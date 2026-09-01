@@ -13,14 +13,14 @@ export async function GET() {
     title: entry.title,
     link: `${SITE_URL}/blog/${slug}`,
     description: entry.excerpt ?? '',
-    pubDate: new Date(entry.publishedAt!).toUTCString(),
+    pubDate: new Date(entry.publishedAt).toUTCString(),
   }));
 
   const dailyItems = daily.map(({ slug, entry }) => ({
-    title: formatDate(entry.date!, 'long'),
+    title: formatDate(entry.date, 'long'),
     link: `${SITE_URL}/daily/${slug}`,
     description: '',
-    pubDate: new Date(entry.date!).toUTCString(),
+    pubDate: new Date(entry.date).toUTCString(),
   }));
 
   const allItems = [...postItems, ...dailyItems].sort(
