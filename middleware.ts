@@ -141,21 +141,83 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
     if (session) return allow(req);
   }
 
-  // 2. Break-glass password over HTTP Basic. Checked BEFORE the rate limiter:
-  // it's a local compare with no network cost, and in basic mode (the default)
-  // there is no session step above it, so metering first would count every
-  // successfully authed request from the chatty Keystatic UI against the
-  // 20/10min bucket and lock the admin out of their own CMS.
-  if (password && checkBasicAuth(req, password)) return allow(req);
-
-  // 3. Rate limit what's left — requests that presented no valid credential.
-  // Skip when IP is 'unknown': bucketing all unknown IPs together would let
-  // one bad request globally lock out every user sharing that fallback key.
+  // 2. Break-glass password over HTTP Basic.
   //
-  // Both limiters sit BELOW the Basic-auth check on purpose. Metering above it
-  // would count the Keystatic UI's own chatty request volume during normal
-  // editing, and a global bucket drained that way locks out every admin at once
-  // instead of one IP.
+  // The compare is METERED BEFORE IT RUNS. An earlier version checked the
+  // password first and rate limited afterwards, reasoning that a local compare
+  // costs nothing and that metering above it would count the chatty Keystatic
+  // UI's own traffic. That reasoning was wrong in a way that voided the limit
+  // entirely: a correct guess returned allow() before any limiter executed, and
+  // a wrong guess got a 429 that did nothing to stop the next request being
+  // compared. Every request was a free guess and the budget only throttled the
+  // error message.
+  //
+  // The metering is one ATOMIC limit() call, not a getRemaining() peek followed
+  // by a spend. limit() is a Lua script Redis evaluates in a single round trip,
+  // so the check and the decrement cannot interleave. Peek-then-spend was the
+  // second version of this code and it was broken the same way as the first:
+  // every request in a concurrent burst reads the same remaining count before
+  // any decrement lands, so all of them proceed to the compare. That prices the
+  // budget at the attacker's connection count rather than at 50 per 15 minutes,
+  // and no amount of narrowing the window helps, because the attacker widens it
+  // by adding concurrency instead of waiting. lib/auth/guard.ts:76 already gated
+  // on limit().success; diverging from it here is what reintroduced the race.
+  //
+  // Only requests carrying an Authorization header enter this path, so ordinary
+  // unauthenticated traffic never touches the budget.
+  //
+  // The cost, since metering precedes the compare: a SUCCESSFUL break-glass
+  // login also spends a token. In passkey mode, which production runs, Basic is
+  // genuinely break-glass and the Keystatic UI rides the session cookie, so
+  // that is one token per emergency login out of 50. In basic mode the browser
+  // re-sends Authorization on every request, so ordinary editing meters itself;
+  // that mode is the documented rollback path, and a deployment that lives on
+  // it should raise these buckets deliberately rather than have the live path
+  // stay unmetered to keep the fallback comfortable.
+  if (password && req.headers.get('authorization')?.startsWith('Basic ')) {
+    const ip = getIP(req);
+
+    // Fails CLOSED in production, matching limitSecretAttempt in
+    // lib/auth/guard.ts, which guards this same credential on
+    // /api/auth/password. Those two paths had opposite outage behaviour until
+    // now, and fail-open is the weaker of the two during exactly the outage an
+    // attacker would wait for.
+    //
+    // The cost, stated rather than discovered later: while Upstash is down the
+    // break-glass password stops working. A passkey session still gets in at
+    // step 1, which is HMAC-only and touches no network, so this is survivable
+    // as long as a passkey is enrolled. Enroll a second one before relying on it.
+    if (IS_PROD && !keystaticGlobalLimit) {
+      return deny(503, 'Auth rate limiter unavailable');
+    }
+
+    try {
+      // Per-IP budget is skipped for 'unknown': bucketing every unknown IP
+      // together would let one bad request lock out everyone sharing that
+      // fallback key. The global budget below has no such skip, so those
+      // requests are still metered.
+      if (keystaticlimit && ip !== 'unknown') {
+        const { success } = await keystaticlimit.limit(ip);
+        if (!success) return deny(429, 'Too Many Requests');
+      }
+      if (keystaticGlobalLimit) {
+        const { success } = await keystaticGlobalLimit.limit('all');
+        if (!success) return deny(429, 'Too Many Requests');
+      }
+    } catch {
+      return deny(503, 'Auth rate limiter unavailable');
+    }
+
+    if (checkBasicAuth(req, password)) return allow(req);
+  }
+
+  // 3. Rate limit the rest: requests that presented no credential at all.
+  //
+  // Deliberately per-IP only. The global 'keystatic:pw-global' bucket is shared
+  // with lib/auth/guard.ts so that one credential gets one budget, which means
+  // draining it here would let an unauthenticated flood of ordinary /keystatic
+  // requests lock out legitimate logins on /api/auth/password for the whole
+  // window. Only a failed password guess above may spend it.
   if (keystaticlimit) {
     const ip = getIP(req);
     if (ip !== 'unknown') {
@@ -163,44 +225,25 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
         const { success } = await keystaticlimit.limit(ip);
         if (!success) return deny(429, 'Too Many Requests');
       } catch {
-        // Per-IP metering is best effort. The global backstop below is the one
-        // that has to hold, so an outage here does not decide the request.
+        // Best effort. An outage here must not decide the request.
       }
-    }
-  }
-
-  // Global backstop. Per-IP metering alone is unmetered against a distributed
-  // attempt from rotating addresses, and this password is full CMS access.
-  //
-  // Fails CLOSED in production, matching limitSecretAttempt in lib/auth/guard.ts,
-  // which guards the same credential on /api/auth/password. Those two paths had
-  // opposite outage behaviour until now, and fail-open is the weaker of the two
-  // during exactly the outage an attacker would wait for.
-  //
-  // The cost, stated rather than discovered later: while Upstash is down the
-  // break-glass password stops working. A passkey session still gets in at step
-  // 1, which is HMAC-only and touches no network, so this is survivable as long
-  // as a passkey is enrolled. Enroll a second one before relying on it.
-  if (IS_PROD) {
-    if (!keystaticGlobalLimit) return deny(503, 'Auth rate limiter unavailable');
-    try {
-      const { success } = await keystaticGlobalLimit.limit('all');
-      if (!success) return deny(429, 'Too Many Requests');
-    } catch {
-      return deny(503, 'Auth rate limiter unavailable');
     }
   }
 
   // 4. Deny.
   if (AUTH_MODE === 'basic') {
     // Legacy behaviour: prompt the browser for credentials.
-    return deny(401, 'Unauthorized', { 'WWW-Authenticate': 'Basic realm="keystatic"' });
+    return deny(401, 'Unauthorized', {
+      'WWW-Authenticate': 'Basic realm="keystatic"',
+    });
   }
 
   // `?basic=1` opts back into the native browser prompt — an emergency path
   // that works with JavaScript disabled.
   if (req.nextUrl.searchParams.get('basic') === '1' && password) {
-    return deny(401, 'Unauthorized', { 'WWW-Authenticate': 'Basic realm="keystatic"' });
+    return deny(401, 'Unauthorized', {
+      'WWW-Authenticate': 'Basic realm="keystatic"',
+    });
   }
 
   if (isNavigation(req) && !pathname.startsWith('/api/')) {
