@@ -121,16 +121,21 @@ async function verifyTokenSignature(token: string): Promise<TokenCheck> {
  * to be stored. Kept after the quiz check and the rate limiter so a typo or a
  * 429 never costs the user their token.
  */
+function burnKey(token: string): string | null {
+  const sig = token.split('.')[2];
+  return sig ? `whisper:token:${sig}` : null;
+}
+
 async function burnToken(token: string): Promise<boolean> {
   if (!TOKEN_SECRET) return process.env.NODE_ENV !== 'production'; // dev: nothing to burn
-  const sig = token.split('.')[2];
-  if (!sig) return false;
+  const key = burnKey(token);
+  if (!key) return false;
   // Burn token in Redis so it can't be replayed.
   // Fail-closed in prod — without Redis a valid token is replayable ~600×
   // within its 30-min TTL, exhausting Resend quota and filling R2.
   if (redis) {
     try {
-      const burned = await redis.set(`whisper:token:${sig}`, 1, {
+      const burned = await redis.set(key, 1, {
         nx: true,
         ex: TOKEN_TTL_MS / 1000 + 60,
       });
@@ -263,6 +268,29 @@ async function questionForClient(ip: string): Promise<QuizQuestion | undefined> 
   return questionAt(acc);
 }
 
+// Every field the POST body may carry is read with `?? ''` / a truthy check
+// that assumes the declared type below. `??` only catches null/undefined — a
+// wrong-typed value (e.g. `quizAnswer: {}`) sails through and throws deep in
+// the handler (`{}.slice is not a function`), past the quiz limiters and
+// burnToken, so the token that minted the request is never metered. Reject
+// any wrong-typed field here, before any of them is used, rather than
+// discovering each one individually as a fresh 500.
+function isValidWhisperBody(v: Record<string, unknown>): v is {
+  message?: string;
+  _trap?: string;
+  token?: string;
+  quizAnswer?: string;
+  quizOnly?: boolean;
+} {
+  return (
+    (v.message === undefined || typeof v.message === 'string') &&
+    (v._trap === undefined || typeof v._trap === 'string') &&
+    (v.token === undefined || typeof v.token === 'string') &&
+    (v.quizAnswer === undefined || typeof v.quizAnswer === 'string') &&
+    (v.quizOnly === undefined || typeof v.quizOnly === 'boolean')
+  );
+}
+
 // SHA-256 hash of message for dedup
 async function msgHash(msg: string): Promise<string> {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(msg));
@@ -352,6 +380,9 @@ export async function POST(req: NextRequest) {
     // `null` and bare scalars are valid JSON; without this every field read
     // below would throw on them.
     if (!parsed || typeof parsed !== 'object') {
+      return NextResponse.json({ error: 'bad request' }, { status: 400 });
+    }
+    if (!isValidWhisperBody(parsed as Record<string, unknown>)) {
       return NextResponse.json({ error: 'bad request' }, { status: 400 });
     }
     body = parsed;
@@ -499,10 +530,13 @@ export async function POST(req: NextRequest) {
   // outage here spent the user's single-use token, dropped the message, and
   // still 500'd. This way the worst case of a dedup failure is a duplicate.
   // Silent drop for an exact duplicate message from the same IP within 24h.
+  // Computed unconditionally (cheap, no I/O) so the R2-failure handler below
+  // can roll this key back even though it's only set inside the `if (redis)`
+  // block.
+  const dedupHash = await msgHash(message);
+  const dedupKey = `whisper:dedup:${trustedIp}:${dedupHash}`;
   if (redis) {
     try {
-      const hash = await msgHash(message);
-      const dedupKey = `whisper:dedup:${trustedIp}:${hash}`;
       const seen = await redis.set(dedupKey, 1, { nx: true, ex: 86400 });
       if (seen === null) {
         return NextResponse.json({ ok: true }); // silent — don't confirm dedup to sender
@@ -540,6 +574,27 @@ export async function POST(req: NextRequest) {
     );
   } catch (err) {
     console.error('[whisper] R2 write failed:', err);
+    // Roll back so a genuine retry of this message isn't silently
+    // short-circuited by dedup (506-508's old bug: false `{ok:true}` on
+    // retry, message never stored), and so the token — still within its TTL —
+    // is usable again instead of burned for nothing. This reopens the dedup
+    // window for the span of one R2 PutObject call: a genuine double-submit
+    // racing exactly inside that window is possible, but it's bounded by the
+    // 3-per-24h submission cap upstream and by burnToken's own single-use
+    // check (rolled back here in lockstep, not left dangling ahead of it).
+    if (redis) {
+      const key = burnKey(token);
+      const [dedupResult, tokenResult] = await Promise.allSettled([
+        redis.del(dedupKey),
+        key ? redis.del(key) : Promise.resolve(),
+      ]);
+      if (dedupResult.status === 'rejected') {
+        console.error('[whisper] dedup rollback failed:', dedupResult.reason);
+      }
+      if (tokenResult.status === 'rejected') {
+        console.error('[whisper] token rollback failed:', tokenResult.reason);
+      }
+    }
     return NextResponse.json({ error: 'storage error' }, { status: 500 });
   }
 
