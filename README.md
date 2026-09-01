@@ -1,6 +1,6 @@
 # vedant.to
 
-Personal site of Vedant Kumar. Essays, a daily log, and a quote collection.
+My personal corner of the _zjhwole shwide intwenet_
 
 [![CI](https://github.com/itsvedantkumar/vedant.to/actions/workflows/ci.yml/badge.svg)](https://github.com/itsvedantkumar/vedant.to/actions/workflows/ci.yml)
 [![Node 22](https://img.shields.io/badge/node-22.x-informational)](.nvmrc)
