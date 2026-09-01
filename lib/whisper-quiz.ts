@@ -75,11 +75,6 @@ const QUIZ = loadQuiz();
 /** Size of the bank — callers derive an index from it. 0 means unconfigured. */
 export const QUIZ_COUNT = QUIZ.length;
 
-/** False when the bank is missing or malformed; the route answers 503. */
-export function isQuizConfigured(): boolean {
-  return QUIZ.length > 0;
-}
-
 /**
  * Pick by index, wrapping. Lets the caller choose the question *deterministically*
  * (per client, per time window) instead of at random, so re-requesting a question

@@ -57,9 +57,12 @@ test('checkOrigin: production accepts the real prod origin', () => {
   });
 });
 
-test('checkOrigin: production accepts a subdomain of the prod origin', () => {
+// Subdomains used to pass. They no longer do: a delegated or dangling
+// *.vedant.to CNAME would otherwise be a valid CSRF origin for the admin API,
+// and nothing serves a subdomain of the site.
+test('checkOrigin: production rejects a subdomain of the prod origin', () => {
   withEnv({ NODE_ENV: 'production', VERCEL_ENV: undefined }, () => {
-    assert.equal(checkOrigin(reqWithHeaders({ origin: 'https://www.vedant.to' })), true);
+    assert.equal(checkOrigin(reqWithHeaders({ origin: 'https://www.vedant.to' })), false);
   });
 });
 

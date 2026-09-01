@@ -1,6 +1,6 @@
 name: Production Health
 
-# Probe of the live site + latest Vercel production deployment (6x daily).
+# Probe of the live site + latest Vercel production deployment (4x daily).
 # On failure it opens (or comments on) a single GitHub issue so problems
 # surface without inbox spam. Manual run available via the Actions tab.
 on:
@@ -130,7 +130,7 @@ jobs:
 
       - name: Open or update alert issue
         if: failure()
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
         env:
           ROUTES_DETAILS: ${{ steps.routes.outputs.details }}
           VERCEL_DETAILS: ${{ steps.vercel.outputs.details }}
@@ -140,7 +140,7 @@ jobs:
             const body = [
               '### 🚨 Production health check failed',
               '',
-              'One or more checks failed during the hourly probe.',
+              'One or more checks failed during a health probe (4x daily).',
               '',
               '```',
               process.env.ROUTES_DETAILS || '',
