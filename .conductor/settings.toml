@@ -2,18 +2,54 @@
 
 [scripts]
 # Cloud workspaces start from a bare Linux sandbox with no ~/.claude, so pull vstack in.
+# Pinned to a reviewed commit so a compromised repo/account cannot push code into every
+# sandbox at once — bump the SHA deliberately when updating vstack.
+#
+# `vstack trust` arms this repo's .claude/verify.sh for the Stop-hook gate. Without it the
+# gate installs and does nothing: verify-gate.sh refuses to execute a repo's verify.sh unless
+# a machine-local trust entry matches its hash, and a fresh sandbox has no such entry. The
+# gate was inert in the one lane that exists for cloud work — installed, wired, and silently
+# skipping on every Stop.
+#
+# Arming it here rather than in verify-gate.sh keeps the local protection intact. Cloning an
+# untrusted repo onto your laptop still runs nothing until you type `vstack trust` yourself.
+# This line is different: it lives in a file you committed, in a disposable sandbox, for a
+# repo you deliberately dispatched work to. That is the consent, and it is visible in the diff.
+#
+# --yes: `vstack trust` (5922ccf) added a TTY confirmation prompt, refusing to run unattended
+# without it. This line always runs unattended -- there is no terminal in a sandbox bootstrap --
+# so since 5922ccf it exited 1 ("no terminal to confirm on") on every cloud sandbox and never
+# wrote the trust hash, leaving the Stop-hook gate permanently unarmed. The consent this comment
+# already describes (a human committed this line, in a repo they chose to dispatch) is exactly
+# what --yes is for; the prompt guards the case where nobody reviewed it, which does not apply
+# to a line that shipped in a diff someone read.
+#
 # Add this repo's own install step (npm ci, uv sync, ...) to the end of this line.
-setup = "curl -fsSL https://raw.githubusercontent.com/itsvedantkumar/vstack/main/bootstrap.sh | bash"
+setup = "curl -fsSL https://raw.githubusercontent.com/itsvedantkumar/vstack/eff7214b9d90e180ef0443af49e24a42ec18b603/bootstrap.sh | bash && \"$HOME/.config/agents/bin/vstack\" trust --yes"
 run_mode = "concurrent"
 
 [scripts.run.verify]
 command = "./.claude/verify.sh"
 icon = "shield-check"
 
-# Live preview for the ui-iterate / design-review loop (local workspaces get ten ports
-# starting at $CONDUCTOR_PORT).
+# Live preview for the ui-iterate / design-review loop. Each local workspace gets ten ports
+# starting at $CONDUCTOR_PORT. Adjust the command to the repo's dev runner (vite needs
+# `npm run dev -- --port $CONDUCTOR_PORT`); delete this block for repos with no frontend.
 [scripts.run.dev]
 available_in = [ "local" ]
 command = "PORT=$CONDUCTOR_PORT npm run dev"
 default = true
 icon = "play"
+
+# Runs before a workspace is archived or merged. Uncomment for repos whose workspaces start
+# external resources (docker stacks, tunnels, background daemons) that need killing.
+# [scripts.archive]
+# command = "docker compose down --volumes"
+
+# Per-repo env for every workspace session; [environment_variables.local] and .cloud split by
+# surface. Cloud sandboxes also receive CONDUCTOR_API_TOKEN/CONDUCTOR_API_URL automatically.
+# [environment_variables]
+# EXAMPLE_FLAG = "1"
+
+# Gitignored files a new local workspace needs (.env, certs) belong in a .worktreeinclude at
+# the repo root — Conductor copies matches into every new worktree it creates.
