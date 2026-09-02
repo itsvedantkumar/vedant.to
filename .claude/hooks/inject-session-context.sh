@@ -130,15 +130,19 @@ if [ "$event" = "UserPromptSubmit" ]; then
     if [ "$_n" -ge "${VSTACK_GRILL_CHARS:-320}" ] \
        || { [ -z "$_seen" ] && [ "$_n" -ge 120 ]; }; then
       grill='
-GRILL: run the grill-me skill when no skill matches this situation more specifically. A
-situation-matched skill outranks it. grill-me is for a request whose shape is still undecided.'
+GRILL: run the grill-me skill when no more specific skill matches.'
     fi
   fi
   # Delegation-mandate strike count, re-pinned every prompt instead of stated once at
-  # SessionStart and then never again. skill-mandate.sh (Stop) is the only writer of these two
-  # small counter files; this only reads them -- a cat of two tiny files under $TMPDIR, not a
-  # transcript parse, so it costs nothing like the Stop hook's own evaluation does. It is also
-  # why this can run every single prompt with no latency argument to make: there is no scan here.
+  # SessionStart and then never again. skill-mandate.sh (Stop) is the only writer of the
+  # counter files read here, and it writes ONE FILE PER MANDATE (.unslop/.typescript/
+  # .proveitworks for the skill family, .delegate-breadth/-naming/-swarm/-serial for the
+  # delegation family) -- there is no combined per-family file. This block took the max of two
+  # filenames the Stop hook had stopped writing when its counters split per-mandate, so both
+  # reads were always 0 and the MANDATE line below was dead code in every real session; now it
+  # takes the max across each family's real files. Still just cats of tiny files under
+  # $TMPDIR, not a transcript parse, so it can run every single prompt with no latency
+  # argument to make: there is no scan here.
   #
   # Two independent counters because skill-mandate.sh's own delegation family (breadth +
   # agent-naming) no longer shares the skill mandates' (unslop/typescript/prove-it-works)
@@ -157,17 +161,26 @@ situation-matched skill outranks it. grill-me is for a request whose shape is st
     _msid=$(printf '%s' "$in" | "$JQ" -r '.session_id // empty' 2>/dev/null)
     [ -n "$_msid" ] || _msid="pid$PPID"
     _mcnt_file="${TMPDIR:-/tmp}/vstack-mandate-$_msid"
-    _mcnt=$(cat "$_mcnt_file" 2>/dev/null || echo 0)
-    case "$_mcnt" in ''|*[!0-9]*) _mcnt=0 ;; esac
-    _mdcnt=$(cat "$_mcnt_file.delegate" 2>/dev/null || echo 0)
-    case "$_mdcnt" in ''|*[!0-9]*) _mdcnt=0 ;; esac
+    _mcnt=0
+    for _sfx in unslop typescript proveitworks; do
+      _v=$(cat "$_mcnt_file.$_sfx" 2>/dev/null || echo 0)
+      case "$_v" in ''|*[!0-9]*) _v=0 ;; esac
+      [ "$_v" -gt "$_mcnt" ] && _mcnt=$_v
+    done
+    _mdcnt=0
+    for _sfx in delegate-breadth delegate-naming delegate-swarm delegate-serial; do
+      _v=$(cat "$_mcnt_file.$_sfx" 2>/dev/null || echo 0)
+      case "$_v" in ''|*[!0-9]*) _v=0 ;; esac
+      [ "$_v" -gt "$_mdcnt" ] && _mdcnt=$_v
+    done
     if [ "$_mcnt" -ge 1 ] || [ "$_mdcnt" -ge 1 ]; then
       mandate="
 MANDATE skill=$_mcnt/2 delegate=$_mdcnt/2: dispatch + name a call sign now."
     fi
   fi
-  emit "$event" 'TOKENS: grep/ranges, not whole files; batch independent tool calls in ONE message.
-DELEGATE: mechanical -> worker/explorer, judgment -> sonnet agents. ACT, do not ask. Skills fire on the situation — call the Skill tool.'"$grill$mandate"
+  emit "$event" 'TOKENS: grep/ranges, not whole files; summarize, never dump.
+DELEGATE: mechanical -> worker/explorer, judgment -> sonnet agents. ACT, do not ask. Skills fire on the situation -- call the Skill tool.
+FANOUT: work that splits -> Skill swarm first, ALL Agent calls in ONE message.'"$grill$mandate"
   exit 0
 fi
 
@@ -204,8 +217,8 @@ Descriptions alone do not reliably trigger the first two lines below, so they ar
   show-me-your-work BEFORE doing the work, not after.
 - feature/change request, shape undecided -> brainstorming.
 - shape agreed, nothing written down -> writing-plans.
-- plan written, no test yet -> test-driven-development.
-- failing test exists against plan -> executing-plans.
+- about to write implementation code or a bugfix, no failing test covers it -> test-driven-development.
+- a written plan or task list already exists, the ask is to carry it out -> executing-plans.
 - you were corrected, or found a workflow worth keeping -> reflect.
 - PRINCIPLES (load the one that matches, then apply it): before claiming done ->
   principle-prove-it-works. Debugging or adding a try/except guard ->
@@ -230,6 +243,19 @@ if [ "${VSTACK_PROFILE:-}" = "skills" ]; then
   MSG=$(printf '%s\n' "$MSG" | sed -n '/^SKILLS/,$p')
   emit "$event" "$MSG"
   exit 0
+fi
+
+# --- who the human is ------------------------------------------------------------------------
+# The roster above hands the lead the call sign RICK, and a reply that opens "Rick:" reads to the
+# person at the keyboard as their own name. Derive theirs from git config rather than shipping
+# anyone's as a literal; the charset strip is the same rule the workspace block applies to
+# repo-controlled strings. `git config vstack.operator` overrides for anyone whose commit
+# identity is a handle rather than the name they answer to.
+operator=$(git config --get vstack.operator 2>/dev/null || git config --get user.name 2>/dev/null)
+operator=$(printf '%s' "$operator" | tr -cd 'A-Za-z0-9 ._-' | head -c 60)
+if [ -n "$operator" ]; then
+  MSG="$MSG
+OPERATOR: the human is $operator. RICK is the lead's call sign, never the operator's name."
 fi
 
 # --- workspace conventions: only outside Conductor (the app prepends its own, richer block) ---

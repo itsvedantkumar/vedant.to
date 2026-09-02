@@ -23,7 +23,7 @@ jobs:
       R2_BACKUP_BUCKET_NAME: ${{ secrets.R2_BACKUP_BUCKET_NAME }}
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1 # zizmor: ignore[artipacked] -- this job pushes a tag and needs the token
         with:
           fetch-depth: 0
 
@@ -85,7 +85,7 @@ jobs:
           fi
 
       - name: Upload content snapshot
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: content-${{ github.run_id }}-${{ github.run_attempt }}
           path: content-backup.zip

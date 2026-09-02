@@ -25,6 +25,9 @@ export default function KeystaticLoginPage() {
   const [supported, setSupported] = useState(true);
 
   useEffect(() => {
+    // Default state assumes support so SSR/first-paint markup matches; this
+    // effect corrects it post-hydration without triggering a mismatch.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate post-hydration correction, see comment above
     setSupported(browserSupportsWebAuthn());
     fetch('/api/auth/status')
       .then((r) => r.json())
@@ -34,6 +37,7 @@ export default function KeystaticLoginPage() {
 
   function done() {
     // Full navigation, not a client route push — the proxy has to see the cookie.
+    // nosemgrep: javascript.browser.security.open-redirect.js-open-redirect -- safeNext only returns same-origin /keystatic paths (lib/auth/next-param.ts)
     window.location.href = safeNext(
       new URLSearchParams(window.location.search).get('next')
     );
