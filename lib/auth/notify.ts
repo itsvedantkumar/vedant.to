@@ -6,11 +6,14 @@
 
 import { Resend } from 'resend';
 import { getTrustedIP } from '@/lib/request';
+import { mailEnv } from '@/lib/env';
 
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+const apiKey = mailEnv().RESEND_API_KEY;
+const resend = apiKey ? new Resend(apiKey) : null;
 
 export async function notifySecurityEvent(subject: string, text: string): Promise<void> {
-  const toEmail = process.env.KEYSTATIC_ALERT_EMAIL ?? process.env.WHISPER_TO_EMAIL;
+  const mail = mailEnv();
+  const toEmail = mail.KEYSTATIC_ALERT_EMAIL ?? mail.WHISPER_TO_EMAIL;
   if (!resend || !toEmail) return;
   await resend.emails
     .send({

@@ -4,6 +4,7 @@ import { makeRatelimit } from './lib/ratelimit';
 import { getIP } from './lib/request';
 import { redis } from './lib/redis';
 import { timingSafeEqual } from './lib/timing';
+import { authEnv, isProduction, keystaticAuthMode } from './lib/env';
 
 // 20 failed auth attempts per 10 min per IP. Metered only after the session and
 // Basic-auth checks have both declined (see below), so a request that carries a
@@ -22,14 +23,14 @@ const keystaticGlobalLimit = makeRatelimit('keystatic:pw-global', 50, '15 m');
 // Auth behaviour — so deploying this code changes nothing until
 // KEYSTATIC_AUTH_MODE=passkey is set deliberately, once passkeys are enrolled
 // and KEYSTATIC_SESSION_SECRET exists. Opt in, never by accident.
-const AUTH_MODE = process.env.KEYSTATIC_AUTH_MODE === 'passkey' ? 'passkey' : 'basic';
+const AUTH_MODE = keystaticAuthMode();
 
 const LOGIN_PATH = '/auth/keystatic';
 
 // Next's dev-only react-refresh runtime evaluates code with eval(), so without
 // this nothing hydrates under `npm run dev` — every client component is inert.
 // Never emitted in production builds.
-const IS_PROD = process.env.NODE_ENV === 'production';
+const IS_PROD = isProduction();
 
 const DEV_EVAL = IS_PROD ? '' : " 'unsafe-eval'";
 
@@ -120,8 +121,8 @@ function isNavigation(req: NextRequest): boolean {
 export async function proxy(req: NextRequest): Promise<NextResponse> {
   const { pathname, search } = req.nextUrl;
 
-  const password = process.env.KEYSTATIC_AUTH_PASSWORD;
-  const sessionSecret = process.env.KEYSTATIC_SESSION_SECRET;
+  const { KEYSTATIC_AUTH_PASSWORD: password, KEYSTATIC_SESSION_SECRET: sessionSecret } =
+    authEnv();
 
   // Fail closed. Previously a missing password meant /keystatic was wide open;
   // now a gate that cannot be enforced denies instead.

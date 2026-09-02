@@ -6,6 +6,16 @@ import { getIP } from '@/lib/request';
 import { timingSafeEqual } from '@/lib/timing';
 import { r2 } from '@/lib/r2';
 import { redis } from '@/lib/redis';
+import { r2Env, uploadEnv } from '@/lib/env';
+import {
+  UPLOAD_ALLOWED_TYPES,
+  UPLOAD_MAX_BYTES,
+  contentLengthSchema,
+  parseInput,
+  uploadFileTypeSchema,
+  uploadSecretHeaderSchema,
+  uploadedFileSchema,
+} from '@/lib/validation';
 
 // 10 requests per IP per hour sliding window (defense-in-depth; upload is auth-gated)
 const uploadRatelimit = redis
@@ -16,23 +26,36 @@ const uploadRatelimit = redis
     })
   : null;
 
+const UNAUTHORIZED = {
+  status: 401,
+  error: 'Unauthorized',
+  includeIssues: false,
+} as const;
+
 export async function POST(req: NextRequest) {
-  const secret = req.headers.get('x-upload-secret') ?? '';
-  const expected = process.env.UPLOAD_SECRET ?? '';
-  const unauthorized = !secret || !expected || !timingSafeEqual(secret, expected);
-  if (unauthorized) {
+  // Shape first, comparison second: an absent or empty header is rejected as
+  // unauthorized rather than compared, so timingSafeEqual is never handed ''.
+  const offered = parseInput(
+    req.headers.get('x-upload-secret'),
+    uploadSecretHeaderSchema,
+    UNAUTHORIZED
+  );
+  if (!offered.ok) return offered.response;
+  const expected = uploadEnv().UPLOAD_SECRET;
+  if (!expected || !timingSafeEqual(offered.data, expected)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   // Content-Length pre-check — reject before parsing body. A malformed header
-  // parsed to NaN, and `NaN > MAX_BYTES` is false, so it slipped through;
-  // require a real number. (The post-parse byteLength check below is the
+  // parsed to NaN, and `NaN > MAX_BYTES` is false, so it slipped through; the
+  // schema rejects NaN outright. (The post-parse byteLength check below is the
   // authority either way — this header is client-supplied.)
-  const MAX_BYTES = 10 * 1024 * 1024; // 10 MB
-  const declaredLength = Number(req.headers.get('content-length') ?? '0');
-  if (!Number.isFinite(declaredLength) || declaredLength > MAX_BYTES) {
-    return NextResponse.json({ error: 'File too large' }, { status: 413 });
-  }
+  const declared = parseInput(
+    req.headers.get('content-length') ?? '0',
+    contentLengthSchema,
+    { status: 413, error: 'File too large', includeIssues: false }
+  );
+  if (!declared.ok) return declared.response;
 
   // Rate limit (defense-in-depth; upload is already auth-gated)
   // Skip when IP is 'unknown': a single shared bucket would lock out all users.
@@ -60,26 +83,25 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Malformed request body' }, { status: 400 });
   }
 
-  const file = form.get('file');
-  if (!(file instanceof File)) {
-    return NextResponse.json({ error: 'No file provided' }, { status: 400 });
-  }
+  const parsedFile = parseInput(form.get('file'), uploadedFileSchema, {
+    status: 400,
+    error: 'No file provided',
+    includeIssues: false,
+  });
+  if (!parsedFile.ok) return parsedFile.response;
+  const file = parsedFile.data;
 
-  const ALLOWED_TYPES: Record<string, string> = {
-    'image/jpeg': '.jpg',
-    'image/png': '.png',
-    'image/webp': '.webp',
-    'image/gif': '.gif',
-    // AVIF excluded until magic-byte validation is implemented
-  };
-
-  const contentType = ALLOWED_TYPES[file.type] ? file.type : null;
-  if (!contentType) {
-    return NextResponse.json({ error: 'Unsupported file type' }, { status: 415 });
-  }
+  // Declared type only — the magic-byte check below is what actually decides.
+  const parsedType = parseInput(file.type, uploadFileTypeSchema, {
+    status: 415,
+    error: 'Unsupported file type',
+    includeIssues: false,
+  });
+  if (!parsedType.ok) return parsedType.response;
+  const contentType = parsedType.data;
 
   const bytes = await file.arrayBuffer();
-  if (bytes.byteLength > MAX_BYTES) {
+  if (bytes.byteLength > UPLOAD_MAX_BYTES) {
     return NextResponse.json({ error: 'File too large' }, { status: 413 });
   }
 
@@ -115,18 +137,19 @@ export async function POST(req: NextRequest) {
   }
 
   // Random UUID key — no user-controlled component to prevent double-extension attacks
-  const ext = ALLOWED_TYPES[contentType];
+  const ext = UPLOAD_ALLOWED_TYPES[contentType];
   const key = `${crypto.randomUUID()}${ext}`;
 
   // Fail closed: a half-configured R2 env exports `r2` as null.
-  if (!r2 || !process.env.R2_BUCKET_NAME) {
+  const bucket = r2Env().bucketName;
+  if (!r2 || !bucket) {
     return NextResponse.json({ error: 'storage unavailable' }, { status: 503 });
   }
 
   try {
     await r2.send(
       new PutObjectCommand({
-        Bucket: process.env.R2_BUCKET_NAME,
+        Bucket: bucket,
         Key: key,
         Body: Buffer.from(bytes),
         ContentType: contentType,

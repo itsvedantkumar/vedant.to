@@ -6,6 +6,8 @@ import { r2 } from '@/lib/r2';
 import { redis } from '@/lib/redis';
 import { makeRatelimit } from '@/lib/ratelimit';
 import { timingSafeEqual } from '@/lib/timing';
+import { r2Env, isProduction, whisperEnv } from '@/lib/env';
+import { parseInput, whisperBodySchema } from '@/lib/validation';
 import {
   findQuestion,
   isCorrectAnswer,
@@ -14,7 +16,9 @@ import {
   QUIZ_COUNT,
   type QuizQuestion,
 } from '@/lib/whisper-quiz';
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+const { RESEND_API_KEY, WHISPER_TOKEN_SECRET, WHISPER_TO_EMAIL } = whisperEnv();
+
+const resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null;
 
 // 3 requests per IP per 24h sliding window
 const ratelimit = makeRatelimit('whisper', 3, '24 h');
@@ -45,7 +49,7 @@ const getRatelimit = makeRatelimit('whisper-get', 20, '10 m');
 // Payload is `<ts>.<quizId>`, signed as one string: the question id is bound
 // into the signature so a client can't shop for an easy question and then
 // answer a different one, and can't tamper with the id at all.
-const TOKEN_SECRET = process.env.WHISPER_TOKEN_SECRET ?? '';
+const TOKEN_SECRET = WHISPER_TOKEN_SECRET ?? '';
 const TOKEN_TTL_MS = 30 * 60 * 1000;
 
 // A whisper is 1000 chars max, so 4 KB of JSON is already generous.
@@ -53,7 +57,7 @@ const MAX_BODY_BYTES = 4096;
 
 // No fallback to R2_BUCKET_NAME: that bucket is served publicly at
 // assets.vedant.to, so a missing var would publish anonymous private messages.
-const WHISPER_BUCKET = process.env.WHISPER_BUCKET_NAME;
+const WHISPER_BUCKET = r2Env().whisperBucketName;
 
 async function hmac(secret: string, data: string): Promise<string> {
   const key = await crypto.subtle.importKey(
@@ -93,7 +97,7 @@ async function verifyTokenSignature(token: string): Promise<TokenCheck> {
     if (!tsStr || !quizId || !sig) return TOKEN_INVALID;
     if (!TOKEN_SECRET) {
       // Fail-closed in prod — missing secret means misconfiguration
-      if (process.env.NODE_ENV === 'production') return TOKEN_INVALID;
+      if (isProduction()) return TOKEN_INVALID;
       return { ok: true, quizId }; // dev: skip signature + age checks
     }
     const expected = await hmac(TOKEN_SECRET, `${tsStr}.${quizId}`);
@@ -127,7 +131,7 @@ function burnKey(token: string): string | null {
 }
 
 async function burnToken(token: string): Promise<boolean> {
-  if (!TOKEN_SECRET) return process.env.NODE_ENV !== 'production'; // dev: nothing to burn
+  if (!TOKEN_SECRET) return !isProduction(); // dev: nothing to burn
   const key = burnKey(token);
   if (!key) return false;
   // Burn token in Redis so it can't be replayed.
@@ -144,9 +148,9 @@ async function burnToken(token: string): Promise<boolean> {
       // Outage mid-burn: single use can't be proven, so refuse in prod rather
       // than let the token be replayed. Uncaught, this would have been a 500.
       console.error('[whisper] token burn failed:', err);
-      return process.env.NODE_ENV !== 'production';
+      return !isProduction();
     }
-  } else if (process.env.NODE_ENV === 'production') {
+  } else if (isProduction()) {
     return false; // no dedup store → refuse rather than allow replay
   }
   return true;
@@ -163,9 +167,8 @@ async function proxyVerdict(ip: string): Promise<ProxyVerdict> {
   const ipRegex = /^(\d{1,3}\.){3}\d{1,3}$|^[0-9a-fA-F:]+$/;
   if (!ipRegex.test(ip)) return 'no';
   try {
-    const key = process.env.PROXYCHECK_API_KEY
-      ? `&key=${process.env.PROXYCHECK_API_KEY}`
-      : '';
+    const apiKey = whisperEnv().PROXYCHECK_API_KEY;
+    const key = apiKey ? `&key=${apiKey}` : '';
     const res = await fetch(`https://proxycheck.io/v2/${ip}?vpn=1&asn=1${key}`, {
       cache: 'no-store',
       signal: AbortSignal.timeout(2000),
@@ -268,29 +271,6 @@ async function questionForClient(ip: string): Promise<QuizQuestion | undefined> 
   return questionAt(acc);
 }
 
-// Every field the POST body may carry is read with `?? ''` / a truthy check
-// that assumes the declared type below. `??` only catches null/undefined — a
-// wrong-typed value (e.g. `quizAnswer: {}`) sails through and throws deep in
-// the handler (`{}.slice is not a function`), past the quiz limiters and
-// burnToken, so the token that minted the request is never metered. Reject
-// any wrong-typed field here, before any of them is used, rather than
-// discovering each one individually as a fresh 500.
-function isValidWhisperBody(v: Record<string, unknown>): v is {
-  message?: string;
-  _trap?: string;
-  token?: string;
-  quizAnswer?: string;
-  quizOnly?: boolean;
-} {
-  return (
-    (v.message === undefined || typeof v.message === 'string') &&
-    (v._trap === undefined || typeof v._trap === 'string') &&
-    (v.token === undefined || typeof v.token === 'string') &&
-    (v.quizAnswer === undefined || typeof v.quizAnswer === 'string') &&
-    (v.quizOnly === undefined || typeof v.quizOnly === 'boolean')
-  );
-}
-
 // SHA-256 hash of message for dedup
 async function msgHash(msg: string): Promise<string> {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(msg));
@@ -328,7 +308,7 @@ export async function GET(req: NextRequest) {
   const quiz = { id: q.id, question: q.question };
 
   if (!TOKEN_SECRET) {
-    if (process.env.NODE_ENV === 'production') {
+    if (isProduction()) {
       return NextResponse.json({ error: 'misconfigured' }, { status: 503 });
     }
     // dev: unsigned token, but keep the shape so POST can recover the quiz id
@@ -354,41 +334,39 @@ export async function POST(req: NextRequest) {
 
   // Origin check — require a valid origin; reject missing or cross-origin
   const origin = req.headers.get('origin');
-  const validOrigin =
-    process.env.NODE_ENV === 'production'
-      ? /^https:\/\/vedant\.to$/.test(origin ?? '')
-      : /^(https:\/\/vedant\.to|https?:\/\/localhost(:\d+)?)$/.test(origin ?? '');
+  const validOrigin = isProduction()
+    ? /^https:\/\/vedant\.to$/.test(origin ?? '')
+    : /^(https:\/\/vedant\.to|https?:\/\/localhost(:\d+)?)$/.test(origin ?? '');
   if (!validOrigin) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   }
 
-  let body: {
-    message?: string;
-    _trap?: string;
-    token?: string;
-    quizAnswer?: string;
-    quizOnly?: boolean;
-  };
+  // Read as text first rather than req.json(): Content-Length is
+  // client-supplied, so the only honest size check is on the bytes that
+  // actually arrived, and that has to happen before anything parses them.
+  let json: unknown;
   try {
-    // Read as text first: Content-Length is client-supplied, so the only honest
-    // size check is on the bytes that actually arrived.
     const raw = await req.text();
     if (new TextEncoder().encode(raw).length > MAX_BODY_BYTES) {
       return NextResponse.json({ error: 'too large' }, { status: 413 });
     }
-    const parsed: unknown = JSON.parse(raw);
-    // `null` and bare scalars are valid JSON; without this every field read
-    // below would throw on them.
-    if (!parsed || typeof parsed !== 'object') {
-      return NextResponse.json({ error: 'bad request' }, { status: 400 });
-    }
-    if (!isValidWhisperBody(parsed as Record<string, unknown>)) {
-      return NextResponse.json({ error: 'bad request' }, { status: 400 });
-    }
-    body = parsed;
+    json = JSON.parse(raw);
   } catch {
     return NextResponse.json({ error: 'bad request' }, { status: 400 });
   }
+
+  // Wrong-typed fields are rejected here, before ANY of them is read. `??` only
+  // substitutes null/undefined, so a `quizAnswer: {}` used to reach `.slice()`
+  // and throw — past the quiz limiters and burnToken, leaving the token that
+  // minted the request unmetered. See tests/whisper-route.test.ts. The response
+  // keeps its bare `bad request` shape: this endpoint is public and tells a
+  // caller nothing it did not already know.
+  const parsed = parseInput(json, whisperBodySchema, {
+    error: 'bad request',
+    includeIssues: false,
+  });
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.data;
 
   // Honeypot
   if (body._trap) return NextResponse.json({ ok: true });
@@ -439,11 +417,11 @@ export async function POST(req: NextRequest) {
       } catch (err) {
         // Same fail-closed-in-prod reasoning as the !redis branch below.
         console.error('[whisper] quiz rate limit failed:', err);
-        if (process.env.NODE_ENV === 'production') {
+        if (isProduction()) {
           return NextResponse.json({ error: 'slow down' }, { status: 429 });
         }
       }
-    } else if (!redis && process.env.NODE_ENV === 'production') {
+    } else if (!redis && isProduction()) {
       // Fail-closed in prod, same as burnToken — with no limiter store the quiz
       // is an unmetered brute-force oracle over a tiny answer space.
       return NextResponse.json({ error: 'slow down' }, { status: 429 });
@@ -459,7 +437,7 @@ export async function POST(req: NextRequest) {
         }
       } catch (err) {
         console.error('[whisper] global quiz rate limit failed:', err);
-        if (process.env.NODE_ENV === 'production') {
+        if (isProduction()) {
           return NextResponse.json({ error: 'slow down' }, { status: 429 });
         }
       }
@@ -520,7 +498,7 @@ export async function POST(req: NextRequest) {
     } catch (err) {
       // Fail closed in prod: unmetered, this is the endpoint that sends mail.
       console.error('[whisper] submission rate limit failed:', err);
-      if (process.env.NODE_ENV === 'production') {
+      if (isProduction()) {
         return NextResponse.json({ error: 'slow down' }, { status: 429 });
       }
     }
@@ -598,7 +576,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'storage error' }, { status: 500 });
   }
 
-  const toEmail = process.env.WHISPER_TO_EMAIL;
+  const toEmail = WHISPER_TO_EMAIL;
   if (resend && toEmail) {
     await resend.emails
       .send({

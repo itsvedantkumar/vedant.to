@@ -1,6 +1,7 @@
 import { ImageResponse } from 'next/og';
 import { makeRatelimit } from '@/lib/ratelimit';
 import { getIP } from '@/lib/request';
+import { OG_DEFAULT_TITLE, ogQuerySchema, parseSearchParams } from '@/lib/validation';
 
 // Node.js runtime, not 'edge'. Next 16 deprecated the Edge runtime, and
 // ImageResponse is satori + resvg-wasm, which run the same either way. The
@@ -30,11 +31,11 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url);
 
-    // Dynamically fetch title parameter
-    const hasTitle = searchParams.has('title');
-    const title = hasTitle
-      ? searchParams.get('title')?.slice(0, 100)
-      : 'Vedant.to - Personal Blog & Portfolio';
+    // Total by construction: the schema truncates an over-long title and falls
+    // back to the default rather than 400ing, because a link already shared
+    // must keep rendering a card. The failure arm is unreachable but typed.
+    const query = parseSearchParams(searchParams, ogQuerySchema);
+    const title = query.ok ? query.data.title : OG_DEFAULT_TITLE;
 
     const imageResponse = new ImageResponse(
       <div
