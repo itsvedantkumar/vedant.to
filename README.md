@@ -29,6 +29,11 @@ go looking for `npm run lint`.
 
 ## Content
 
+None of it starts here. I write in Notion, edit it there until it is done, and only then
+publish to the site. That library is also personal data collection on myself, half for
+whatever self-actualization it eventually adds up to and half so there is a backup if this
+site ever gets fucked.
+
 Three Keystatic collections, all stored as flat files in the repo:
 
 | Collection | Path              | Format  |
