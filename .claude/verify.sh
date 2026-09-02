@@ -19,10 +19,11 @@
 #
 #   Repo-specific notes:
 #     - No lint script exists in package.json (no eslint config) -> lint is skipped.
-#     - `npm run build` is intentionally NOT run here: it requires Keystatic GitHub
-#       OAuth secrets (KEYSTATIC_GITHUB_CLIENT_ID / _SECRET / KEYSTATIC_SECRET) that
-#       are not present in this environment, so it fails on missing credentials, not
-#       broken code. That check belongs in a live drive with real secrets, not this gate.
+#     - `npm run build` runs with the same placeholder Keystatic secrets CI uses
+#       (.github/actions/build-next/action.yml). Keystatic only needs those three to be
+#       non-empty at build time; Vercel rebuilds with the real ones. Without them the
+#       build fails on missing credentials rather than on broken code, which is why this
+#       gate used to skip it entirely -- and why a build-breaking change passed the gate.
 
 set -uo pipefail   # deliberately NOT -e: report every failing check, not just the first
 FAILED=0
@@ -58,7 +59,20 @@ else
 fi
 
 echo "skip lint (no lint script / eslint config in this repo)"
-echo "skip build (requires Keystatic GitHub OAuth secrets not present in this env; verify live with real secrets instead)"
+# Placeholders, not secrets: these three only have to be non-empty for Keystatic's
+# build-time config check. They match .github/actions/build-next/action.yml so a green
+# gate here means the same thing a green CI build means.
+if [ ! -d node_modules ]; then
+  echo "skip build (no node_modules; run npm install)"
+elif has_script build; then
+  run build env \
+    KEYSTATIC_GITHUB_CLIENT_ID="${KEYSTATIC_GITHUB_CLIENT_ID:-build-placeholder}" \
+    KEYSTATIC_GITHUB_CLIENT_SECRET="${KEYSTATIC_GITHUB_CLIENT_SECRET:-build-placeholder}" \
+    KEYSTATIC_SECRET="${KEYSTATIC_SECRET:-build-placeholder-secret-minimum-32-chars}" \
+    npm run --silent build
+else
+  echo "skip build (no script)"
+fi
 
 if [ "$FAILED" -ne 0 ]; then
   echo "Blocked by .claude/verify.sh. Fix the FAIL lines above."
