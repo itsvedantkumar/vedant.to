@@ -50,7 +50,7 @@ jobs:
       - name: Test
         run: npm test
 
-      - uses: $/.github/actions/build-next
+      - uses: ./.github/actions/build-next # zizmor: ignore[self-repository] -- semgrep mutable-tag rule rejects the $/ form
 
       - name: Sync images to R2
         if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
