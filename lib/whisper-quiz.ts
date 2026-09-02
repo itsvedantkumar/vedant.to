@@ -20,54 +20,40 @@
  * reading this repo could walk straight through.
  */
 
+import { quizBankSchema, rawQuizBank } from '@/lib/env';
+
 export type QuizQuestion = {
   readonly id: string;
   readonly question: string;
   readonly answers: readonly string[];
 };
 
-function isQuestion(v: unknown): v is QuizQuestion {
-  if (typeof v !== 'object' || v === null) return false;
-  const q = v as Record<string, unknown>;
-  return (
-    typeof q.id === 'string' &&
-    q.id.length > 0 &&
-    typeof q.question === 'string' &&
-    q.question.length > 0 &&
-    Array.isArray(q.answers) &&
-    q.answers.length > 0 &&
-    q.answers.every((a) => typeof a === 'string' && a.trim().length > 0)
-  );
-}
-
+/**
+ * The bank is operator input, so it is parsed by a schema like any other
+ * external value (lib/env.ts: quizBankSchema — non-empty array, non-empty
+ * fields, unique ids). Any failure yields an empty bank, never a partial one:
+ * partial acceptance would silently shrink the bank and skew the index
+ * questionForClient() derives from QUIZ_COUNT.
+ */
 function loadQuiz(): readonly QuizQuestion[] {
-  const raw = process.env.WHISPER_QUIZ;
+  const raw = rawQuizBank();
   if (!raw) return [];
-  let parsed: unknown;
+  let json: unknown;
   try {
-    parsed = JSON.parse(raw);
+    json = JSON.parse(raw);
   } catch {
     console.error('[whisper] WHISPER_QUIZ is not valid JSON — gate disabled');
     return [];
   }
-  if (!Array.isArray(parsed) || parsed.length === 0) {
-    console.error('[whisper] WHISPER_QUIZ must be a non-empty array — gate disabled');
+  const parsed = quizBankSchema.safeParse(json);
+  if (!parsed.success) {
+    console.error(
+      '[whisper] WHISPER_QUIZ is malformed — gate disabled:',
+      parsed.error.issues.map((i) => `${i.path.join('.') || '(root)'}: ${i.message}`)
+    );
     return [];
   }
-  const questions = parsed.filter(isQuestion);
-  if (questions.length !== parsed.length) {
-    // Partial acceptance would silently shrink the bank and skew the derived
-    // index, so treat any malformed entry as a config error.
-    console.error('[whisper] WHISPER_QUIZ has malformed entries — gate disabled');
-    return [];
-  }
-  const ids = new Set(questions.map((q) => q.id));
-  if (ids.size !== questions.length) {
-    // findQuestion() resolves by id; duplicates would make it ambiguous.
-    console.error('[whisper] WHISPER_QUIZ has duplicate ids — gate disabled');
-    return [];
-  }
-  return questions;
+  return parsed.data;
 }
 
 const QUIZ = loadQuiz();
