@@ -26,6 +26,8 @@ const PUBLIC_CSP = [
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // ZAP baseline flagged `x-powered-by: Next.js` on 404 responses. Nothing needs it.
+  poweredByHeader: false,
   pageExtensions: ['ts', 'tsx'],
   // Force-include content files in serverless function bundles.
   // Vercel's NFT can't trace fs.readdir at runtime, so dynamic pages
