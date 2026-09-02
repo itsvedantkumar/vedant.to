@@ -13,6 +13,9 @@
  *    nothing else) — a build failure that says nothing about the code. Reading
  *    per call also keeps the live-read semantics the tests depend on: several
  *    swap env vars around a call and expect the next call to see the change.
+ *    This module never caches; callers that snapshot an accessor's result in a
+ *    module-level const (lib/redis.ts, lib/r2.ts, lib/webauthn/config.ts) keep
+ *    the load-time behaviour they had before this module existed.
  *
  * 2. **Optional stays optional.** Most of these are genuinely absent in a valid
  *    deployment and the code already degrades (no Redis → no rate limiting; no
