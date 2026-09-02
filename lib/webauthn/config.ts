@@ -4,8 +4,9 @@
  */
 
 import { redis } from '@/lib/redis';
+import { authEnv, runtimeEnv } from '@/lib/env';
 
-const PROD_RP_ID = process.env.KEYSTATIC_RP_ID || 'vedant.to';
+const PROD_RP_ID = authEnv().KEYSTATIC_RP_ID || 'vedant.to';
 
 /**
  * Single admin, forever — so every passkey shares one user handle and the OS
@@ -33,12 +34,14 @@ export function getRelyingParty(req: {
 }): RelyingParty {
   const rpName = 'vedant.to';
 
-  if (process.env.VERCEL_ENV === 'production') {
+  const { VERCEL_ENV, VERCEL_URL } = runtimeEnv();
+
+  if (VERCEL_ENV === 'production') {
     return { rpID: PROD_RP_ID, rpName, origins: [`https://${PROD_RP_ID}`] };
   }
 
-  if (process.env.VERCEL_ENV === 'preview') {
-    const host = req.headers.get('x-forwarded-host') ?? process.env.VERCEL_URL ?? '';
+  if (VERCEL_ENV === 'preview') {
+    const host = req.headers.get('x-forwarded-host') ?? VERCEL_URL ?? '';
     // Only trust the forwarded host on preview, and only for vercel.app domains.
     if (host.endsWith('.vercel.app')) {
       return { rpID: host, rpName, origins: [`https://${host}`] };
@@ -54,7 +57,7 @@ export function getRelyingParty(req: {
 }
 
 export function isPasswordConfigured(): boolean {
-  return Boolean(process.env.KEYSTATIC_AUTH_PASSWORD);
+  return Boolean(authEnv().KEYSTATIC_AUTH_PASSWORD);
 }
 
 /** Passkeys need Redis for credential + challenge storage. */

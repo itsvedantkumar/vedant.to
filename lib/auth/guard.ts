@@ -9,6 +9,7 @@ import { timingSafeEqual } from '@/lib/timing';
 import { SESSION_COOKIE, verifySession, type SessionPayload } from '@/lib/auth/session';
 import { getTrustedIP } from '@/lib/request';
 import { redis } from '@/lib/redis';
+import { authEnv, isProduction, runtimeEnv } from '@/lib/env';
 
 type HeaderBag = { headers: { get(name: string): string | null } };
 type CookieBag = {
@@ -26,7 +27,7 @@ export type AdminAuth = AdminGranted | { ok: false; status: number; error: strin
 export { enrollmentBlockedReason } from '@/lib/auth/enrollment';
 
 export function sessionSecret(): string | undefined {
-  return process.env.KEYSTATIC_SESSION_SECRET;
+  return authEnv().KEYSTATIC_SESSION_SECRET;
 }
 
 // One shared bucket for every path that compares a caller-supplied secret
@@ -62,7 +63,7 @@ const globalSecretLimit = redis
  * Local dev (no Upstash configured) is unaffected and keeps working.
  */
 export async function limitSecretAttempt(req: HeaderBag): Promise<boolean> {
-  const inProd = process.env.NODE_ENV === 'production';
+  const inProd = isProduction();
   if (!secretLimit || !globalSecretLimit) return !inProd;
   try {
     // getTrustedIP, not getIP: this keys a security decision, and getIP's
@@ -93,14 +94,14 @@ export function jsonError(status: number, error: string): NextResponse {
  */
 export function checkOrigin(req: HeaderBag): boolean {
   const origin = req.headers.get('origin') ?? '';
-  if (process.env.NODE_ENV === 'production') {
+  if (isProduction()) {
     // Exact origin only — a wildcard subdomain match would let any delegated
     // or dangling *.vedant.to CNAME become a valid CSRF origin.
     if (/^https:\/\/vedant\.to$/.test(origin)) return true;
     // Preview deploys only. Accepting any *.vercel.app in production would
     // admit an attacker-hosted page on that shared domain.
     return (
-      process.env.VERCEL_ENV === 'preview' &&
+      runtimeEnv().VERCEL_ENV === 'preview' &&
       /^https:\/\/[a-z0-9-]+\.vercel\.app$/.test(origin)
     );
   }
@@ -165,7 +166,8 @@ export async function requireAdmin(
     }
   }
 
-  const configured = process.env.KEYSTATIC_AUTH_PASSWORD;
+  const { KEYSTATIC_AUTH_PASSWORD: configured, KEYSTATIC_ENROLL_TOKEN: enrollToken } =
+    authEnv();
   if (configured) {
     const provided = headerPassword ?? bodyPassword;
     if (provided && timingSafeEqual(provided, configured)) {
@@ -173,7 +175,6 @@ export async function requireAdmin(
     }
   }
 
-  const enrollToken = process.env.KEYSTATIC_ENROLL_TOKEN;
   if (enrollToken && headerToken && timingSafeEqual(headerToken, enrollToken)) {
     return { ok: true, via: 'token', session: null };
   }
