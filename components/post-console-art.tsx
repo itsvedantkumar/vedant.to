@@ -71,36 +71,363 @@ const indiaMap = `         .--,\\
 ,--;/
 \\_\\_`;
 
+// Every drawing below is about the entry it is keyed to. The rule for adding
+// one: read the piece, find the object it keeps circling, draw that object. A
+// shape that could sit on any other entry is the wrong shape.
+
+const lips = String.raw`
+      .-""-.        .-""-.
+    .'      '.    .'      '.
+   /          '..'          \
+  |__________________________|
+   \                        /
+    '.                    .'
+      '-.              .-'
+         '-.________.-'`;
+
+const hourglass = String.raw`
+ .--------------.
+ |\            /|
+ | \   ....   / |
+ |  \  ::::  /  |
+ |   \ :::: /   |
+ |    \::::/    |
+ |     \::/     |
+ |     /::\     |
+ |    /::::\    |
+ |   /::::::\   |
+ |  /::::::::\  |
+ | /::::::::::\ |
+ |/____________\|
+ '--------------'`;
+
+const rooster = String.raw`
+        ,\
+        \\\,_
+         \' ,\
+    __,.-" =__)
+  ."        )
+,_/   ,    \/\_
+\_|    )_-\ \_-'
+   '-----' '--'`;
+
+const candle = String.raw`
+         (
+          )
+         (_)
+        .' '.
+       /     \
+       \     /
+        '. .'
+         '|'
+        .---.
+        |   |
+        |   |
+        |   |
+       _|___|_
+      '-------'`;
+
+const tinCans = String.raw`
+  .------.                        .------.
+  |======|                        |======|
+  |      |                        |      |
+  |      |>-.                  .-<|      |
+  |      |   '.              .'   |      |
+  |______|     '-.________.-'     |______|`;
+
+const middleFinger = String.raw`
+      .--.
+      |  |
+      |  |
+      |  |
+   .--|  |--.
+   |  |  |  |
+   |         |
+   |         |
+    \       /
+     '-----'`;
+
+const konami = String.raw`
+  .---. .---. .---. .---. .---. .---.
+  | ^ | | ^ | | v | | v | | < | | > |
+  '---' '---' '---' '---' '---' '---'
+  .---. .---. .---. .---.
+  | < | | > | | B | | A |
+  '---' '---' '---' '---'`;
+
+const indiaGate = String.raw`
+        .-----------.
+        |  o o o o  |
+     .--+-----------+--.
+     |                 |
+     |   .---------.   |
+     |   |         |   |
+     |   |         |   |
+     |   |         |   |
+   .-+---+---------+---+-.
+   '---------------------'`;
+
+const movingBox = String.raw`
+     ________________
+    /               /|
+   /_______________/ |
+   |    |     |    | |
+   |----+-----+----| |
+   |    |     |    | /
+   |____|_____|____|/`;
+
+const twoBubbles = String.raw`
+   .-------------.
+   |    . . .    |
+   '--\/---------'
+
+               .-------------.
+               |    . . .    |
+               '---------\/--'`;
+
+const mask = String.raw`
+     .-----------------.
+    /                   \
+   |   .-.         .-.   |
+   |  ( o )       ( o )  |
+   |   '-'         '-'   |
+   |          ^          |
+   |                     |
+    \    '.._____..'    /
+     '-----------------'
+        |         |`;
+
+const bed = String.raw`
+   .-.
+   | |______________________
+   | |   .---------------.  |
+   | |  (                 ) |
+   | |   '---------------'  |
+   |_|______________________|_
+    | |                    | |`;
+
+const loop = String.raw`
+       .--------------.
+     .'                '.
+    /                    \
+   |                      |
+   ^                      v
+   |                      |
+    \                    /
+     '.                .'
+       '--------------'`;
+
+const burntMatch = String.raw`
+       '
+      .
+     '
+    (#)
+    /
+   /
+  /
+ '`;
+
+const toilet = String.raw`
+      .-------.
+     |         |
+     |  .---.  |
+     |         |
+     '----+----'
+      .---+---.
+     /         \
+    |     _     |
+    |   .' '.   |
+    |  (     )  |
+     \  '._.'  /
+      '-------'`;
+
+const clapper = String.raw`
+   .\_\_\_\_\_\_\_\_\_.
+   |/_/_/_/_/_/_/_/_/_|
+   |                  |
+   |                  |
+   |                  |
+   '------------------'`;
+
+const deadBattery = String.raw`
+   .--------------------.
+   |                    |__
+   |                    |  |
+   |                    |__|
+   '--------------------'`;
+
+const passport = String.raw`
+    .---------------------.
+   |                       |
+   |     .-----------.     |
+   |     |           |     |
+   |     |    ( )    |     |
+   |     |   /   \   |     |
+   |     '-----------'     |
+   |                       |
+   |    P A S S P O R T    |
+   |                       |
+   '-----------------------'`;
+
+const equalizer = String.raw`
+    |     |           |
+    |  |  |  |     |  |
+    |  |  |  |  |  |  |
+    |  |  |  |  |  |  |  |
+   _|__|__|__|__|__|__|__|_`;
+
+const examTick = String.raw`
+   .------------------.
+   | ________         |
+   | ________      /  |
+   | ________     /   |
+   |             /    |
+   |   \        /     |
+   |    \      /      |
+   |     \    /       |
+   |      \  /        |
+   |       \/         |
+   '------------------'`;
+
+const crown = String.raw`
+    .        .        .
+   /_\      /_\      /_\
+   | |      | |      | |
+   |  \    /   \    /  |
+   |   \  /     \  /   |
+   |    \/       \/    |
+   |    o     o    o   |
+   |___________________|
+   '==================='`;
+
+const risingChart = String.raw`
+  1K |                    .
+     |                  .'
+     |                .'
+     |             .-'
+     |         _.-'
+     |    _..-'
+     |_.-'
+     '--------------------`;
+
 const art: Record<string, { lines: string; caption: string }> = {
+  // Posts
   'ambition-is-a-bug': {
     lines: heisenberg,
-    caption: `"i did it for me. i liked it."`,
+    caption: `i did it for me. i liked it.`,
+  },
+  'guilt-of-not-working': {
+    lines: hourglass,
+    caption: `resting spends it too.`,
   },
   'indian-food-chai-and-soft-power': {
     lines: teaArt,
     caption: `culture is a soft weapon.`,
   },
+  'is-it-bad-to-be-cocky': {
+    lines: rooster,
+    caption: `it is only bragging if you are wrong.`,
+  },
+  'loose-lips-sink-ships': {
+    lines: lips,
+    caption: `the ship was never the point.`,
+  },
   'religion-socially-accepted-cult-with-prolonged-brainwashing-and-imposition': {
     lines: crossArt,
     caption: `same story. different costume.`,
+  },
+  'starting-young': {
+    lines: candle,
+    caption: `twice as bright. you know the rest.`,
+  },
+  'the-case-against-for-human-connection': {
+    lines: tinCans,
+    caption: `the string only works if both ends pull.`,
   },
   'we-have-to-export-indian-culture-to-a-non-diaspora-audience': {
     lines: indiaMap,
     caption: `the world isn't ready. send it anyway.`,
   },
+
+  // Daily
+  '1-july-2026': {
+    lines: middleFinger,
+    caption: `some days that is the whole entry.`,
+  },
+  '10-june-2026': {
+    lines: konami,
+    caption: `community. up up down down.`,
+  },
+  '11-july-2026': {
+    lines: indiaGate,
+    caption: `delhi again.`,
+  },
+  '11-june-2026': {
+    lines: movingBox,
+    caption: `bangalore. everything i own fit in here.`,
+  },
+  '17-august-2026': {
+    lines: twoBubbles,
+    caption: `both of you meant well. neither of you landed it.`,
+  },
+  '2-july-2026': {
+    lines: mask,
+    caption: `busy is not the same as working.`,
+  },
+  '29-june-2026': {
+    lines: bed,
+    caption: `the bed won today.`,
+  },
+  '3-july-2026': {
+    lines: loop,
+    caption: `it comes back on schedule.`,
+  },
+  '30-june-2026': {
+    lines: burntMatch,
+    caption: `good company, no light.`,
+  },
+  '4-july-2026': {
+    lines: toilet,
+    caption: `it was supposed to be funny.`,
+  },
+  '5-july-2026': {
+    lines: clapper,
+    caption: `shipped it anyway.`,
+  },
+  '7-august-2026': {
+    lines: deadBattery,
+    caption: `nothing left to perform with.`,
+  },
+  '7-june-2026': {
+    lines: passport,
+    caption: `stamped, and still here.`,
+  },
+  '8-july-2026': {
+    lines: equalizer,
+    caption: `no words that day. just the playlist.`,
+  },
+  '8-june-2026': {
+    lines: examTick,
+    caption: `passed. still felt behind.`,
+  },
+  '9-july-2026': {
+    lines: crown,
+    caption: `i always win, sweetheart.`,
+  },
+  '9-june-2026': {
+    lines: risingChart,
+    caption: `1,000 in thirty days. we will see.`,
+  },
 };
 
 /**
- * Deterministic sigil for any slug without hand-drawn art.
+ * Fallback for a slug with no drawing yet -- a post published after this file
+ * was last touched. It is a placeholder, not a design: the art above is keyed
+ * to what each entry is about, and nothing derived from a slug can do that.
+ * Add a real drawing when you add a post and this never runs.
  *
- * The curated pieces above are jokes about four specific posts, and they do
- * not generalise -- there is no fifth drawing that means something about an
- * arbitrary daily entry. So every other slug gets a generated glyph instead of
- * nothing. It is derived from the slug, so a given post always shows the same
- * one, and no two posts collide in practice.
- *
- * FNV-1a for the seed, mulberry32 for the fill. Both are tiny and neither
- * needs to be good cryptography -- this draws a picture.
+ * FNV-1a for the seed, mulberry32 for the fill. Neither needs to be good
+ * cryptography -- this draws a picture.
  */
 function hash32(input: string): number {
   let h = 0x811c9dc5;
@@ -144,29 +471,13 @@ function sigil(slug: string): string {
   return rows.join('\n');
 }
 
-// Captions for generated sigils. Each one is about having opened the console,
-// never about the post -- a line picked by hash cannot know what the post says,
-// and a caption that guesses would eventually be wrong in an embarrassing way.
-const asides = [
-  'you opened the console. of course you did.',
-  'every entry has one of these. no two are alike.',
-  'drawn from the slug. same post, same glyph, always.',
-  'the rest of this site is static. this is the one improvised thing.',
-  'nothing is hidden down here. that is sort of the joke.',
-  'still reading the source? good.',
-  'no tracking in this console. just shapes.',
-  'this one is yours because you looked.',
-];
-
-function aside(slug: string): string {
-  return asides[hash32(slug + '\u0000caption') % asides.length];
-}
-
 export function PostConsoleArt({ slug }: { slug: string }) {
   useEffect(() => {
     const entry = art[slug];
-    const lines = entry ? entry.lines : sigil(slug);
-    const caption = entry ? entry.caption : aside(slug);
+    // The String.raw drawings open on a newline so the first row lines up with
+    // the rest in the source. Drop it so every piece starts flush in the log.
+    const lines = (entry ? entry.lines : sigil(slug)).replace(/^\n/, '');
+    const caption = entry ? entry.caption : 'no drawing for this one yet.';
 
     // No console.clear() here. It used to run, back when this fired on four
     // posts. Now it fires on every post and every daily entry, and clearing a
