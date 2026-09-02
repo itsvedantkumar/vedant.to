@@ -1,7 +1,4 @@
-import {
-  verifyAuthenticationResponse,
-  type AuthenticationResponseJSON,
-} from '@simplewebauthn/server';
+import { verifyAuthenticationResponse } from '@simplewebauthn/server';
 import { NextRequest, NextResponse } from 'next/server';
 import {
   checkContentType,
@@ -26,6 +23,7 @@ import {
   suspendCredential,
   bumpCounter,
 } from '@/lib/webauthn/store';
+import { authenticationResponseSchema, parseJson } from '@/lib/validation';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -44,13 +42,16 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const nonce = req.cookies.get(CHALLENGE_COOKIE)?.value;
   if (!nonce) return jsonError(400, GENERIC);
 
-  let response: AuthenticationResponseJSON;
-  try {
-    response = (await req.json()) as AuthenticationResponseJSON;
-  } catch {
-    return jsonError(400, 'invalid body');
-  }
-  if (!response?.id) return jsonError(400, GENERIC);
+  // GENERIC, and no issue list: the reason a body was rejected must not be
+  // more informative than the reason an assertion was. The schema replaces the
+  // old `as AuthenticationResponseJSON` cast — the library was previously
+  // handed whatever the client sent, checked only for a truthy `id`.
+  const parsed = await parseJson(req, authenticationResponseSchema, {
+    invalid: { error: GENERIC, includeIssues: false },
+    malformedJson: { error: 'invalid body', includeIssues: false },
+  });
+  if (!parsed.ok) return parsed.response;
+  const response = parsed.data;
 
   const failed = (status: number, error = GENERIC) =>
     NextResponse.json(
