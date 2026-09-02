@@ -17,6 +17,7 @@ import {
   relinkCredentialId,
   unlinkCredentialId,
 } from '@/lib/webauthn/store';
+import { credentialIdSchema, parseSearchParams } from '@/lib/validation';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -54,8 +55,11 @@ export async function DELETE(req: NextRequest): Promise<NextResponse> {
   const auth = await requireAdmin(req);
   if (!auth.ok) return jsonError(auth.status, auth.error);
 
-  const id = req.nextUrl.searchParams.get('id');
-  if (!id) return jsonError(400, 'missing id');
+  // base64url alphabet only: this value is interpolated into Redis keys and
+  // into the alert email below.
+  const parsed = parseSearchParams(req.nextUrl.searchParams, credentialIdSchema);
+  if (!parsed.ok) return parsed.response;
+  const { id } = parsed.data;
 
   const removed = async () => {
     await notifySecurityEvent(

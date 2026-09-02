@@ -9,6 +9,8 @@ import {
 import { notifySecurityEvent, requestContext } from '@/lib/auth/notify';
 import { SESSION_TTL_SEC, sessionCookie, signSession } from '@/lib/auth/session';
 import { timingSafeEqual } from '@/lib/timing';
+import { authEnv } from '@/lib/env';
+import { parseJson, passwordBodySchema } from '@/lib/validation';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -21,20 +23,19 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const secret = sessionSecret();
   if (!secret) return jsonError(503, 'auth misconfigured');
 
-  const configured = process.env.KEYSTATIC_AUTH_PASSWORD;
+  const configured = authEnv().KEYSTATIC_AUTH_PASSWORD;
   if (!configured) return jsonError(403, 'password login is disabled');
 
   // Shared bucket with every other password/token comparison — see guard.ts.
   if (!(await limitSecretAttempt(req))) return jsonError(429, 'too many attempts');
 
-  let password: unknown;
-  try {
-    password = ((await req.json()) as { password?: unknown }).password;
-  } catch {
-    return jsonError(400, 'invalid body');
-  }
+  // Parsed AFTER limitSecretAttempt, deliberately: the shared attempt bucket
+  // must be spent before anything derived from the body is looked at, and a
+  // schema failure is not a cheaper path to an unmetered retry.
+  const parsed = await parseJson(req, passwordBodySchema);
+  if (!parsed.ok) return parsed.response;
 
-  if (typeof password !== 'string' || !timingSafeEqual(password, configured)) {
+  if (!timingSafeEqual(parsed.data.password, configured)) {
     return jsonError(401, 'authentication failed');
   }
 

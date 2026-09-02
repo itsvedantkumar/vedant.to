@@ -29,6 +29,7 @@ import {
 } from '@/lib/webauthn/store';
 import { getIP } from '@/lib/request';
 import { makeRatelimit } from '@/lib/ratelimit';
+import { adminBodySchema, parseInput } from '@/lib/validation';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -58,14 +59,19 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return jsonError(503, 'enrollment unavailable');
   }
 
-  let body: { password?: unknown } = {};
+  // An absent or unparseable body is NOT an error here — the session-cookie
+  // path sends none — but a body that is present and wrong-typed is, so a
+  // non-string password can never reach the comparison in requireAdmin.
+  let raw: unknown = {};
   try {
-    body = (await req.json()) as { password?: unknown };
+    raw = await req.json();
   } catch {
-    // An empty body is fine when authorising via the session cookie.
+    raw = {};
   }
+  const parsed = parseInput(raw, adminBodySchema);
+  if (!parsed.ok) return parsed.response;
 
-  const auth = await requireAdmin(req, body);
+  const auth = await requireAdmin(req, parsed.data);
   if (!auth.ok) return jsonError(auth.status, auth.error);
 
   try {
