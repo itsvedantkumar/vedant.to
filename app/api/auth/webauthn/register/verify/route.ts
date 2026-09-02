@@ -1,7 +1,4 @@
-import {
-  verifyRegistrationResponse,
-  type RegistrationResponseJSON,
-} from '@simplewebauthn/server';
+import { verifyRegistrationResponse } from '@simplewebauthn/server';
 import { NextRequest, NextResponse } from 'next/server';
 import {
   checkContentType,
@@ -25,14 +22,17 @@ import {
   isRedisUnavailable,
   saveCredential,
 } from '@/lib/webauthn/store';
+import { parseJson, registerVerifyBodySchema } from '@/lib/validation';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const MAX_LABEL = 64;
 
-function sanitizeLabel(raw: unknown): string {
-  if (typeof raw !== 'string') return 'unnamed device';
+// The schema guarantees a string of bounded length; what it cannot express is
+// the fallback name and the control-character strip, so those stay here.
+function sanitizeLabel(raw: string | undefined): string {
+  if (raw === undefined) return 'unnamed device';
   // Strip control characters; the label is rendered back into the manage UI.
   const cleaned = raw.replace(/[\u0000-\u001f\u007f]/g, '').trim();
   return cleaned.slice(0, MAX_LABEL) || 'unnamed device';
@@ -46,15 +46,17 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const nonce = req.cookies.get(CHALLENGE_COOKIE)?.value;
   if (!nonce) return jsonError(400, 'registration failed');
 
-  let body: { response?: RegistrationResponseJSON; label?: unknown; password?: unknown };
-  try {
-    body = (await req.json()) as typeof body;
-  } catch {
-    return jsonError(400, 'invalid body');
-  }
+  // Generic on purpose, and without the issue list: this endpoint's wording is
+  // the same enumeration concern as the assertion route's, so a schema must not
+  // become a more descriptive failure mode than the ones below it.
+  const parsed = await parseJson(req, registerVerifyBodySchema, {
+    invalid: { error: 'registration failed', includeIssues: false },
+    malformedJson: { error: 'invalid body', includeIssues: false },
+  });
+  if (!parsed.ok) return parsed.response;
 
+  const body = parsed.data;
   const response = body.response;
-  if (!response?.id) return jsonError(400, 'registration failed');
 
   const failed = (status: number, error: string) =>
     NextResponse.json(
