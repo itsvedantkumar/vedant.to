@@ -14,6 +14,8 @@ jobs:
       # builds it remotely. Without a checkout the dir is empty, so it would
       # deploy an empty app (404 on every route). This step makes the source present.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Set Keystatic env vars on Vercel
         env:
@@ -56,12 +58,14 @@ jobs:
             # Key/value travel via env, not argv — argv is world-readable on the
             # runner (/proc/*/cmdline), env is not.
             payload=$(SET_ENV_KEY="$key" SET_ENV_VALUE="$value" python3 -c "import json,os; print(json.dumps({'key':os.environ['SET_ENV_KEY'],'value':os.environ['SET_ENV_VALUE'],'type':'encrypted','target':['production','preview']}))")
-            curl -s -X POST \
+            # Response lands in a variable first: curl output is data, never piped to an interpreter.
+            local resp
+            resp=$(curl -s -X POST \
               "https://api.vercel.com/v10/projects/$VERCEL_PROJECT_ID/env?upsert=true" \
               -H "Authorization: Bearer $VERCEL_TOKEN" \
               -H "Content-Type: application/json" \
-              -d "$payload" \
-              | python3 -c "import sys,json; r=json.load(sys.stdin); print('OK:', r.get('key','?'), '|', r.get('error',{}).get('message',''))"
+              -d "$payload")
+            printf '%s' "$resp" | python3 -c "import sys,json; r=json.load(sys.stdin); print('OK:', r.get('key','?'), '|', r.get('error',{}).get('message',''))"
           }
 
           # Public, non-secret values (safe to keep inline):

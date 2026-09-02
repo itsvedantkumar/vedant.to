@@ -18,7 +18,9 @@
 #   Deep behavioral verification lives in .claude/skills/verify-<app>/, not here.
 #
 #   Repo-specific notes:
-#     - No lint script exists in package.json (no eslint config) -> lint is skipped.
+#     - `npm run lint` is eslint (eslint-config-next + eslint-plugin-security).
+#     - .claude/security-scan.sh (gitleaks, semgrep, osv-scanner, zizmor) is seeded by
+#       `vstack overlay .`; fix its template in vstack, not here.
 #     - `npm run build` runs with the same placeholder Keystatic secrets CI uses
 #       (.github/actions/build-next/action.yml). Keystatic only needs those three to be
 #       non-empty at build time; Vercel rebuilds with the real ones. Without them the
@@ -58,7 +60,18 @@ else
   has_script test      && run test      npm run --silent test      || echo "skip test (no script)"
 fi
 
-echo "skip lint (no lint script / eslint config in this repo)"
+if [ ! -d node_modules ]; then
+  echo "skip lint (no node_modules; run npm install)"
+else
+  has_script lint && run lint npm run --silent lint || echo "skip lint (no script)"
+fi
+
+# --- Security scan (gitleaks, semgrep, osv-scanner, zizmor; seeded by vstack overlay) ---------
+if [ -f .claude/security-scan.sh ]; then
+  run security-scan bash .claude/security-scan.sh
+else
+  echo "skip security-scan (.claude/security-scan.sh absent; run: vstack overlay .)"
+fi
 # Placeholders, not secrets: these three only have to be non-empty for Keystatic's
 # build-time config check. They match .github/actions/build-next/action.yml so a green
 # gate here means the same thing a green CI build means.

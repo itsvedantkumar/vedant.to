@@ -161,7 +161,7 @@ printf '%s' "$ckpt" > "$ckpt_file" 2>/dev/null
 # both ends to already cover any suffix appended after the session id) keeps sweeping every one
 # of these without needing to know the new names:
 #   skill family (session-persistent, no window):
-#     $cnt_file.unslop  $cnt_file.typescript  $cnt_file.proveitworks
+#     $cnt_file.unslop  $cnt_file.typescript  $cnt_file.proveitworks  $cnt_file.register
 #   delegation family (windowed, cnt+timestamp pair per mandate):
 #     $cnt_file.delegate-breadth(-ts)  $cnt_file.delegate-naming(-ts)  $cnt_file.delegate-swarm(-ts)
 # $cnt_file.delegate-scan (the re-scan cooldown) and $cnt_file.lock stay singular and family-wide
@@ -196,19 +196,30 @@ _read_wcnt() { # <cntfile> <tsfile> <now> <window_secs> -> sets $_rc, windowed r
 now_d=$(date +%s 2>/dev/null || echo 0)
 DELEGATE_RESET_SECS="${VSTACK_DELEGATE_RESET_SECS:-1800}"
 
-_read_cnt "$cnt_file.unslop";       cnt_unslop=$_rc
-_read_cnt "$cnt_file.typescript";   cnt_typescript=$_rc
-_read_cnt "$cnt_file.proveitworks"; cnt_proveitworks=$_rc
+# Skill family, same windowed re-arm the delegation family below already uses. A plain
+# _read_cnt latched each of these to 0 evaluations for the rest of the session after two
+# misses -- measured over ten real sessions, that retired every skill mandate early and is
+# the mechanical cause of "the gate stops triggering". The window lets a latched mandate
+# re-arm after SKILL_RESET_SECS instead of dying for hours; delegation has run this way since
+# 1.63.0 without over-firing (21 blocks / 628 turns), so the cadence is already calibrated.
+SKILL_RESET_SECS="${VSTACK_SKILL_RESET_SECS:-1800}"
+_read_wcnt "$cnt_file.unslop"       "$cnt_file.unslop-ts"       "$now_d" "$SKILL_RESET_SECS"; cnt_unslop=$_rc
+_read_wcnt "$cnt_file.typescript"   "$cnt_file.typescript-ts"   "$now_d" "$SKILL_RESET_SECS"; cnt_typescript=$_rc
+_read_wcnt "$cnt_file.proveitworks" "$cnt_file.proveitworks-ts" "$now_d" "$SKILL_RESET_SECS"; cnt_proveitworks=$_rc
+_read_wcnt "$cnt_file.register"     "$cnt_file.register-ts"     "$now_d" "$SKILL_RESET_SECS"; cnt_register=$_rc
 _read_wcnt "$cnt_file.delegate-breadth" "$cnt_file.delegate-breadth-ts" "$now_d" "$DELEGATE_RESET_SECS"; cnt_breadth=$_rc
 _read_wcnt "$cnt_file.delegate-naming" "$cnt_file.delegate-naming-ts" "$now_d" "$DELEGATE_RESET_SECS"; cnt_naming=$_rc
 _read_wcnt "$cnt_file.delegate-swarm" "$cnt_file.delegate-swarm-ts" "$now_d" "$DELEGATE_RESET_SECS"; cnt_swarm=$_rc
+_read_wcnt "$cnt_file.delegate-serial" "$cnt_file.delegate-serial-ts" "$now_d" "$DELEGATE_RESET_SECS"; cnt_serial=$_rc
 
 eval_unslop=1;       [ "$cnt_unslop" -ge 2 ]       && eval_unslop=0
 eval_typescript=1;   [ "$cnt_typescript" -ge 2 ]   && eval_typescript=0
 eval_proveitworks=1; [ "$cnt_proveitworks" -ge 2 ] && eval_proveitworks=0
+eval_register=1;     [ "$cnt_register" -ge 2 ]     && eval_register=0
 eval_breadth=1;      [ "$cnt_breadth" -ge 2 ]      && eval_breadth=0
 eval_naming=1;       [ "$cnt_naming" -ge 2 ]       && eval_naming=0
 eval_swarm=1;        [ "$cnt_swarm" -ge 2 ]        && eval_swarm=0
+eval_serial=1;       [ "$cnt_serial" -ge 2 ]       && eval_serial=0
 
 # Second, SHORTER gate: how often to bother re-scanning at all once every skill-family mandate is
 # already latched, independent of whether delegation has struck. Family-exhausted alone is not a
@@ -229,14 +240,14 @@ if [ "$dscan" -gt 0 ] && [ "$now_d" -gt 0 ] && [ $((now_d - dscan)) -lt "$DELEGA
   dscan_recent=1
 fi
 
-# Family-level flags, derived from the six per-mandate flags above by OR (ANY member of the
+# Family-level flags, derived from the per-mandate flags above by OR (ANY member of the
 # family still has headroom): used ONLY for the top-level scan-skip decision below and for the
 # turn_json/prove-it-works cost gate further down, never for deciding whether an individual
 # mandate contributes to $unmet -- each mandate's own eval_* flag alone decides that now.
 skill_eval=1
-[ "$eval_unslop" = 0 ] && [ "$eval_typescript" = 0 ] && [ "$eval_proveitworks" = 0 ] && skill_eval=0
+[ "$eval_unslop" = 0 ] && [ "$eval_typescript" = 0 ] && [ "$eval_proveitworks" = 0 ] && [ "$eval_register" = 0 ] && skill_eval=0
 deleg_eval=1
-[ "$eval_breadth" = 0 ] && [ "$eval_naming" = 0 ] && [ "$eval_swarm" = 0 ] && deleg_eval=0
+[ "$eval_breadth" = 0 ] && [ "$eval_naming" = 0 ] && [ "$eval_swarm" = 0 ] && [ "$eval_serial" = 0 ] && deleg_eval=0
 
 # Combined latch: skip the transcript-driven evaluation entirely only when NEITHER family can
 # still act on it. skill_eval=1 alone is enough to keep paying for the scan every Stop, unchanged
@@ -270,9 +281,11 @@ fi
 hit_unslop=0
 hit_typescript=0
 hit_proveitworks=0
+hit_register=0
 hit_breadth=0
 hit_naming=0
 hit_swarm=0
+hit_serial=0
 
 # We are doing a full scan this Stop for at least one reason (skill_eval=1 or deleg_eval=1 --
 # the latch above already exited otherwise). Record it now, unconditionally, so the cooldown
@@ -607,6 +620,14 @@ case "$task_count" in ''|*[!0-9]*) task_count=0 ;; esac
 # there is no identity to merge on, so each such line is its own singleton batch. That is what
 # makes "two Task calls in two separate lines, neither carrying an id" read as two batches of
 # one, not one batch of two: the exact serial-loop shape this fix exists to catch.
+# One pass, two numbers: "<fanout_batches> <serial_tail>". serial_tail is the count of
+# Task/Agent dispatches AFTER the last 2+-in-one-message batch (all of them when no batch ever
+# ran). fanout_batches answers "did a real batch ever happen"; serial_tail answers the question
+# it structurally cannot: "what has happened SINCE". A whole-transcript batch count amnesties
+# every later serial dispatch -- measured, not hypothesized: session 3ce9f899 batched 3 times
+# early and then made 25 one-at-a-time dispatches with the breadth mandate silenced for good,
+# and 8959d943 did the same behind 2 batches of 2. The serial-tail mandate below reads only the
+# suffix, so history cannot pay for the present.
 fanout_calc=$( "$JQ" -sr '
   ( [ .[] | select(.type=="assistant")
       | { id: (.message.id // null),
@@ -624,10 +645,16 @@ fanout_calc=$( "$JQ" -sr '
         )
     ) as $folded
   | ( $folded.runs + [{id: $folded.cid, n: $folded.cn}] ) as $all_runs
-  | ( $all_runs | map(select(.n >= 2)) | length )
+  | ( $all_runs | map(.n) ) as $ns
+  | ( [ range(0; $ns|length) | select($ns[.] >= 2) ] | last ) as $lastb
+  | ( [ $ns[] | select(. >= 2) ] | length ) as $batches
+  | ( (if $lastb == null then $ns else $ns[($lastb+1):] end) | add // 0 ) as $tail
+  | "\($batches) \($tail)"
 ' "$tr_" 2>/dev/null | tail -n 1 )
-case "$fanout_calc" in ''|*[!0-9]*) fanout_calc=0 ;; esac
-fanout_batches="$fanout_calc"
+fanout_batches=${fanout_calc%% *}
+serial_tail=${fanout_calc##* }
+case "$fanout_batches" in ''|*[!0-9]*) fanout_batches=0 ;; esac
+case "$serial_tail" in ''|*[!0-9]*) serial_tail=0 ;; esac
 
 # task_fail_count: of those same Task/Agent dispatches, how many resolved with is_error==true on
 # their tool_result. This is the field the delegation-drift ledger was missing entirely -- it
@@ -713,7 +740,11 @@ ext_count=$( [ -z "$extensions" ] && echo 0 || printf '%s\n' "$extensions" | gre
 # many times 2+ Task/Agent calls landed in the SAME assistant message, which is the only shape
 # Claude Code actually executes concurrently. Eligibility (dir_count/ext_count) is unchanged --
 # only what counts as having answered it changed.
-if [ "$eval_breadth" = 1 ] && [ "$dir_count" -ge 3 ] && [ "$ext_count" -ge 2 ] && [ "$fanout_batches" -eq 0 ]; then
+# Threshold lowered from dir>=3 to dir>=2 in 1.66.0. Measured: a two-directory, two-extension
+# edit is a cross-cutting change that fans out cleanly, and it was never gated before, first
+# offence or repeat. The AND with ext>=2 stays -- a three-file edit inside one file type is
+# often legitimately serial, and gating it would be the nag that gets a guard switched off.
+if [ "$eval_breadth" = 1 ] && [ "$dir_count" -ge 2 ] && [ "$ext_count" -ge 2 ] && [ "$fanout_batches" -eq 0 ]; then
   # Names the actual parts (bounded to 3, same head-N precedent the prose/typescript mandates
   # above already use for file paths) instead of only a count -- "touched 5 directories" tells
   # the model a number it already knew; "touched claude/hooks, tests, docs, ..." tells it which
@@ -729,9 +760,35 @@ if [ "$eval_breadth" = 1 ] && [ "$dir_count" -ge 3 ] && [ "$ext_count" -ge 2 ] &
   else
     fanout_state="$task_count subagent call(s), but never 2+ in the same message -- $task_count separate serial delegation(s), which Claude Code runs one after another, not concurrently"
   fi
+  # Leads with the imperative and the number, not the diagnosis: "touched N directories" tells
+  # the model a fact it already knows, "dispatch 3 agents in ONE message" is the action the
+  # next turn can take. Agent count = dir_count capped at 5 (above that, aggregation cost
+  # eats the parallelism win; same reasoning as the swarm skill's own N guidance).
+  breadth_agents=$dir_count
+  [ "$breadth_agents" -gt 5 ] && breadth_agents=5
   unmet="$unmet
-  multi-directory work -- touched $dir_count directories ($dirs_named$([ "$dir_count" -gt 3 ] && echo ', ...')) with $ext_count file types, $fanout_state. Dispatch 2+ agents in the SAME assistant message, each on a disjoint file set, so they actually run in parallel (try /team, or issue code-reviewer + qa + worker + planner + test-writer together in one turn) -- one Task/Agent call followed by another later does not satisfy this."
+  multi-directory work -- dispatch $breadth_agents agents in ONE message via Skill swarm, one per area ($dirs_named$([ "$dir_count" -gt 3 ] && echo ', ...')), each on a disjoint file set. This Stop touched $dir_count directories with $ext_count file types, $fanout_state. One Task/Agent call followed by another later does not satisfy this."
   hit_breadth=1
+fi
+
+# Serial dispatch tail: the shape the breadth gate above structurally cannot see. Its
+# fanout_batches==0 condition is evaluated over the whole transcript, so ONE early batch
+# satisfies it for every remaining Stop of the session while the model degrades into a serial
+# loop -- the amnesty measured in 3ce9f899 and 8959d943 (see the fanout_calc comment). This
+# mandate reads $serial_tail instead: dispatches after the last real batch, or all of them
+# when none ever ran. Threshold 3, replayed against real sessions before choosing it: tails
+# of 12 (e0cd5a40), 25 (3ce9f899) and 9 (8959d943) all fire; 416fb382's post-block tail of 2
+# does not, because two singleton dispatches are the shape two unrelated one-shot asks
+# legitimately produce, and a tail of 3 is necessarily 3 separate messages (3 in one message
+# would be a batch and would reset the tail). Its own windowed 2-strike latch above bounds
+# the cost when this call is wrong. Not gated on dir/ext breadth: the defect it polices is in
+# the dispatch pattern itself, not in what files were touched.
+if [ "$eval_serial" = 1 ] && [ "$serial_tail" -ge 3 ]; then
+  serial_n=$serial_tail
+  [ "$serial_n" -gt 5 ] && serial_n=5
+  unmet="$unmet
+  serial dispatch tail -- $serial_tail Task/Agent dispatch(es) sent one message at a time since the last parallel batch (or session start, if none ever ran). Send the remaining independent work as $serial_n Agent calls in ONE message (call Skill swarm first -- it routes the batch)."
+  hit_serial=1
 fi
 
 # --- delegation-drift logger (tests/delegation-drift.sh) ---------------------------------------
@@ -870,11 +927,13 @@ fi
 # faster than just the `tail` step of the "optimization" meant to beat it. Reverted to the
 # simpler single-pass slurp below in favor of the version that is both less code and faster.
 #
-# Gated on eval_proveitworks specifically, not the family-level skill_eval: this jq slurp is
-# prove-it-works's own cost alone (unslop/typescript-best-practices need none of turn_json), so
-# now that the three no longer share a latch, this must not run just because unslop or
-# typescript-best-practices still has headroom -- only because prove-it-works itself does.
-if [ "$eval_proveitworks" = 1 ]; then
+# Gated on the two mandates that read the current turn -- prove-it-works and register -- not
+# the family-level skill_eval: this jq slurp is their shared cost alone (unslop/
+# typescript-best-practices need none of turn_json), so it must not run just because unslop or
+# typescript-best-practices still has headroom -- only because a turn-reading mandate does.
+# Each consumer below re-gates on its OWN eval_* flag: a latched prove-it-works must not get a
+# free evaluation because register kept the slurp alive, and vice versa.
+if [ "$eval_proveitworks" = 1 ] || [ "$eval_register" = 1 ]; then
 turn_json=$(
   "$JQ" -sc '
     . as $all
@@ -889,6 +948,7 @@ turn_json=$(
       ) as $ts
     | ($all[(($ts // -1) + 1):] | map(select(.type == "assistant"))) as $turn
     | {
+        turn_texts: ( [ $turn[] | .message.content[]? | select(.type == "text") | .text ] | join("\n") ),
         final_text: ( [ $turn[] | .message.content[]? | select(.type == "text") | .text ] | last // "" ),
         bash_n: ( [ $turn[] | .message.content[]? | select(.type == "tool_use" and .name == "Bash") ] | length ),
         read_n: ( [ $turn[] | .message.content[]? | select(.type == "tool_use" and .name == "Read") ] | length ),
@@ -898,6 +958,29 @@ turn_json=$(
   ' "$tr_" 2>/dev/null
 )
 [ -n "$turn_json" ] || turn_json='{}'
+
+# The register mandate: ~/.claude/CLAUDE.md's REGISTER rule, enforced instead of remembered.
+# Scans every assistant text block of the CURRENT TURN (same turn boundary prove-it-works uses
+# -- whole-transcript scanning would re-block old sins on every later Stop forever) for the
+# exact banned-opener list, line-anchored. Deliberately narrow: no narration heuristics
+# ("^Reading...") in v1 -- their false-positive rate on imperative prose is unmeasured; widen
+# only from measured misses. Known accepted false positives, bounded by the 2-strike session
+# latch: quoted peer text and list items that start a line with a banned word.
+if [ "$eval_register" = 1 ]; then
+  reg_texts=$(printf '%s' "$turn_json" | "$JQ" -r '.turn_texts // ""' 2>/dev/null)
+  reg_pattern="^(Ah|I see|Got it|Right|Okay|Sure|Great|Perfect|Good catch|You('|’)re right|Let me|Now I('|’)ll|Now I('|’)m)[,! .]"
+  reg_match=""
+  if [ -n "$reg_texts" ]; then
+    reg_match=$(printf '%s\n' "$reg_texts" | grep -oE "$reg_pattern" 2>/dev/null | head -1 | sed 's/[,! .]*$//')
+  fi
+  if [ -n "$reg_match" ]; then
+    unmet="$unmet
+  register -- banned opener \"$reg_match\" in this turn's text. Delete it; state the fact or make the tool call instead."
+    hit_register=1
+  fi
+fi
+
+if [ "$eval_proveitworks" = 1 ]; then
 piw_final_text=$(printf '%s' "$turn_json" | "$JQ" -r '.final_text // ""' 2>/dev/null)
 piw_bash_n=$(printf '%s' "$turn_json" | "$JQ" -r '.bash_n // 0' 2>/dev/null)
 piw_read_n=$(printf '%s' "$turn_json" | "$JQ" -r '.read_n // 0' 2>/dev/null)
@@ -920,7 +1003,8 @@ if [ "$piw_edit_n" -ge 1 ] && [ "$piw_claims" -eq 1 ] \
   prove-it-works -- this turn edited a file and closed claiming it is done, with no Bash/Read/Task/Agent call in the turn to back it up"
   hit_proveitworks=1
 fi
-fi # eval_proveitworks: turn_json / prove-it-works
+fi # eval_proveitworks: the prove-it-works evaluation itself
+fi # eval_proveitworks || eval_register: turn_json and its two consumers
 
 # Per-mandate bookkeeping, replacing the two shared-counter blocks above: each of the six
 # mandates persists or clears its OWN counter file independently now, so hitting one never
@@ -929,20 +1013,32 @@ fi # eval_proveitworks: turn_json / prove-it-works
 # evaluated this Stop (its own eval_* flag was 1) and did NOT contribute to $unmet had every
 # chance to and passed -- its own counter resets to 0, the same "fully met -> clear" rule the
 # shared counters used, now scoped to one mandate instead of a whole family.
+# Skill-family writes now carry a -ts sidecar so the windowed read above can re-arm them,
+# exactly as the delegation family does below. On hit, stamp the time; on a clean evaluated
+# turn, clear both the counter and its stamp.
 if [ "$hit_unslop" = 1 ]; then
   echo $((cnt_unslop + 1)) > "$cnt_file.unslop"
+  date +%s > "$cnt_file.unslop-ts" 2>/dev/null
 elif [ "$eval_unslop" = 1 ]; then
-  rm -f "$cnt_file.unslop"
+  rm -f "$cnt_file.unslop" "$cnt_file.unslop-ts"
 fi
 if [ "$hit_typescript" = 1 ]; then
   echo $((cnt_typescript + 1)) > "$cnt_file.typescript"
+  date +%s > "$cnt_file.typescript-ts" 2>/dev/null
 elif [ "$eval_typescript" = 1 ]; then
-  rm -f "$cnt_file.typescript"
+  rm -f "$cnt_file.typescript" "$cnt_file.typescript-ts"
 fi
 if [ "$hit_proveitworks" = 1 ]; then
   echo $((cnt_proveitworks + 1)) > "$cnt_file.proveitworks"
+  date +%s > "$cnt_file.proveitworks-ts" 2>/dev/null
 elif [ "$eval_proveitworks" = 1 ]; then
-  rm -f "$cnt_file.proveitworks"
+  rm -f "$cnt_file.proveitworks" "$cnt_file.proveitworks-ts"
+fi
+if [ "$hit_register" = 1 ]; then
+  echo $((cnt_register + 1)) > "$cnt_file.register"
+  date +%s > "$cnt_file.register-ts" 2>/dev/null
+elif [ "$eval_register" = 1 ]; then
+  rm -f "$cnt_file.register" "$cnt_file.register-ts"
 fi
 if [ "$hit_breadth" = 1 ]; then
   echo $((cnt_breadth + 1)) > "$cnt_file.delegate-breadth"
@@ -961,6 +1057,12 @@ if [ "$hit_swarm" = 1 ]; then
   date +%s > "$cnt_file.delegate-swarm-ts" 2>/dev/null
 elif [ "$eval_swarm" = 1 ]; then
   rm -f "$cnt_file.delegate-swarm" "$cnt_file.delegate-swarm-ts"
+fi
+if [ "$hit_serial" = 1 ]; then
+  echo $((cnt_serial + 1)) > "$cnt_file.delegate-serial"
+  date +%s > "$cnt_file.delegate-serial-ts" 2>/dev/null
+elif [ "$eval_serial" = 1 ]; then
+  rm -f "$cnt_file.delegate-serial" "$cnt_file.delegate-serial-ts"
 fi
 
 [ -n "$unmet" ] || exit 0
@@ -986,6 +1088,9 @@ fi
 if [ "$hit_proveitworks" = 1 ]; then
   reason="$reason$(_strike_line prove-it-works "$((cnt_proveitworks + 1))"     "this session -- after 2, prove-it-works alone stops being enforced for the rest of the session (self-police from here).")"
 fi
+if [ "$hit_register" = 1 ]; then
+  reason="$reason$(_strike_line register "$((cnt_register + 1))"     "this session -- after 2, register alone stops being enforced for the rest of the session (self-police from here).")"
+fi
 if [ "$hit_breadth" = 1 ]; then
   reason="$reason$(_strike_line "multi-directory work" "$((cnt_breadth + 1))"     "in this ${DELEGATE_RESET_SECS}s window -- after 2, this mandate alone stops being enforced until the window elapses with no further unmet Stop for it.")"
 fi
@@ -995,10 +1100,14 @@ fi
 if [ "$hit_swarm" = 1 ]; then
   reason="$reason$(_strike_line swarm "$((cnt_swarm + 1))"     "in this ${DELEGATE_RESET_SECS}s window -- after 2, this mandate alone stops being enforced until the window elapses with no further unmet Stop for it.")"
 fi
+if [ "$hit_serial" = 1 ]; then
+  reason="$reason$(_strike_line "serial dispatch tail" "$((cnt_serial + 1))"     "in this ${DELEGATE_RESET_SECS}s window -- after 2, this mandate alone stops being enforced until the window elapses with no further unmet Stop for it.")"
+fi
 reason="$reason
 Run each named skill with the Skill tool against the files listed, apply what it says, then finish.
 For prove-it-works: run the command that proves the change, read its actual output, then restate
 the claim with that evidence -- or state the real status if the output disagrees with it.
+For register: there is no skill to run -- delete the named phrase from the reply text.
 Set VSTACK_NO_MANDATE=1 to disable this gate."
 "$JQ" -cn --arg r "$reason" '{decision:"block",reason:$r}'
 exit 0

@@ -18,12 +18,14 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       # Cheap static gates run before the Next build so a formatting typo or
       # type error fails in seconds, not after a full build. setup-node + npm ci
       # here are re-run inside build-next below; both are cached/idempotent.
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '22'
           cache: 'npm'
@@ -42,10 +44,13 @@ jobs:
       - name: Type-check
         run: npm run typecheck
 
+      - name: Lint
+        run: npm run lint
+
       - name: Test
         run: npm test
 
-      - uses: ./.github/actions/build-next
+      - uses: ./.github/actions/build-next # zizmor: ignore[self-repository] -- semgrep mutable-tag rule rejects the $/ form
 
       - name: Sync images to R2
         if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
@@ -62,7 +67,7 @@ jobs:
       # whole .next directory — both cost more than they save at this size.
       # lighthouserc.json's startServerCommand (`npm run start`) needs that .next.
       - name: Run Lighthouse CI
-        uses: treosh/lighthouse-ci-action@3e7e23fb74242897f95c0ba9cabad3d0227b9b18 # v12.6.2
+        uses: treosh/lighthouse-ci-action@3e7e23fb74242897f95c0ba9cabad3d0227b9b18 # 12.6.2
         with:
           configPath: ./lighthouserc.json
           uploadArtifacts: true
