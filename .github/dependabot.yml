@@ -4,6 +4,9 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    # A pulled malicious release usually dies within a week; semgrep wants at least 7 days.
+    cooldown:
+      default-days: 7
     open-pull-requests-limit: 5
     groups:
       # React ecosystem must move together — peer deps break if split across PRs.
@@ -25,6 +28,9 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    # A pulled malicious release usually dies within a week; semgrep wants at least 7 days.
+    cooldown:
+      default-days: 7
     groups:
       # One PR for all action bumps instead of one per action.
       github-actions:

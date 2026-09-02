@@ -60,6 +60,9 @@ export default function EnrollPage() {
   }, [loadCredentials]);
 
   useEffect(() => {
+    // Default state assumes support so SSR/first-paint markup matches; this
+    // effect corrects it post-hydration without triggering a mismatch.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate post-hydration correction, see comment above
     setSupported(browserSupportsWebAuthn());
     refresh().catch(() => setStatus(null));
   }, [refresh]);
