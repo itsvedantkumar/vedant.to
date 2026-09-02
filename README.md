@@ -1,6 +1,6 @@
 # vedant.to
 
-My personal corner of the _zjhwole shwide intwenet_
+My _widdle cworner of ze intwernet_
 
 [![CI](https://github.com/itsvedantkumar/vedant.to/actions/workflows/ci.yml/badge.svg)](https://github.com/itsvedantkumar/vedant.to/actions/workflows/ci.yml)
 [![Next.js 16](https://img.shields.io/badge/next.js-16-black)](package.json)
