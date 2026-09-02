@@ -50,7 +50,7 @@ jobs:
       - name: Test
         run: npm test
 
-      - uses: ./.github/actions/build-next
+      - uses: $/.github/actions/build-next
 
       - name: Sync images to R2
         if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
@@ -67,7 +67,7 @@ jobs:
       # whole .next directory — both cost more than they save at this size.
       # lighthouserc.json's startServerCommand (`npm run start`) needs that .next.
       - name: Run Lighthouse CI
-        uses: treosh/lighthouse-ci-action@3e7e23fb74242897f95c0ba9cabad3d0227b9b18 # v12.6.2
+        uses: treosh/lighthouse-ci-action@3e7e23fb74242897f95c0ba9cabad3d0227b9b18 # 12.6.2
         with:
           configPath: ./lighthouserc.json
           uploadArtifacts: true
