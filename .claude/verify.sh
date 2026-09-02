@@ -18,7 +18,9 @@
 #   Deep behavioral verification lives in .claude/skills/verify-<app>/, not here.
 #
 #   Repo-specific notes:
-#     - No lint script exists in package.json (no eslint config) -> lint is skipped.
+#     - `npm run lint` is eslint (eslint-config-next + eslint-plugin-security).
+#     - .claude/security-scan.sh (gitleaks, semgrep, osv-scanner, zizmor) is seeded by
+#       `vstack overlay .`; fix its template in vstack, not here.
 #     - `npm run build` runs with the same placeholder Keystatic secrets CI uses
 #       (.github/actions/build-next/action.yml). Keystatic only needs those three to be
 #       non-empty at build time; Vercel rebuilds with the real ones. Without them the
