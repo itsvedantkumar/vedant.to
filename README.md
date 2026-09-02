@@ -3,11 +3,20 @@
 My personal corner of the _zjhwole shwide intwenet_
 
 [![CI](https://github.com/itsvedantkumar/vedant.to/actions/workflows/ci.yml/badge.svg)](https://github.com/itsvedantkumar/vedant.to/actions/workflows/ci.yml)
+[![Next.js 16](https://img.shields.io/badge/next.js-16-black)](package.json)
 [![Node 22](https://img.shields.io/badge/node-22.x-informational)](.nvmrc)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![live](https://img.shields.io/badge/live-vedant.to-6f42c1)](https://vedant.to)
 
 Live at **[vedant.to](https://vedant.to)**. To run your own copy, start at
 [Deploy your own](#deploy-your-own).
+
+The content rules here are enforced by something that can fail rather than by remembering
+them. `draft: true` is applied once, in `lib/posts.ts` and `lib/daily.ts`; the pages, both
+feeds and the sitemap all read that one filtered list, so the four outputs cannot disagree
+about what is published. CI runs the content normaliser and then fails on its own diff, so
+a `.mdoc` that would break rendering cannot land quietly. What each gate catches is in
+[What CI enforces](#what-ci-enforces).
 
 ## Stack
 
@@ -47,22 +56,27 @@ too. `npm run fix-images` rewrites it, and `npm run check` fails if one was miss
 
 ## Structure
 
-- `app/` is the App Router. `(site)/` holds the public pages, `api/` the route handlers,
-  `keystatic/` the CMS UI, `auth/keystatic/` the login and device-management screens.
-- `lib/` holds the content readers (`posts.ts`, `daily.ts`, `reader.ts`), feed/SEO helpers,
-  plus `auth/` and `webauthn/` for the `/keystatic` gate.
-- `components/` holds the two client components that need to be client components.
-- `content/` holds the three Keystatic collections above.
-- `public/` holds static assets, including a hand-written `robots.txt`.
-- `scripts/` holds content normalisers, the content auditor, the R2 image sync, `restore.sh`.
-- `tests/` holds 13 `node:test` files plus `manual/`, which needs a live Redis and is not run by CI.
-- `docs/` holds the long-form design notes. Currently one: [docs/auth.md](docs/auth.md).
-- `.github/workflows/` holds CI and the scheduled jobs (see [Deployment](#deployment)).
-- `proxy.ts` is the `/keystatic` auth gate. It runs on the Node.js runtime.
-- `.claude/` and `.conductor/` are my agent tooling. They do nothing in a fork. Delete them.
+| path                         | what it is                                                                           |
+| ---------------------------- | ------------------------------------------------------------------------------------ |
+| `app/(site)/`                | the public pages                                                                     |
+| `app/api/`                   | 12 route handlers: the auth endpoints, OG images, upload, whisper                    |
+| `app/keystatic/`             | the CMS UI                                                                           |
+| `app/auth/keystatic/`        | the login and device-management screens                                              |
+| `lib/`                       | content readers (`posts.ts`, `daily.ts`, `reader.ts`) and the feed/SEO helpers       |
+| `lib/auth/`, `lib/webauthn/` | the `/keystatic` gate                                                                |
+| `components/`                | the two client components that have to be client components                          |
+| `content/`                   | the three collections above: 9 posts, 17 daily entries, 51 quotes                    |
+| `public/`                    | static assets, including a hand-written `robots.txt`                                 |
+| `scripts/`                   | the content normalisers, the auditor, the R2 image sync, `restore.sh`                |
+| `tests/`                     | 13 `node:test` files, 104 cases. `tests/manual/` needs a live Redis; CI skips it     |
+| `docs/`                      | the long-form design notes. One so far: [docs/auth.md](docs/auth.md)                 |
+| `.github/workflows/`         | CI and the seven scheduled or triggered jobs (see [Deployment](#deployment))         |
+| `proxy.ts`                   | the `/keystatic` auth gate. Node.js runtime, and in Next 16 that is not configurable |
+| `.claude/`, `.conductor/`    | my agent tooling. It does nothing in a fork. Delete it                               |
 
-Deliberately a list and not an ASCII tree: the tree that used to live here had drifted
-wrong in four places.
+A table and not an ASCII tree: the tree that used to be here had drifted wrong in four
+places. Regenerate the counts with `ls content/posts/*.mdoc | wc -l`, the same for
+`daily` and `quotes`, and `npm test` for the case count.
 
 ## Running locally
 
@@ -143,6 +157,24 @@ GitHub Actions handles validation and support jobs only:
 | `indexnow.yml`       | IndexNow              | push to `main`           | pings IndexNow so new content is crawled fast                                                                  |
 | `links.yml`          | Link Check            | weekly Mon 07:00 UTC     | `lychee` over `content/**/*.mdoc` and this README                                                              |
 | `setup-env.yml`      | Setup Vercel Env Vars | manual only              | syncs secrets to Vercel, forces a redeploy                                                                     |
+
+## What CI enforces
+
+Every step below can fail the run, in this order. The cheap static gates come first on
+purpose, so a formatting typo fails in seconds rather than after a full build.
+
+| Step                                            | Fails when                                                                                            | Catches                                                                                                                                                                                       |
+| ----------------------------------------------- | ----------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `normalize-content.mjs && git diff --exit-code` | the normaliser rewrote a tracked file                                                                 | a `.mdoc` Keystatic would reject, committed unfixed. The run fails and names the file instead of silently fixing it inside the runner                                                         |
+| `audit-content.mjs`                             | a content rule is broken                                                                              | CDN references that are not `.webp`, and the other checks in `scripts/audit-content.mjs`                                                                                                      |
+| `format:check`                                  | Prettier would rewrite a file                                                                         | formatting drift                                                                                                                                                                              |
+| `typecheck`                                     | `tsc --noEmit` reports an error                                                                       | type regressions. There is no ESLint here, so this and Prettier are the whole static gate                                                                                                     |
+| `npm test`                                      | any of the 104 cases fails                                                                            | the `draft: true` invariant (`tests/draft-invariant.test.ts`), the auth gate (`guard`, `session`, `enrollment`, `counter`, `timing`), the whisper route and its quiz, and metadata generation |
+| `next build`                                    | the build errors                                                                                      | a route that only breaks at build time. Runs with placeholder Keystatic secrets; Vercel rebuilds with the real ones                                                                           |
+| Lighthouse CI                                   | performance, accessibility or SEO scores below 0.90 on `/`, `/blog`, `/daily`, `/quotes`, over 3 runs | a regression in any of the three. Best-practices is a warning, not an error. Thresholds live in `lighthouserc.json`                                                                           |
+
+A red run does not block the deploy. Vercel deploys from `main` independently, so CI is
+a report rather than a gate. That is the trade for keeping releases off Actions quota.
 
 ## Deploy your own
 
@@ -327,6 +359,29 @@ password needs Upstash reachable, so a single passkey plus a Redis outage locks 
 handlers rather than Next's `sitemap.ts` / `robots.ts` conventions. That was a deliberate
 call for a visible shared source of truth, but the conventions are less code.
 
+## Limits
+
+Worth knowing before you fork it.
+
+- **CI cannot stop a bad deploy.** Vercel ships on push to `main` whatever CI says. If that
+  trade is wrong for you, add a branch protection rule; nothing in the repo does it for you.
+- **The image pipeline hardcodes `assets.vedant.to` in three places** and fails open on any
+  other host: `scripts/audit-content.mjs:125,140` and `scripts/normalize-images.mjs:54,72`.
+  Point your content at a different CDN and the checker stops recognising your references,
+  so `npm run check` passes, while `npm run fix-images` quietly rewrites nothing. Meanwhile
+  `scripts/sync-images-to-r2.mjs` still uploads the file as `.webp`, so the reference and
+  the object disagree and the image 404s in production. Change the host in all three files
+  together.
+- **The passkey gate is off by default.** `KEYSTATIC_AUTH_MODE` has to be the literal string
+  `passkey`. Anything else keeps HTTP Basic Auth, so shipping the WebAuthn code changes
+  nothing until you opt in.
+- **Upstash and R2 are optional, but not equally.** The site builds and serves without either.
+  Without Upstash there is no rate limiting; without R2 the whisper route and image uploads
+  have nowhere to write.
+- **macOS and Linux only.** Nothing here has been run on Windows, and `scripts/restore.sh`
+  is bash.
+- **No ESLint.** Deliberate, and it means a lint rule you rely on elsewhere is not running here.
+
 ## Backup
 
 A scheduled GitHub Actions workflow runs daily at 03:17 UTC:
@@ -364,3 +419,19 @@ git checkout backup/YYYY-MM-DD -- content public/images
 
 R2-only objects restore in the opposite direction, with
 `aws s3 sync s3://$R2_BACKUP_BUCKET_NAME/r2-assets/ s3://$R2_BUCKET_NAME/`.
+
+## Docs
+
+- [docs/auth.md](docs/auth.md) — the `/keystatic` gate: WebAuthn design, the break-glass
+  password path, every env var it reads, and how to verify the gate is live in production.
+- [.env.example](.env.example) — every environment variable, with the semantics of the
+  awkward ones written next to them. Deliberately the only copy; a table in this file
+  would rot against it.
+
+## Credits
+
+Next.js, Keystatic, Tailwind CSS, and Vercel do the heavy lifting. The passkey gate is
+[SimpleWebAuthn](https://simplewebauthn.dev). Syntax highlighting is
+[sugar-high](https://github.com/huozhi/sugar-high).
+
+MIT. The code is yours to take; the writing in `content/` is not.
