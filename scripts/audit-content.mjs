@@ -82,7 +82,7 @@ function detectUnisolatedImages(lines, offset) {
   const issues = [];
   for (let i = 0; i < lines.length; i++) {
     const trimmed = lines[i].trimStart();
-    const isImg = trimmed !== '' && /^(!\[.*?\]\([^)]*\)\s*)+$/.test(trimmed);
+    const isImg = trimmed !== '' && /^(!\[[^\]]*\]\([^)]*\)\s*)+$/.test(trimmed);
     if (!isImg) continue;
     const prevBlank = i === 0 || isBlank(lines[i - 1]);
     const nextBlank = i === lines.length - 1 || isBlank(lines[i + 1]);
