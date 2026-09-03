@@ -27,6 +27,15 @@ register(
   import.meta.url
 );
 
+// Pinned so lib/auth/guard.ts's checkOrigin takes the non-production branch
+// (which accepts the http://localhost:3000 ORIGIN below) regardless of the
+// shell this file runs in — a Vercel build container exports NODE_ENV=
+// production, and every request here would otherwise fail origin checking
+// with 403 before reaching the validation logic under test.
+// (Object.assign, not `process.env.NODE_ENV =`, because @types/node/next
+// declares NODE_ENV readonly and a direct assignment fails tsc.)
+Object.assign(process.env, { NODE_ENV: 'test' });
+
 // Read at module scope by the routes and by lib/auth/guard.ts, so they have to
 // be set before the first import below.
 process.env.KEYSTATIC_SESSION_SECRET = 'test-session-secret-at-least-32-chars!!';
