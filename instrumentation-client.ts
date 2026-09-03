@@ -2,15 +2,21 @@
 // PostHog is proxied through /ingest (next.config.mjs rewrites) so the CSP
 // stays same-origin and ad blockers do not see a third-party host.
 //
-// Credit discipline: production only, admin routes dropped before send,
-// surveys off, network timing off, replay inputs masked. Sampling and the
-// minimum replay duration live in the PostHog project settings.
+// Credit discipline: production deploys only (previews stay silent), admin
+// routes dropped before send, surveys off, network timing off, replay inputs
+// masked. Sampling and the minimum replay duration live in the PostHog
+// project settings.
 import posthog from 'posthog-js';
-import { isTrackedPath, pathnameOf } from '@/lib/analytics';
+import { isTrackedPath, pathnameOf, syncSessionRecording } from '@/lib/analytics';
 
 const key = process.env.NEXT_PUBLIC_POSTHOG_KEY;
+// Vercel builds previews with NODE_ENV=production too; NEXT_PUBLIC_VERCEL_ENV
+// is the discriminator there. Off Vercel, NODE_ENV is all there is, so a
+// local `next build && next start` still exercises the client.
+const deployEnv = process.env.NEXT_PUBLIC_VERCEL_ENV ?? process.env.NODE_ENV;
+const enabled = Boolean(key) && deployEnv === 'production';
 
-if (key && process.env.NODE_ENV === 'production') {
+if (key && enabled) {
   posthog.init(key, {
     api_host: '/ingest',
     ui_host: 'https://us.posthog.com',
@@ -32,8 +38,12 @@ if (key && process.env.NODE_ENV === 'production') {
         pathnameOf(event.properties?.$current_url) ?? window.location.pathname;
       return isTrackedPath(pathname) ? event : null;
     },
-    loaded: (client) => {
-      if (!isTrackedPath(window.location.pathname)) client.stopSessionRecording();
-    },
+    loaded: (client) => syncSessionRecording(client, window.location.pathname),
   });
+}
+
+/** Next calls this on every App Router transition (Next 15.3+). */
+export function onRouterTransitionStart(url: string): void {
+  if (!enabled) return;
+  syncSessionRecording(posthog, new URL(url, window.location.origin).pathname);
 }

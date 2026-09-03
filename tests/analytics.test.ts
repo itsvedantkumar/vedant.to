@@ -2,7 +2,12 @@
 // before any event leaves the browser: admin routes never reach PostHog.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { isTrackedPath, pathnameOf, UNTRACKED_PREFIXES } from '@/lib/analytics';
+import {
+  isTrackedPath,
+  pathnameOf,
+  syncSessionRecording,
+  UNTRACKED_PREFIXES,
+} from '@/lib/analytics';
 
 test('public pages are tracked', () => {
   for (const p of [
@@ -11,7 +16,6 @@ test('public pages are tracked', () => {
     '/blog/some-post',
     '/daily/17-august-2026',
     '/quotes',
-    '/whisper',
   ]) {
     assert.equal(isTrackedPath(p), true, p);
   }
@@ -38,4 +42,22 @@ test('pathnameOf extracts the path from an absolute URL and rejects junk', () =>
   assert.equal(pathnameOf('not a url'), null);
   assert.equal(pathnameOf(undefined), null);
   assert.equal(pathnameOf(42), null);
+});
+
+test('the whisper form is never tracked', () => {
+  assert.equal(isTrackedPath('/whisper'), false);
+  assert.equal(isTrackedPath('/whisper/thanks'), false);
+});
+
+test('syncSessionRecording starts on public pages and stops on admin pages', () => {
+  const calls: string[] = [];
+  const client = {
+    startSessionRecording: () => calls.push('start'),
+    stopSessionRecording: () => calls.push('stop'),
+  };
+  syncSessionRecording(client, '/');
+  syncSessionRecording(client, '/keystatic/collection/posts');
+  syncSessionRecording(client, '/blog/some-post');
+  syncSessionRecording(client, '/whisper');
+  assert.deepEqual(calls, ['start', 'stop', 'start', 'stop']);
 });
