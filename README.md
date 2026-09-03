@@ -323,6 +323,7 @@ does.
 | Cloudflare R2 (private) | Daily backups, whisper messages   | `backup.yml` and `/api/whisper` fail                |
 | Resend                  | Security alerts and whisper email | Alerts are dropped                                  |
 | proxycheck.io           | VPN detection on `/whisper`       | The call still runs, unkeyed on the free tier       |
+| PostHog                 | Analytics, replays, errors        | Nothing is sent; the client never initialises       |
 
 Three env vars get a production build to pass: `KEYSTATIC_GITHUB_CLIENT_ID`,
 `KEYSTATIC_GITHUB_CLIENT_SECRET`, and `KEYSTATIC_SECRET`. Add `KEYSTATIC_AUTH_PASSWORD` and
