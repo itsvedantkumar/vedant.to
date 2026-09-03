@@ -37,12 +37,12 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const session = await verifySession(req.cookies.get(SESSION_COOKIE)?.value, secret);
 
   const passkeysAvailable = isPasskeysAvailable();
-  let enrolledCount = 0;
+  let enrolledCount: number | null = 0;
   if (passkeysAvailable) {
     try {
       enrolledCount = await countCredentials();
     } catch {
-      enrolledCount = 0;
+      enrolledCount = null;
     }
   }
 
@@ -54,9 +54,10 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       enrolledCount,
       sessionActive: session !== null,
       sessionMethod: session?.m ?? null,
-      // Mirrors enrollmentBlockedReason() in lib/auth/guard.ts — the server
-      // enforces it; this only drives the UI.
-      canEnroll: enrolledCount === 0 || session?.m === 'passkey',
+      // Mirrors enrollmentBlockedReason() — never treat a Redis failure as
+      // zero credentials (that advertised open bootstrap).
+      canEnroll:
+        enrolledCount === 0 || session?.m === 'passkey',
     },
     { headers: { 'Cache-Control': 'no-store' } }
   );

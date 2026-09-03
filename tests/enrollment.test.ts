@@ -3,7 +3,13 @@
 // exists, a password-only session must never be enough.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { enrollmentBlockedReason, type EnrollmentAuth } from '@/lib/auth/enrollment';
+import {
+  enrollmentBlockedReason,
+  lastCredentialDeleteBlockedReason,
+  sessionOpensCms,
+  cmsAccessBlockedReason,
+  type EnrollmentAuth,
+} from '@/lib/auth/enrollment';
 
 const passkeySession: EnrollmentAuth = {
   via: 'session',
@@ -65,4 +71,51 @@ test('regression: password-mode session must not slip through once a passkey exi
   // This is the exact foothold the module's docstring warns about — a leaked
   // password minting a permanent credential. Must stay blocked.
   assert.notEqual(enrollmentBlockedReason(passwordSession, 1), null);
+});
+
+test('last cred DELETE: password via blocked', () => {
+  const reason = lastCredentialDeleteBlockedReason(passwordAuth);
+  assert.equal(typeof reason, 'string');
+  assert.match(reason as string, /passkey/i);
+});
+
+test('last cred DELETE: password-mode session blocked', () => {
+  assert.notEqual(lastCredentialDeleteBlockedReason(passwordSession), null);
+});
+
+test('last cred DELETE: passkey session allowed', () => {
+  assert.equal(lastCredentialDeleteBlockedReason(passkeySession), null);
+});
+
+test('last cred DELETE: enroll token allowed', () => {
+  assert.equal(lastCredentialDeleteBlockedReason(tokenAuth), null);
+});
+
+test('passkey mode: password session does not open CMS', () => {
+  assert.equal(sessionOpensCms('passkey', 'password'), false);
+});
+
+test('passkey mode: passkey session opens CMS', () => {
+  assert.equal(sessionOpensCms('passkey', 'passkey'), true);
+});
+
+test('basic mode: no session opens CMS (Basic header is the gate)', () => {
+  assert.equal(sessionOpensCms('basic', 'passkey'), false);
+  assert.equal(sessionOpensCms('basic', 'password'), false);
+});
+
+test('CMS route: passkey session allowed in passkey mode', () => {
+  assert.equal(cmsAccessBlockedReason('passkey', passkeySession), null);
+});
+
+test('CMS route: password session blocked in passkey mode', () => {
+  assert.notEqual(cmsAccessBlockedReason('passkey', passwordSession), null);
+});
+
+test('CMS route: explicit password via is break-glass', () => {
+  assert.equal(cmsAccessBlockedReason('passkey', passwordAuth), null);
+});
+
+test('CMS route: enroll token is not git writes', () => {
+  assert.notEqual(cmsAccessBlockedReason('passkey', tokenAuth), null);
 });

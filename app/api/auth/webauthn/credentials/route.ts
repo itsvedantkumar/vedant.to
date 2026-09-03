@@ -5,11 +5,10 @@ import {
   jsonError,
   requireAdmin,
 } from '@/lib/auth/guard';
+import { lastCredentialDeleteBlockedReason } from '@/lib/auth/enrollment';
 import { notifySecurityEvent, requestContext } from '@/lib/auth/notify';
-import { isPasswordConfigured } from '@/lib/webauthn/config';
 import {
   countCredentials,
-  deleteCredential,
   deleteCredentialRecord,
   getCredential,
   isRedisUnavailable,
@@ -72,23 +71,15 @@ export async function DELETE(req: NextRequest): Promise<NextResponse> {
   try {
     if (!(await getCredential(id))) return jsonError(404, 'no such credential');
 
-    if (isPasswordConfigured()) {
-      await deleteCredential(id);
-      return removed();
-    }
-
-    // Lockout guard: without a break-glass password, removing the last passkey
-    // would make /keystatic permanently unreachable. Remove from the index
-    // first and put it back if that emptied the set — a read-then-delete check
-    // races with a concurrent delete of a *different* credential, and both
-    // would pass while the set still held two.
+    // Unlink first, then count — a read-then-delete check races with a
+    // concurrent delete of a *different* credential.
     if (!(await unlinkCredentialId(id))) return jsonError(404, 'no such credential');
     if ((await countCredentials()) === 0) {
-      await relinkCredentialId(id);
-      return jsonError(
-        409,
-        'cannot remove the last passkey while password login is disabled'
-      );
+      const blocked = lastCredentialDeleteBlockedReason(auth);
+      if (blocked) {
+        await relinkCredentialId(id);
+        return jsonError(409, blocked);
+      }
     }
 
     await deleteCredentialRecord(id);
