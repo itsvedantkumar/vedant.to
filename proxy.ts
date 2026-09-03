@@ -23,8 +23,8 @@ const keystaticGlobalLimit = makeRatelimit('keystatic:pw-global', 50, '15 m');
 // Rollout/rollback switch. Defaults to 'basic' — the pre-passkey HTTP Basic
 // Auth behaviour — so deploying this code changes nothing until
 // KEYSTATIC_AUTH_MODE=passkey is set deliberately, once passkeys are enrolled
-// and KEYSTATIC_SESSION_SECRET exists. Opt in, never by accident.
-const AUTH_MODE = keystaticAuthMode();
+// and KEYSTATIC_SESSION_SECRET exists. Opt in, never by accident. Read per
+// request, not at module load, so this gate and app/api/keystatic agree.
 
 const LOGIN_PATH = '/auth/keystatic';
 
@@ -127,7 +127,7 @@ export async function proxy(req: NextRequest): Promise<NextResponse> {
 
   // Fail closed. Previously a missing password meant /keystatic was wide open;
   // now a gate that cannot be enforced denies instead.
-  if (!sessionSecret && AUTH_MODE !== 'basic') {
+  if (!sessionSecret && keystaticAuthMode() !== 'basic') {
     return deny(503, 'Keystatic auth is not configured');
   }
   if (!password && !redis) {
@@ -135,7 +135,7 @@ export async function proxy(req: NextRequest): Promise<NextResponse> {
   }
 
   // 1. Session cookie — cheap, no network, so it runs before the rate limiter.
-  if (AUTH_MODE !== 'basic') {
+  if (keystaticAuthMode() !== 'basic') {
     const session = await verifySession(
       req.cookies.get(SESSION_COOKIE)?.value,
       sessionSecret
@@ -233,7 +233,7 @@ export async function proxy(req: NextRequest): Promise<NextResponse> {
   }
 
   // 4. Deny.
-  if (AUTH_MODE === 'basic') {
+  if (keystaticAuthMode() === 'basic') {
     // Legacy behaviour: prompt the browser for credentials.
     return deny(401, 'Unauthorized', {
       'WWW-Authenticate': 'Basic realm="keystatic"',
