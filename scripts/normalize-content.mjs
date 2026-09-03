@@ -135,7 +135,8 @@ function fixImageSpacing(lines) {
   for (let i = 0; i < lines.length; i++) {
     const trimmed = lines[i].trimStart();
     // A standalone image: the entire (trimmed) line is one or more ![]() refs.
-    const isStandaloneImage = trimmed !== '' && /^(!\[.*?\]\([^)]*\)\s*)+$/.test(trimmed);
+    const isStandaloneImage =
+      trimmed !== '' && /^(!\[[^\]]*\]\([^)]*\)\s*)+$/.test(trimmed);
 
     if (isStandaloneImage) {
       // Insert blank line before if needed.
