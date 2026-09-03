@@ -1,8 +1,11 @@
+# Extends the default ruleset. site.config.mjs holds public identity only
+# (name, domain, handles, contact addresses); its `linkedin:` handle trips
+# the linkedin-client-id rule, which matches any short quoted string after
+# the word. Allowlist that one line shape, not the file.
 [extend]
 useDefault = true
 
 [allowlist]
-  description = "Allowlist for intentionally public values"
-  # IndexNow key is public by design — served at /<key>.txt for domain verification
-  # and referenced in .github/workflows/indexnow.yml. Allowlisted to prevent false positives.
-  commits = ["2766905b2d5b288e6245d37bc794a78bcc5ddd48"]
+regexTarget = "line"
+regexes = ['''^\s*linkedin: '[A-Za-z0-9._-]+',?\s*$''']
+paths = ['''^site\.config\.mjs$''']

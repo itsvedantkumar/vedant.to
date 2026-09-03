@@ -56,8 +56,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       sessionMethod: session?.m ?? null,
       // Mirrors enrollmentBlockedReason() — never treat a Redis failure as
       // zero credentials (that advertised open bootstrap).
-      canEnroll:
-        enrolledCount === 0 || session?.m === 'passkey',
+      canEnroll: enrolledCount === 0 || session?.m === 'passkey',
     },
     { headers: { 'Cache-Control': 'no-store' } }
   );
