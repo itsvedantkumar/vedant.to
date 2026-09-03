@@ -1,5 +1,5 @@
 import { FEED_CACHE_CONTROL, escapeXml, getSortedFeedItems } from '@/lib/feed-utils';
-import { SITE_URL } from '@/lib/constants';
+import { SITE_URL, SITE_NAME } from '@/lib/constants';
 
 // Next 15 and later no longer statically cache GET route handlers by default; the feed
 // is build-time content, so opt back into static generation.
@@ -13,7 +13,7 @@ export async function GET() {
   const rssFeed = `<?xml version="1.0" encoding="UTF-8" ?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>Vedant</title>
+    <title>${SITE_NAME}</title>
     <link>${SITE_URL}</link>
     <description>My portfolio, blog, and personal website.</description>
     <language>en-us</language>

@@ -1,16 +1,15 @@
 import Link from 'next/link';
 import { FOCUS_RING } from '@/lib/styles';
+import { SOCIAL_LINKS } from '@/lib/constants';
 
 const navLinks = [
   { name: 'home', href: '/' },
   { name: 'blog', href: '/blog' },
   { name: 'daily', href: '/daily' },
   { name: 'quotes', href: '/quotes' },
-  {
-    name: 'letterboxd',
-    href: 'https://letterboxd.com/itsvedantkumar/',
-    external: true,
-  },
+  ...(SOCIAL_LINKS.letterboxd
+    ? [{ name: 'letterboxd', href: SOCIAL_LINKS.letterboxd, external: true }]
+    : []),
   {
     name: 'spotify',
     href: 'https://open.spotify.com/user/gh4xje04nt4gjokd86fklfwuw',
@@ -20,28 +19,33 @@ const navLinks = [
 
 // Two- and three-letter visible labels ("x", "gh") say nothing out of context,
 // so each link carries an aria-label naming the real destination (WCAG 2.4.4).
-const footerLinks = [
-  {
-    name: 'x',
-    url: 'https://x.com/itsvedantkumar',
-    ariaLabel: 'X (Twitter) profile',
-  },
-  {
-    name: 'gh',
-    url: 'https://github.com/itsvedantkumar',
-    ariaLabel: 'GitHub profile',
-  },
-  {
-    name: 'linkedin',
-    url: 'https://www.linkedin.com/in/itsvedantkumar',
-    ariaLabel: 'LinkedIn profile',
-  },
-  {
-    name: 'cal',
-    url: 'https://calendar.app.google/nB6tr8kyTD2mwkCa8',
-    ariaLabel: 'booking calendar',
-  },
-];
+const getFooterLinks = () => {
+  const links = [];
+  if (SOCIAL_LINKS.x) {
+    links.push({
+      name: 'x',
+      url: SOCIAL_LINKS.x,
+      ariaLabel: 'X (Twitter) profile',
+    });
+  }
+  if (SOCIAL_LINKS.github) {
+    links.push({
+      name: 'gh',
+      url: SOCIAL_LINKS.github,
+      ariaLabel: 'GitHub profile',
+    });
+  }
+  if (SOCIAL_LINKS.linkedin) {
+    links.push({
+      name: 'linkedin',
+      url: SOCIAL_LINKS.linkedin,
+      ariaLabel: 'LinkedIn profile',
+    });
+  }
+  return links;
+};
+
+const footerLinks = getFooterLinks();
 
 export default function SiteLayout({ children }: { children: React.ReactNode }) {
   return (

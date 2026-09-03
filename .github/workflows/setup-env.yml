@@ -17,6 +17,10 @@ jobs:
         with:
           persist-credentials: false
 
+      - uses: actions/setup-node@fb33536851a1f668829f664eb4b6762dc44618b5 # v4.1.1
+        with:
+          node-version-file: .nvmrc
+
       - name: Set Keystatic env vars on Vercel
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
@@ -31,10 +35,12 @@ jobs:
           KEYSTATIC_SESSION_SECRET: ${{ secrets.KEYSTATIC_SESSION_SECRET }}
           KEYSTATIC_ENROLL_TOKEN: ${{ secrets.KEYSTATIC_ENROLL_TOKEN }}
           KEYSTATIC_AUTH_MODE: ${{ secrets.KEYSTATIC_AUTH_MODE }}
+          KEYSTATIC_GITHUB_APP_SLUG_VAR: ${{ vars.KEYSTATIC_GITHUB_APP_SLUG || '' }}
           # JSON question bank for /whisper. A secret because the answers are
           # personal data (dob, tastes) — keeping them out of the repo is what
           # lets this repo be made public.
           WHISPER_QUIZ: ${{ secrets.WHISPER_QUIZ }}
+          WHISPER_BUCKET_NAME: ${{ secrets.WHISPER_BUCKET_NAME }}
           KEYSTATIC_ALERT_EMAIL: ${{ secrets.KEYSTATIC_ALERT_EMAIL }}
           KEYSTATIC_RP_ID: ${{ secrets.KEYSTATIC_RP_ID }}
           # Inlined into the client bundle at build time, not read at runtime, so
@@ -69,11 +75,16 @@ jobs:
           }
 
           # Public, non-secret values (safe to keep inline):
-          set_env "NEXT_PUBLIC_KEYSTATIC_GITHUB_APP_SLUG" "itsvedantkumar-keystatic"
+          if [ -z "$KEYSTATIC_GITHUB_APP_SLUG_VAR" ]; then
+            KEYSTATIC_GITHUB_APP_SLUG="$(node scripts/site.mjs github.owner)-keystatic"
+          else
+            KEYSTATIC_GITHUB_APP_SLUG="$KEYSTATIC_GITHUB_APP_SLUG_VAR"
+          fi
+          set_env "NEXT_PUBLIC_KEYSTATIC_GITHUB_APP_SLUG" "$KEYSTATIC_GITHUB_APP_SLUG"
           # A bucket NAME is not a secret; the R2 credentials that reach it are.
           # This must stay pointed at a PRIVATE bucket: /api/whisper writes reader
           # messages here, and it used to fall back to the public assets bucket.
-          set_env "WHISPER_BUCKET_NAME"                   "vedant-whispers"
+          set_env "WHISPER_BUCKET_NAME"                   "$WHISPER_BUCKET_NAME"
           # Secrets (sourced from GitHub Actions secrets in the env block above):
           set_env "KEYSTATIC_GITHUB_CLIENT_ID"            "$KEYSTATIC_GITHUB_CLIENT_ID"
           set_env "KEYSTATIC_GITHUB_CLIENT_SECRET"        "$KEYSTATIC_GITHUB_CLIENT_SECRET"

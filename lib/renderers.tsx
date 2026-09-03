@@ -46,7 +46,7 @@ function parsePNG(b: Uint8Array): Dims | null {
   return { width: be32(16), height: be32(20) };
 }
 
-// Body images are remote CDN URLs (assets.vedant.to), so there is no local
+// Body images are remote CDN URLs (the assets host), so there is no local
 // file to statically import dimensions from. Probe the first bytes of the
 // image instead. These renderers only run in RSC pages that are fully static
 // (`revalidate = false`), so the probe happens at build time, not per request.

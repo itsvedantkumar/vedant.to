@@ -78,7 +78,7 @@ function md5(buf) {
 /** Map local path → R2 key. Converts images/{posts,daily}/ → i/ and forces .webp for compressible images. */
 function toR2Key(absPath) {
   const rel = path.relative(path.join(ROOT, 'public'), absPath).replace(/\\/g, '/');
-  // Both collections share publicPath https://assets.vedant.to/i/ (keystatic.config.ts),
+  // Both collections share publicPath (ASSETS_PUBLIC_PATH in keystatic.config.ts),
   // so both local dirs must flatten to the same i/ prefix.
   const withPrefix = rel.replace(/^images\/(posts|daily)\//, 'i/');
   const ext = path.extname(withPrefix).toLowerCase();

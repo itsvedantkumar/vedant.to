@@ -186,8 +186,8 @@ a report rather than a gate. That is the trade for keeping releases off Actions 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fitsvedantkumar%2Fvedant.to&env=KEYSTATIC_GITHUB_CLIENT_ID,KEYSTATIC_GITHUB_CLIENT_SECRET,KEYSTATIC_SECRET,KEYSTATIC_AUTH_PASSWORD&envDescription=GitHub%20OAuth%20app%20credentials%20for%20the%20CMS%2C%20plus%20a%20password%20for%20%2Fkeystatic&envLink=https%3A%2F%2Fgithub.com%2Fitsvedantkumar%2Fvedant.to%2Fblob%2Fmain%2F.env.example&project-name=my-site&repository-name=my-site)
 
 This is a personal site rather than a template. The button gets you a running copy of
-**my** site; the steps below turn it into yours. Nothing here is hidden, and the identity
-table in [Make it yours](#3-make-it-yours) is the full list of what to change.
+**my** site; the steps below turn it into yours. Nothing here is hidden: one config file carries
+my identity, and [Make it yours](#3-make-it-yours) covers the rest.
 
 ### 1. What you need first
 
@@ -223,42 +223,25 @@ exists so secrets live in one place and reach Vercel in one run.
 
 ### 3. Make it yours
 
-`lib/constants.ts` is the intended single source of truth (`SITE_URL`, `ASSETS_URL`,
-`SITE_NAME`, `AUTHOR`, `TWITTER_HANDLE`). It is not yet the _only_ source: the files below
-hardcode the same values, because a `.mjs` config, a shell script and a YAML workflow cannot
-import a TypeScript module. Consolidating these is the main work in turning this into a real
-template.
+Edit [`site.config.mjs`](site.config.mjs). It holds the name, the domain, the asset host,
+the GitHub repo Keystatic writes to, the social handles and the three email addresses, and
+every file that needs one of those values derives it from there: `lib/constants.ts` for
+TypeScript, `next.config.mjs` and `scripts/*.mjs` by direct import, and the workflows through
+`node scripts/site.mjs <key>`.
 
-| Where                                                                  | What                                                              |
-| ---------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| `lib/constants.ts`                                                     | site URL, asset URL, name, author, social handle                  |
-| `lib/json-ld.ts`                                                       | contact email in the `Person` schema, **on every page**           |
-| `app/layout.tsx`                                                       | title template, default description, OG site name                 |
-| `next.config.mjs`                                                      | the asset host, in `images.remotePatterns` and the CSP            |
-| `keystatic.config.ts`                                                  | GitHub `owner`/`name`, asset public path                          |
-| `lib/webauthn/config.ts`                                               | passkey relying-party ID, user name, allowed origins              |
-| `lib/auth/guard.ts`, `app/api/whisper/route.ts`                        | the origin allowlist                                              |
-| `lib/auth/notify.ts`                                                   | the `from` address and subject prefix on security alerts          |
-| `app/manifest.ts`                                                      | PWA name and short name                                           |
-| `app/rss.xml/route.ts`, `app/feed.json/route.ts`                       | feed title, author block                                          |
-| `app/(site)/layout.tsx`, `app/(site)/page.tsx`, `app/api/og/route.tsx` | name and links in the UI                                          |
-| `app/icon.png`, `app/apple-icon.png`, `public/icon-192.png`            | favicon and app icons. Still mine until you replace them          |
-| `scripts/sync-images-to-r2.mjs`                                        | R2 bucket and key prefix                                          |
-| `scripts/audit-content.mjs`, `scripts/normalize-images.mjs`            | hardcoded `assets.vedant.to` regexes. **See the trap below**      |
-| `tests/guard.test.ts`                                                  | asserts on `vedant.to` origins, so `npm test` fails until changed |
-| `public/robots.txt`, `public/.well-known/security.txt`                 | sitemap URL, contact, expiry                                      |
-| `.github/workflows/indexnow.yml` + `public/<key>.txt`                  | IndexNow key. Regenerate, do not reuse mine                       |
-| `.github/workflows/health.yml`                                         | the probed base URL and the homepage string it greps              |
-| `.github/workflows/setup-env.yml`                                      | bucket names (`itsvedantkumar-keystatic`, `vedant-whispers`)      |
-| `.github/workflows/backup.yml`                                         | the asset host, in a comment about bucket safety                  |
-| `.env.example`                                                         | the `KEYSTATIC_RP_ID` comment says "defaults to vedant.to"        |
-| `docs/auth.md`, `lib/renderers.tsx`                                    | `vedant.to` in curl examples and a comment                        |
-| `package.json`, `LICENSE`, `SECURITY.md`                               | project name, author, copyright, reporting address                |
+Then run `npm run check`. Its `check-identity` step greps the tracked tree for my values and
+fails on any it finds outside `site.config.mjs`, prose and content excepted, so a copy you
+missed cannot fail open the way the old `audit-content` regex did.
 
-**A trap worth knowing.** `scripts/audit-content.mjs` matches CDN references with a literal
-`https://assets.vedant.to` regex. Miss that row and `npm run check` still exits 0 on your
-fork: the regex simply stops matching anything, so the check passes without checking. It
-fails open, quietly. Change it in the same pass as `lib/constants.ts`.
+What is still yours to change by hand, because it is not a string:
+
+| Where                                                       | What                                                |
+| ----------------------------------------------------------- | --------------------------------------------------- |
+| `app/icon.png`, `app/apple-icon.png`, `public/icon-192.png` | favicon and app icons. Still mine until you replace |
+| `.github/workflows/indexnow.yml` + `public/<key>.txt`       | IndexNow key. Regenerate, do not reuse mine         |
+| `package.json`, `LICENSE`, `SECURITY.md`, this README       | project name, author, copyright, reporting address  |
+| `content/`                                                  | my writing, see step 2                              |
+| `.env.example` to `.env.local`                              | fresh secrets, see the agent prompt below           |
 
 **Rip out what is not yours.** `/whisper` is an anonymous-message endpoint gated by a
 personal-trivia quiz. The questions live in the `WHISPER_QUIZ` env var, deliberately not in
@@ -294,17 +277,10 @@ Do this:
    the GitHub CLI if it is missing and run `gh auth login` if `gh auth status` fails; it is
    needed to set Actions secrets. Install the `aws` CLI only if I say I want the R2 backup
    and restore scripts. Report the versions you ended up with.
-2. Replace every occurrence of "Vedant", "Vedant Kumar", "vedant.to", "assets.vedant.to",
-   "itsvedantkumar", and every vedant.to email address with my values. Start from
-   lib/constants.ts, then work through lib/json-ld.ts, lib/webauthn/config.ts,
-   lib/auth/guard.ts, lib/auth/notify.ts, lib/renderers.tsx, keystatic.config.ts,
-   next.config.mjs, app/layout.tsx, app/(site)/layout.tsx, app/(site)/page.tsx,
-   app/api/og/route.tsx, app/api/whisper/route.ts, app/manifest.ts, app/rss.xml/route.ts,
-   app/feed.json/route.ts, scripts/sync-images-to-r2.mjs, scripts/audit-content.mjs,
-   scripts/normalize-images.mjs, tests/guard.test.ts, package.json, LICENSE, SECURITY.md,
-   docs/auth.md, .env.example, public/robots.txt, public/.well-known/security.txt, and every
-   file in .github/workflows/. Finish by grepping the repo for those strings and report any
-   you could not change, rather than assuming the list above was complete.
+2. Put my details into site.config.mjs. That is the only code file that carries the
+   previous owner's identity; everything else derives from it. Then update package.json
+   ("name", "author"), LICENSE, SECURITY.md and docs/auth.md, which are prose and are not
+   derived. Run `node scripts/check-identity.mjs` and fix anything it lists.
 3. Empty content/posts/, content/daily/, and content/quotes/. Do not change
    keystatic.config.ts's collection schemas.
 4. Delete the /whisper feature: app/(site)/whisper/, app/api/whisper/, lib/whisper-quiz.ts,
@@ -324,9 +300,9 @@ Do this:
 9. Rewrite the intro paragraphs of README.md and the homepage copy in app/(site)/page.tsx
    in my voice. Update the Vercel deploy button URL at the top of the Deploy your own
    section to point at my repo.
-10. Run `npm run check` and `npm run build` and fix what breaks. Note that
-    scripts/audit-content.mjs fails open: if its asset-host regex still says assets.vedant.to
-    it will pass without checking anything, so confirm step 1 changed it.
+10. Run `npm run check` and `npm run build` and fix what breaks. `check` includes
+    check-identity, so a leftover value from the previous owner fails here rather than
+    shipping.
 11. Then list for me, and do not attempt yourself: the DNS records, the Vercel project and
     its three Actions secrets (VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID), the
     Cloudflare R2 buckets, the Upstash Redis database, the GitHub OAuth app, replacing

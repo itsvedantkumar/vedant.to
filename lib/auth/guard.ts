@@ -10,6 +10,7 @@ import { SESSION_COOKIE, verifySession, type SessionPayload } from '@/lib/auth/s
 import { getTrustedIP } from '@/lib/request';
 import { redis } from '@/lib/redis';
 import { authEnv, isProduction, runtimeEnv } from '@/lib/env';
+import { SITE_ORIGIN_RE, SITE_URL, escapeRegExp } from '@/lib/constants';
 
 type HeaderBag = { headers: { get(name: string): string | null } };
 type CookieBag = {
@@ -95,9 +96,9 @@ export function jsonError(status: number, error: string): NextResponse {
 export function checkOrigin(req: HeaderBag): boolean {
   const origin = req.headers.get('origin') ?? '';
   if (isProduction()) {
-    // Exact origin only — a wildcard subdomain match would let any delegated
-    // or dangling *.vedant.to CNAME become a valid CSRF origin.
-    if (/^https:\/\/vedant\.to$/.test(origin)) return true;
+    // Exact origin only — a dangling CNAME on a subdomain would otherwise be a
+    // valid CSRF origin for the admin API, since the allowlist is not a wildcard.
+    if (SITE_ORIGIN_RE.test(origin)) return true;
     // Preview deploys only. Accepting any *.vercel.app in production would
     // admit an attacker-hosted page on that shared domain.
     return (
@@ -105,7 +106,9 @@ export function checkOrigin(req: HeaderBag): boolean {
       /^https:\/\/[a-z0-9-]+\.vercel\.app$/.test(origin)
     );
   }
-  return /^(https:\/\/vedant\.to|https?:\/\/localhost(:\d+)?)$/.test(origin);
+  return new RegExp(`^(${escapeRegExp(SITE_URL)}|https?:\\/\\/localhost(:\\d+)?)$`).test(
+    origin
+  );
 }
 
 /**

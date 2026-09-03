@@ -5,17 +5,18 @@
 
 import { redis } from '@/lib/redis';
 import { authEnv, runtimeEnv } from '@/lib/env';
+import { SITE_HOST, SITE_NAME } from '@/lib/constants';
 
-const PROD_RP_ID = authEnv().KEYSTATIC_RP_ID || 'vedant.to';
+const PROD_RP_ID = authEnv().KEYSTATIC_RP_ID || SITE_HOST;
 
 /**
  * Single admin, forever — so every passkey shares one user handle and the OS
  * groups them under a single entry. Changing this orphans existing passkeys in
  * the OS UI (they still verify; lookup is by credential id, not user handle).
  */
-export const WEBAUTHN_USER_ID = new TextEncoder().encode('vedant-keystatic-admin');
-export const WEBAUTHN_USER_NAME = 'vedant@vedant.to';
-export const WEBAUTHN_USER_DISPLAY_NAME = 'Vedant';
+export const WEBAUTHN_USER_ID = new TextEncoder().encode('keystatic-admin');
+export const WEBAUTHN_USER_NAME = `admin@${SITE_HOST}`;
+export const WEBAUTHN_USER_DISPLAY_NAME = SITE_NAME;
 
 export type RelyingParty = {
   rpID: string;
@@ -32,7 +33,7 @@ export type RelyingParty = {
 export function getRelyingParty(req: {
   headers: { get(name: string): string | null };
 }): RelyingParty {
-  const rpName = 'vedant.to';
+  const rpName = SITE_NAME;
 
   const { VERCEL_ENV, VERCEL_URL } = runtimeEnv();
 

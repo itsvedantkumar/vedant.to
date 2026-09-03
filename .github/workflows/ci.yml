@@ -38,6 +38,9 @@ jobs:
       - name: Audit content
         run: node scripts/audit-content.mjs
 
+      - name: Identity guard
+        run: node scripts/check-identity.mjs
+
       - name: Check formatting
         run: npm run format:check
 

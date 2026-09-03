@@ -6,7 +6,13 @@ import { SpeedInsights } from '@vercel/speed-insights/next';
 import { siteSchema, person } from '@/lib/json-ld';
 import { ogImageUrl, FEED_TYPES } from '@/lib/metadata';
 import { EasterEgg } from '@/components/easter-egg';
-import { SITE_URL, SITE_NAME, AUTHOR, TWITTER_HANDLE } from '@/lib/constants';
+import {
+  SITE_URL,
+  SITE_NAME,
+  AUTHOR,
+  TWITTER_HANDLE,
+  SITE_DESCRIPTION,
+} from '@/lib/constants';
 
 const inter = Inter({ subsets: ['latin'], display: 'swap' });
 
@@ -19,15 +25,15 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: 'Vedant',
-    template: '%s — Vedant',
+    default: SITE_NAME,
+    template: `%s — ${SITE_NAME}`,
   },
-  description: "Hi I'm Vedant",
+  description: SITE_DESCRIPTION,
   authors: [{ name: person.name, url: person.url }],
   creator: AUTHOR,
   alternates: { types: FEED_TYPES },
   openGraph: {
-    siteName: 'Vedant',
+    siteName: SITE_NAME,
     locale: 'en_US',
     type: 'website',
     images: [{ url: ogImageUrl(SITE_NAME), width: 1200, height: 630 }],

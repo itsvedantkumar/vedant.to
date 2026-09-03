@@ -24,6 +24,7 @@ register(
 );
 
 const { checkContentType, checkOrigin, sessionSecret } = await import('@/lib/auth/guard');
+const { SITE_URL, SITE_HOST } = await import('@/lib/constants');
 
 function reqWithHeaders(headers: Record<string, string>): {
   headers: { get(name: string): string | null };
@@ -51,18 +52,21 @@ function withEnv(vars: Record<string, string | undefined>, fn: () => void): void
 
 // --- checkOrigin -----------------------------------------------------------
 
-test('checkOrigin: production accepts the real prod origin', () => {
+test('checkOrigin: production accepts the canonical origin', () => {
   withEnv({ NODE_ENV: 'production', VERCEL_ENV: undefined }, () => {
-    assert.equal(checkOrigin(reqWithHeaders({ origin: 'https://vedant.to' })), true);
+    assert.equal(checkOrigin(reqWithHeaders({ origin: SITE_URL })), true);
   });
 });
 
 // Subdomains used to pass. They no longer do: a delegated or dangling
-// *.vedant.to CNAME would otherwise be a valid CSRF origin for the admin API,
+// CNAME on a subdomain would otherwise be a valid CSRF origin for the admin API,
 // and nothing serves a subdomain of the site.
-test('checkOrigin: production rejects a subdomain of the prod origin', () => {
+test('checkOrigin: production rejects a subdomain', () => {
   withEnv({ NODE_ENV: 'production', VERCEL_ENV: undefined }, () => {
-    assert.equal(checkOrigin(reqWithHeaders({ origin: 'https://www.vedant.to' })), false);
+    assert.equal(
+      checkOrigin(reqWithHeaders({ origin: `https://www.${SITE_HOST}` })),
+      false
+    );
   });
 });
 
@@ -72,10 +76,10 @@ test('checkOrigin: production rejects a mismatched origin', () => {
   });
 });
 
-test('checkOrigin: production rejects a lookalike domain (vedant.to.evil.com)', () => {
+test('checkOrigin: production rejects a lookalike domain', () => {
   withEnv({ NODE_ENV: 'production', VERCEL_ENV: undefined }, () => {
     assert.equal(
-      checkOrigin(reqWithHeaders({ origin: 'https://vedant.to.evil.com' })),
+      checkOrigin(reqWithHeaders({ origin: `https://${SITE_HOST}.evil.com` })),
       false
     );
   });
@@ -93,7 +97,11 @@ test('checkOrigin: production rejects a random *.vercel.app origin outside previ
 test('checkOrigin: preview deploys accept a *.vercel.app origin', () => {
   withEnv({ NODE_ENV: 'production', VERCEL_ENV: 'preview' }, () => {
     assert.equal(
-      checkOrigin(reqWithHeaders({ origin: 'https://vedant-to-abc123.vercel.app' })),
+      checkOrigin(
+        reqWithHeaders({
+          origin: `https://${SITE_HOST.replace(/\./g, '-')}-abc123.vercel.app`,
+        })
+      ),
       true
     );
   });

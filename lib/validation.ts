@@ -294,7 +294,9 @@ export const uploadFileTypeSchema = z.enum(
 
 // --- og ----------------------------------------------------------------------
 
-export const OG_DEFAULT_TITLE = 'Vedant.to - Personal Blog & Portfolio';
+import { SITE_NAME, SITE_DESCRIPTION } from '@/lib/constants';
+
+export const OG_DEFAULT_TITLE = `${SITE_NAME} - ${SITE_DESCRIPTION}`;
 
 /**
  * Truncates rather than rejects: an over-long `?title=` has always rendered a
