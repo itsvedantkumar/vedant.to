@@ -18,16 +18,16 @@ function flattenText(node: unknown): string {
 
 export function docToExcerpt(
   doc: readonly unknown[] | null | undefined,
-  max = 80
+  maxWords = 6
 ): string {
   if (!doc) return '';
 
   for (const node of doc) {
     const text = flattenText(node).replace(/\s+/g, ' ').trim();
     if (text) {
-      const chars = Array.from(text);
-      if (chars.length > max) {
-        return chars.slice(0, max).join('').trimEnd() + '…';
+      const words = text.split(' ');
+      if (words.length > maxWords) {
+        return words.slice(0, maxWords).join(' ') + '…';
       }
       return text;
     }
