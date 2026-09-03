@@ -47,6 +47,7 @@ jobs:
           # it must exist on Vercel *before* the build or analytics silently no-op
           # with nothing in the logs to explain it.
           NEXT_PUBLIC_POSTHOG_KEY: ${{ secrets.NEXT_PUBLIC_POSTHOG_KEY }}
+          POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
           WHISPER_TOKEN_SECRET: ${{ secrets.WHISPER_TOKEN_SECRET }}
           WHISPER_TO_EMAIL: ${{ secrets.WHISPER_TO_EMAIL }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
@@ -104,6 +105,7 @@ jobs:
           set_env "UPSTASH_REDIS_REST_URL"               "$UPSTASH_REDIS_REST_URL"
           set_env "UPSTASH_REDIS_REST_TOKEN"             "$UPSTASH_REDIS_REST_TOKEN"
           set_env "NEXT_PUBLIC_POSTHOG_KEY"              "$NEXT_PUBLIC_POSTHOG_KEY"
+          set_env "POSTHOG_API_KEY"                      "$POSTHOG_API_KEY"
 
       - name: Trigger redeploy
         env:

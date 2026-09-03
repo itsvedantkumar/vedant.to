@@ -1,4 +1,6 @@
-import { assetsHost } from './site.config.mjs';
+import { withPostHogConfig } from '@posthog/nextjs-config';
+
+import { assetsHost, siteHost } from './site.config.mjs';
 
 const isProd = process.env.NODE_ENV === 'production';
 
@@ -156,4 +158,18 @@ const nextConfig = {
   },
 };
 
-export default nextConfig;
+// POSTHOG_API_KEY is a PostHog personal API key scoped to error_tracking:write,
+// used only at build time to upload sourcemaps. Without it the build is
+// untouched — nextConfig is exported as-is.
+export default process.env.POSTHOG_API_KEY
+  ? withPostHogConfig(nextConfig, {
+      personalApiKey: process.env.POSTHOG_API_KEY,
+      projectId: process.env.POSTHOG_PROJECT_ID ?? '505234',
+      host: 'https://us.posthog.com',
+      sourcemaps: {
+        enabled: process.env.VERCEL_ENV === 'production',
+        releaseName: siteHost,
+        deleteAfterUpload: true,
+      },
+    })
+  : nextConfig;
