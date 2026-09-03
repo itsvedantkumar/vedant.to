@@ -158,9 +158,9 @@ content audit, identity guard, tests), `prettier --check`, `eslint`, and, when i
 locally, `gitleaks` over the pushed commits, `osv-scanner` on `package-lock.json`, and
 `zizmor` offline. Skip once with `git push --no-verify`. `vercel.json` sets `buildCommand`
 to `npm run check && npm run build`, so Vercel refuses to deploy a commit that fails the
-check, the actual deploy gate. To push secrets without Actions: `npx vercel link --yes
+check, the actual deploy gate. To push secrets without Actions: `npx --yes vercel@59.1.4 link --yes
 --project vedant-blog` in an empty directory, then `printf '%s' "$VALUE" | npx vercel env
-add NAME production` (repeat for `preview`), then `npx vercel redeploy <latest production
+add NAME production` (repeat for `preview`), then `npx --yes vercel@59.1.4 redeploy <latest production
 url>`. The dashboard works too.
 
 GitHub Actions handles validation and support jobs only:

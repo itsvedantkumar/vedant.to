@@ -40,6 +40,15 @@ if (key && enabled) {
     },
     loaded: (client) => syncSessionRecording(client, window.location.pathname),
   });
+  // Same global the PostHog snippet sets. Lets `posthog.debug()` run from the
+  // console on production without a redeploy.
+  window.posthog = posthog;
+}
+
+declare global {
+  interface Window {
+    posthog?: typeof posthog;
+  }
 }
 
 /** Next calls this on every App Router transition (Next 15.3+). */
