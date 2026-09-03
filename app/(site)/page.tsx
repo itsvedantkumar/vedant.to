@@ -80,10 +80,7 @@ export default async function Home() {
                 <span className="text-gray-500 dark:text-zinc-400 tabular-nums text-sm w-[100px] shrink-0">
                   {formatDate(entry.date, 'short')}
                 </span>
-                <span
-                  className="text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-150 truncate min-w-0"
-                  title={excerpt || undefined}
-                >
+                <span className="text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-150 truncate min-w-0">
                   {excerpt || formatDate(entry.date, 'long')}
                 </span>
               </Link>
