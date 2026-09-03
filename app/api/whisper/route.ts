@@ -8,6 +8,7 @@ import { makeRatelimit } from '@/lib/ratelimit';
 import { timingSafeEqual } from '@/lib/timing';
 import { r2Env, isProduction, whisperEnv } from '@/lib/env';
 import { parseInput, whisperBodySchema } from '@/lib/validation';
+import { SITE_ORIGIN_RE, WHISPER_EMAIL } from '@/lib/constants';
 import {
   findQuestion,
   isCorrectAnswer,
@@ -56,7 +57,7 @@ const TOKEN_TTL_MS = 30 * 60 * 1000;
 const MAX_BODY_BYTES = 4096;
 
 // No fallback to R2_BUCKET_NAME: that bucket is served publicly at
-// assets.vedant.to, so a missing var would publish anonymous private messages.
+// the public assets host, so a missing var would publish anonymous private messages.
 const WHISPER_BUCKET = r2Env().whisperBucketName;
 
 async function hmac(secret: string, data: string): Promise<string> {
@@ -335,8 +336,10 @@ export async function POST(req: NextRequest) {
   // Origin check — require a valid origin; reject missing or cross-origin
   const origin = req.headers.get('origin');
   const validOrigin = isProduction()
-    ? /^https:\/\/vedant\.to$/.test(origin ?? '')
-    : /^(https:\/\/vedant\.to|https?:\/\/localhost(:\d+)?)$/.test(origin ?? '');
+    ? SITE_ORIGIN_RE.test(origin ?? '')
+    : new RegExp(`^(${SITE_ORIGIN_RE.source}|https?://localhost(:\\d+)?)$`).test(
+        origin ?? ''
+      );
   if (!validOrigin) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   }
@@ -580,7 +583,7 @@ export async function POST(req: NextRequest) {
   if (resend && toEmail) {
     await resend.emails
       .send({
-        from: 'whisper@vedant.to',
+        from: WHISPER_EMAIL,
         to: toEmail,
         subject: 'new whisper',
         text: message,

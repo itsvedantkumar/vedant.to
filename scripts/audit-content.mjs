@@ -31,6 +31,8 @@ import {
   findMdocFiles,
   splitByFencedCode,
 } from './lib/mdoc-utils.mjs';
+import { assetsHost } from '../site.config.mjs';
+import { escapeRegExp } from './regex.mjs';
 
 // ── issue detectors ────────────────────────────────────────────────────────
 
@@ -117,14 +119,12 @@ function detectMultiParaListItems(lines, offset) {
 function detectCDNAssetExtensions(lines, offset) {
   const issues = [];
   const IMG_RE = /!\[[^\]]*\]\(([^)]+)\)/g;
+  const CDN_RE = new RegExp(`^https://${escapeRegExp(assetsHost)}/`, 'i');
   for (let i = 0; i < lines.length; i++) {
     let match;
     while ((match = IMG_RE.exec(lines[i])) !== null) {
       const url = match[1];
-      if (
-        /^https:\/\/assets\.vedant\.to\//i.test(url) &&
-        /\.(png|jpg|jpeg)$/i.test(url)
-      ) {
+      if (CDN_RE.test(url) && /\.(png|jpg|jpeg)$/i.test(url)) {
         issues.push({
           line: i + 1 + offset,
           message: `Image ref has wrong extension (points to ${url.split('/').pop()}). Run \`npm run fix-images\` to rewrite to .webp.`,
@@ -138,7 +138,7 @@ function detectCDNAssetExtensions(lines, offset) {
 
 function detectFrontmatterCDNAssetExtensions(lines, offset) {
   const issues = [];
-  const URL_RE = /https:\/\/assets\.vedant\.to\/\S+/gi;
+  const URL_RE = new RegExp(`https://${escapeRegExp(assetsHost)}/\\S+`, 'gi');
   for (let i = 0; i < lines.length; i++) {
     let match;
     while ((match = URL_RE.exec(lines[i])) !== null) {

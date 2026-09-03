@@ -7,6 +7,7 @@
 import { Resend } from 'resend';
 import { getTrustedIP } from '@/lib/request';
 import { mailEnv } from '@/lib/env';
+import { SECURITY_EMAIL, SITE_HOST } from '@/lib/constants';
 
 const apiKey = mailEnv().RESEND_API_KEY;
 const resend = apiKey ? new Resend(apiKey) : null;
@@ -17,9 +18,9 @@ export async function notifySecurityEvent(subject: string, text: string): Promis
   if (!resend || !toEmail) return;
   await resend.emails
     .send({
-      from: 'security@vedant.to',
+      from: SECURITY_EMAIL,
       to: toEmail,
-      subject: `[vedant.to] ${subject}`,
+      subject: `[${SITE_HOST}] ${subject}`,
       text,
     })
     .catch((err: unknown) => {

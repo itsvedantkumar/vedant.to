@@ -21,6 +21,8 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { findMdocFiles } from './lib/mdoc-utils.mjs';
+import { assetsHost } from '../site.config.mjs';
+import { escapeRegExp } from './regex.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
@@ -39,6 +41,7 @@ function slugifyBasename(name) {
 }
 
 const IMG_RE = /!\[[^\]]*\]\(([^)]+)\)/g;
+const CDN_RE = new RegExp(`^https://${escapeRegExp(assetsHost)}/`, 'i');
 
 let totalFixed = 0;
 let totalMissing = 0;
@@ -48,12 +51,9 @@ for (const mdocPath of findMdocFiles(path.join(ROOT, 'content'))) {
   let src = fs.readFileSync(mdocPath, 'utf8');
   let changed = false;
 
-  // Pass 1: Rewrite CDN image refs to .webp (https://assets.vedant.to/i/*.{png,jpg,jpeg} → *.webp)
+  // Pass 1: Rewrite CDN image refs to .webp
   src = src.replace(IMG_RE, (match, rawRef) => {
-    if (
-      /^https:\/\/assets\.vedant\.to\//i.test(rawRef) &&
-      /\.(png|jpg|jpeg)$/i.test(rawRef)
-    ) {
+    if (CDN_RE.test(rawRef) && /\.(png|jpg|jpeg)$/i.test(rawRef)) {
       totalCDNRewritten++;
       changed = true;
       const newRef = rawRef.replace(/\.(png|jpg|jpeg)$/i, '.webp');
@@ -68,10 +68,7 @@ for (const mdocPath of findMdocFiles(path.join(ROOT, 'content'))) {
   src = src.replace(
     /^(coverImage:[ \t]*(?:>-[ \t]*\n[ \t]+)?)([^\n]+)$/m,
     (match, prefix, rawRef) => {
-      if (
-        /^https:\/\/assets\.vedant\.to\//i.test(rawRef) &&
-        /\.(png|jpg|jpeg)$/i.test(rawRef)
-      ) {
+      if (CDN_RE.test(rawRef) && /\.(png|jpg|jpeg)$/i.test(rawRef)) {
         totalCDNRewritten++;
         changed = true;
         return prefix + rawRef.replace(/\.(png|jpg|jpeg)$/i, '.webp');

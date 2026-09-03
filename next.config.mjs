@@ -1,3 +1,5 @@
+import { assetsHost } from './site.config.mjs';
+
 const isProd = process.env.NODE_ENV === 'production';
 
 // Next's dev-only react-refresh runtime evaluates code with eval(), so without
@@ -15,7 +17,7 @@ const PUBLIC_CSP = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com${DEV_EVAL}`,
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' blob: data: https://assets.vedant.to",
+  `img-src 'self' blob: data: https://${assetsHost}`,
   "font-src 'self' data:",
   "connect-src 'self' https://va.vercel-scripts.com",
   "frame-ancestors 'none'",
@@ -36,7 +38,7 @@ const nextConfig = {
     '/(.*)?': ['./content/**/*'],
   },
   images: {
-    remotePatterns: [{ protocol: 'https', hostname: 'assets.vedant.to' }],
+    remotePatterns: [{ protocol: 'https', hostname: assetsHost }],
   },
   async redirects() {
     return [

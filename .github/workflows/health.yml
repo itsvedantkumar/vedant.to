@@ -11,8 +11,8 @@ on:
   workflow_dispatch:
 
 permissions:
-  # Required despite there being no checkout step: the drift check below reads
-  # /repos/{repo}/commits/main with github.token, which is a contents read.
+  # The drift check below reads /repos/{repo}/commits/main with github.token,
+  # which is a contents read; the checkout step needs it too.
   contents: read
   issues: write
 
@@ -24,11 +24,19 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@fb33536851a1f668829f664eb4b6762dc44618b5 # v4.1.1
+        with:
+          node-version-file: .nvmrc
+
       - name: Check public routes return 200
         id: routes
         run: |
           set -uo pipefail
-          BASE="https://vedant.to"
+          BASE="$(node scripts/site.mjs url)"
           ROUTES="/ /blog /rss.xml /feed.json /sitemap.xml /robots.txt"
           FAIL=""
           for r in $ROUTES; do
@@ -37,7 +45,8 @@ jobs:
             if [ "$CODE" != "200" ]; then FAIL="$FAIL\n$r returned $CODE"; fi
           done
           # Homepage must contain the site name (catches blank/error pages that still 200).
-          if ! curl -s --max-time 20 "$BASE/" | grep -q "Vedant"; then
+          SITE_NAME="$(node scripts/site.mjs name)"
+          if ! curl -s --max-time 20 "$BASE/" | grep -q "$SITE_NAME"; then
             FAIL="$FAIL\nhomepage missing expected content"
           fi
           if [ -n "$FAIL" ]; then

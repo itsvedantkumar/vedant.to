@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { SITE_NAME } from '@/lib/constants';
+import { SITE_NAME, SITE_DESCRIPTION } from '@/lib/constants';
 import { getPublishedPosts } from '@/lib/posts';
 import { getRecentDailyEntries } from '@/lib/daily';
 import { createMetadata, ogImageUrl } from '@/lib/metadata';
@@ -10,11 +10,11 @@ import { FOCUS_RING } from '@/lib/styles';
 export const metadata: Metadata = {
   ...createMetadata({
     title: SITE_NAME,
-    description: 'I love watching movies, listening to music, and absorbing culture.',
+    description: SITE_DESCRIPTION,
     path: '/',
     image: ogImageUrl(SITE_NAME),
   }),
-  // absolute bypasses the '%s — Vedant' template so homepage doesn't become 'Vedant — Vedant'
+  // absolute bypasses the '%s — <site name>' template so the homepage title is not doubled
   title: { absolute: SITE_NAME },
 };
 
@@ -29,10 +29,8 @@ export default async function Home() {
   return (
     <section className="space-y-8">
       <div>
-        <h1 className="font-medium text-2xl tracking-tight mb-2">Vedant</h1>
-        <p className="text-gray-600 dark:text-zinc-400">
-          I love watching movies, listening to music, and absorbing culture
-        </p>
+        <h1 className="font-medium text-2xl tracking-tight mb-2">{SITE_NAME}</h1>
+        <p className="text-gray-600 dark:text-zinc-400">{SITE_DESCRIPTION}</p>
       </div>
 
       <div>

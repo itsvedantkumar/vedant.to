@@ -1,6 +1,7 @@
 import { ImageResponse } from 'next/og';
 import { makeRatelimit } from '@/lib/ratelimit';
 import { getIP } from '@/lib/request';
+import { SITE_HOST } from '@/lib/constants';
 import { OG_DEFAULT_TITLE, ogQuerySchema, parseSearchParams } from '@/lib/validation';
 
 // Node.js runtime, not 'edge'. Next 16 deprecated the Edge runtime, and
@@ -59,7 +60,7 @@ export async function GET(request: Request) {
             marginBottom: 40,
           }}
         >
-          vedant.to
+          {SITE_HOST}
         </div>
         <div
           style={{

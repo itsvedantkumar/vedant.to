@@ -2,19 +2,21 @@
 // hand-mapping. Drop each into a <script type="application/ld+json"> tag.
 
 import { ogImageUrl } from './metadata';
-import { SITE_URL, AUTHOR } from '@/lib/constants';
-const SOCIALS = [
-  'https://x.com/itsvedantkumar',
-  'https://www.linkedin.com/in/itsvedantkumar',
-];
+import {
+  SITE_URL,
+  AUTHOR,
+  CONTACT_EMAIL,
+  SITE_NAME,
+  SOCIAL_LINKS,
+} from '@/lib/constants';
 
 export const person = {
   '@type': 'Person',
   name: AUTHOR,
   url: SITE_URL,
-  email: 'vedant@simulacrum.world',
+  email: CONTACT_EMAIL,
   image: `${SITE_URL}/icon.png`,
-  sameAs: SOCIALS,
+  sameAs: Object.values(SOCIAL_LINKS).filter((link): link is string => link !== null),
 };
 
 interface ArticleSchemaInput {
@@ -70,7 +72,7 @@ export function siteSchema() {
     {
       '@context': 'https://schema.org',
       '@type': 'WebSite',
-      name: 'Vedant',
+      name: SITE_NAME,
       url: SITE_URL,
     },
     { '@context': 'https://schema.org', ...person },

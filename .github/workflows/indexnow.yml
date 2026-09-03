@@ -33,12 +33,16 @@ jobs:
         with:
           persist-credentials: false
 
+      - uses: actions/setup-node@fb33536851a1f668829f664eb4b6762dc44618b5 # v4.1.1
+        with:
+          node-version-file: .nvmrc
+
       - name: Submit URLs to IndexNow
         env:
-          HOST: vedant.to
           KEY: 6b3d50d9f977ead7a83ee04e62745866 # gitleaks:allow
         run: |
           set -euo pipefail
+          HOST="$(node scripts/site.mjs host)"
           URLS=$(jq -R -s -c '
             split("\n") | map(select(length > 0))
           ' < <(

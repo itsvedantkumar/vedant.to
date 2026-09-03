@@ -1,7 +1,8 @@
 import { config, fields, collection } from '@keystatic/core';
+import { site } from './site.config.mjs';
 
-// Keep the origin in sync with ASSETS_URL in lib/constants.ts.
-const ASSETS_PUBLIC_PATH = 'https://assets.vedant.to/i/';
+// Derived from site.assetsUrl; both posts and daily collections share this publicPath.
+const ASSETS_PUBLIC_PATH = `${site.assetsUrl}/i/`;
 
 const draftField = fields.checkbox({
   label: 'Draft',
@@ -33,13 +34,13 @@ export default config({
       : {
           kind: 'github' as const,
           repo: {
-            owner: 'itsvedantkumar',
-            name: 'vedant.to',
+            owner: site.github.owner,
+            name: site.github.repo,
           },
         },
   ui: {
     brand: {
-      name: 'vedant.to',
+      name: site.name,
     },
   },
   collections: {
