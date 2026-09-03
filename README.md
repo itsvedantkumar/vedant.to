@@ -150,18 +150,30 @@ Production deploys come from Vercel's Git integration on pushes to `main`, **not
 GitHub Actions. That keeps releases independent of Actions billing and quota failures. A
 red CI run never blocks a deploy.
 
+#### When GitHub Actions is unavailable
+
+Without Actions, two gates still run. `npm install`'s `prepare` script sets
+`core.hooksPath` to `.githooks/`, so `.githooks/pre-push` runs `npm run check` (typecheck,
+content audit, identity guard, tests), `prettier --check`, `eslint`, and, when installed
+locally, `gitleaks` over the pushed commits, `osv-scanner` on `package-lock.json`, and
+`zizmor` offline. Skip once with `git push --no-verify`. `vercel.json` sets `buildCommand`
+to `npm run check && npm run build`, so Vercel refuses to deploy a commit that fails the
+check, the actual deploy gate. To push secrets without Actions: `npx vercel link --yes
+--project vedant-blog` in an empty directory, then `printf '%s' "$VALUE" | npx vercel env
+add NAME production` (repeat for `preview`), then `npx vercel redeploy <latest production
+url>`. The dashboard works too.
+
 GitHub Actions handles validation and support jobs only:
 
-| Workflow             | Name                  | Trigger                  | Does                                                                                                           |
-| -------------------- | --------------------- | ------------------------ | -------------------------------------------------------------------------------------------------------------- |
-| `ci.yml`             | CI                    | push to `main`, PR       | build, normalize-content, audit-content, `format:check`, `typecheck`, `npm test`, R2 image sync, Lighthouse CI |
-| `health.yml`         | Production Health     | 4×/day                   | probes the live site, alerts if prod lags `main`                                                               |
-| `backup.yml`         | Daily Content Backup  | daily 03:17 UTC          | tags, zips, and off-sites `content/` (see below)                                                               |
-| `secret-scan.yml`    | Secret Scan           | push, PR, weekly         | `gitleaks`, weekly over full history                                                                           |
-| `security-audit.yml` | Security Audit        | manifest changes, weekly | `npm audit`, fails on high/critical                                                                            |
-| `indexnow.yml`       | IndexNow              | push to `main`           | pings IndexNow so new content is crawled fast                                                                  |
-| `links.yml`          | Link Check            | weekly Mon 07:00 UTC     | `lychee` over `content/**/*.mdoc` and this README                                                              |
-| `setup-env.yml`      | Setup Vercel Env Vars | manual only              | syncs secrets to Vercel, forces a redeploy                                                                     |
+| Workflow        | Name                  | Trigger                                  | Does                                                                                                           |
+| --------------- | --------------------- | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `ci.yml`        | CI                    | push to `main`, PR                       | build, normalize-content, audit-content, `format:check`, `typecheck`, `npm test`, R2 image sync, Lighthouse CI |
+| `health.yml`    | Production Health     | 4×/day                                   | probes the live site, alerts if prod lags `main`                                                               |
+| `backup.yml`    | Daily Content Backup  | daily 03:17 UTC                          | tags, zips, and off-sites `content/` (see below)                                                               |
+| `security.yml`  | security              | PR, push to `main`, weekly Mon 06:00 UTC | `gitleaks`, `semgrep`, `osv-scanner`, `zizmor`, `npm audit`                                                    |
+| `indexnow.yml`  | IndexNow              | push to `main`                           | pings IndexNow so new content is crawled fast                                                                  |
+| `links.yml`     | Link Check            | weekly Mon 07:00 UTC                     | `lychee` over `content/**/*.mdoc` and this README                                                              |
+| `setup-env.yml` | Setup Vercel Env Vars | manual only                              | syncs secrets to Vercel, forces a redeploy                                                                     |
 
 ## What CI enforces
 
@@ -330,7 +342,9 @@ Three env vars get a production build to pass: `KEYSTATIC_GITHUB_CLIENT_ID`,
 you can also get into `/keystatic`; without either that password or an Upstash Redis, the
 gate fails closed and answers 503. `.env.example` documents all 27 and says which are
 required. Set them in the Vercel dashboard, or put them in GitHub Actions secrets and run
-`setup-env.yml`, which pushes them to Vercel and redeploys.
+`setup-env.yml`, which pushes them to Vercel and redeploys. Without Actions, add them
+directly with `npx vercel env add`; see
+[When GitHub Actions is unavailable](#when-github-actions-is-unavailable).
 
 Once `/keystatic` is reachable, enroll a passkey at `/auth/keystatic/enroll` and set
 `KEYSTATIC_AUTH_MODE=passkey`. Enroll a second one before you rely on it: the break-glass

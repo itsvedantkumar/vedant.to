@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# Local gate, same checks ci.yml runs. Installed by `npm install` through the
+# "prepare" script (core.hooksPath = .githooks). Skip once with
+# `git push --no-verify` when you know why.
+set -euo pipefail
+cd "$(git rev-parse --show-toplevel)"
+
+echo "pre-push: npm run check (typecheck, content audit, identity, tests)"
+npm run --silent check
+echo "pre-push: prettier --check"
+npx --no-install prettier --check . >/dev/null
+echo "pre-push: eslint"
+npx --no-install eslint . >/dev/null
+
+# Security scanners are optional locally; each one that is installed runs.
+if command -v gitleaks >/dev/null; then
+  # Only the commits about to leave: full history takes minutes.
+  base=$(git rev-parse --verify --quiet '@{upstream}' || git rev-parse --verify --quiet origin/main || echo "HEAD~20")
+  echo "pre-push: gitleaks ($base..HEAD)"
+  gitleaks git --no-banner --redact --config .gitleaks.toml --log-opts "$base..HEAD" . >/dev/null
+fi
+if command -v osv-scanner >/dev/null; then
+  echo "pre-push: osv-scanner"
+  osv-scanner scan --lockfile package-lock.json >/dev/null
+fi
+if command -v zizmor >/dev/null; then
+  echo "pre-push: zizmor"
+  zizmor --no-progress --offline .github/workflows >/dev/null
+fi
+echo "pre-push: ok"

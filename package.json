@@ -21,7 +21,8 @@
     "format:check": "prettier --check .",
     "fix-images": "node scripts/normalize-images.mjs",
     "fix-content": "node scripts/normalize-content.mjs",
-    "audit:content:watch": "node scripts/audit-content.mjs --watch"
+    "audit:content:watch": "node scripts/audit-content.mjs --watch",
+    "prepare": "git config core.hooksPath .githooks 2>/dev/null || true"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1124.0",
