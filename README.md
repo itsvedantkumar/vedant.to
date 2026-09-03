@@ -140,9 +140,9 @@ Three hand-rolled route handlers, all `export const dynamic = 'force-static'`, a
 
 They are route handlers rather than Next's `sitemap.ts` / `robots.ts` conventions because
 the shared-source-of-truth wiring is easier to see this way. `robots.txt` is a static file
-in `public/`. OG images are generated per-page by `next/og` at `/api/og`. The
-`indexnow.yml` workflow pings IndexNow on every push to `main`, so new posts get crawled in
-minutes instead of days.
+in `public/`. OG images are generated per-page by `next/og` at `/api/og`. `scripts/indexnow.mjs`
+runs as npm's `postbuild` script and pings IndexNow after every production build, so new
+posts get crawled in minutes instead of days.
 
 ## Deployment
 
@@ -163,17 +163,38 @@ check, the actual deploy gate. To push secrets without Actions: `npx --yes verce
 add NAME production` (repeat for `preview`), then `npx --yes vercel@59.1.4 redeploy <latest production
 url>`. The dashboard works too.
 
+#### Ops Worker
+
+The scheduled jobs Actions used to run, backup and health checks, now run on a Cloudflare
+Worker, `ops/worker/index.mjs`, since Actions is a permanent billing lock rather than a
+temporary outage. Full detail, schedules and log-reading are in
+[docs/ops.md](docs/ops.md). Deploy or redeploy it with:
+
+```sh
+R2_BUCKET_NAME=<assets bucket> R2_BACKUP_BUCKET_NAME=<backup bucket> npm run ops:deploy
+```
+
+That generates `ops/worker/wrangler.generated.jsonc` (gitignored, so no identity is checked
+in) from `site.config.mjs` and deploys it. One secret has to be set by hand, once:
+
+```sh
+npx wrangler secret put RESEND_API_KEY --config ops/worker/wrangler.generated.jsonc
+```
+
+Run either cron by hand without waiting for the schedule:
+
+```sh
+npx wrangler dev --config ops/worker/wrangler.generated.jsonc --test-scheduled
+curl 'http://localhost:8787/__scheduled?cron=17+3+*+*+*'
+```
+
 GitHub Actions handles validation and support jobs only:
 
-| Workflow        | Name                  | Trigger                                  | Does                                                                                                           |
-| --------------- | --------------------- | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `ci.yml`        | CI                    | push to `main`, PR                       | build, normalize-content, audit-content, `format:check`, `typecheck`, `npm test`, R2 image sync, Lighthouse CI |
-| `health.yml`    | Production Health     | 4×/day                                   | probes the live site, alerts if prod lags `main`                                                               |
-| `backup.yml`    | Daily Content Backup  | daily 03:17 UTC                          | tags, zips, and off-sites `content/` (see below)                                                               |
-| `security.yml`  | security              | PR, push to `main`, weekly Mon 06:00 UTC | `gitleaks`, `semgrep`, `osv-scanner`, `zizmor`, `npm audit`                                                    |
-| `indexnow.yml`  | IndexNow              | push to `main`                           | pings IndexNow so new content is crawled fast                                                                  |
-| `links.yml`     | Link Check            | weekly Mon 07:00 UTC                     | `lychee` over `content/**/*.mdoc` and this README                                                              |
-| `setup-env.yml` | Setup Vercel Env Vars | manual only                              | syncs secrets to Vercel, forces a redeploy                                                                     |
+| Workflow        | Name                  | Trigger                                  | Does                                                                                                                                                                                      |
+| --------------- | --------------------- | ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ci.yml`        | CI                    | push to `main`, PR                       | build, normalize-content, audit-content, `format:check`, `typecheck`, `npm test`, R2 image sync, Lighthouse CI                                                                            |
+| `security.yml`  | security              | PR, push to `main`, weekly Mon 06:00 UTC | `gitleaks`, `semgrep`, `osv-scanner`, `zizmor`, `npm audit`, but dormant: Actions is billing-locked, and `.githooks/pre-push` already runs `gitleaks`, `osv-scanner` and `zizmor` locally |
+| `setup-env.yml` | Setup Vercel Env Vars | manual only                              | syncs secrets to Vercel, forces a redeploy                                                                                                                                                |
 
 ## What CI enforces
 
@@ -250,7 +271,7 @@ What is still yours to change by hand, because it is not a string:
 | Where                                                       | What                                                |
 | ----------------------------------------------------------- | --------------------------------------------------- |
 | `app/icon.png`, `app/apple-icon.png`, `public/icon-192.png` | favicon and app icons. Still mine until you replace |
-| `.github/workflows/indexnow.yml` + `public/<key>.txt`       | IndexNow key. Regenerate, do not reuse mine         |
+| `public/<key>.txt`                                          | IndexNow key. Regenerate, do not reuse mine         |
 | `package.json`, `LICENSE`, `SECURITY.md`, this README       | project name, author, copyright, reporting address  |
 | `content/`                                                  | my writing, see step 2                              |
 | `.env.example` to `.env.local`                              | fresh secrets, see the agent prompt below           |
@@ -288,7 +309,8 @@ Do this:
    `nvm install 22 && nvm use` (install nvm first if absent). Then `npm install`. Install
    the GitHub CLI if it is missing and run `gh auth login` if `gh auth status` fails; it is
    needed to set Actions secrets. Install the `aws` CLI only if I say I want the R2 backup
-   and restore scripts. Report the versions you ended up with.
+   and restore scripts. The ops Worker deploy runs through `npx wrangler`, so nothing extra
+   to install there. Report the versions you ended up with.
 2. Put my details into site.config.mjs. That is the only code file that carries the
    previous owner's identity; everything else derives from it. Then update package.json
    ("name", "author"), LICENSE, SECURITY.md and docs/auth.md, which are prose and are not
@@ -302,9 +324,9 @@ Do this:
    plus their imports in app/layout.tsx, app/(site)/blog/[slug]/page.tsx AND
    app/(site)/daily/[slug]/page.tsx. Both page files import PostConsoleArt.
 6. Delete CLAUDE.md, .claude/ and .conductor/. They are the previous owner's agent tooling.
-7. Replace the IndexNow key: generate a new 32-character hex string, rename
-   public/<old-key>.txt to <new-key>.txt with the key as its only content, and update
-   .github/workflows/indexnow.yml.
+7. Replace the IndexNow key: generate a new 32-character hex string, and rename
+   public/<old-key>.txt to <new-key>.txt with the key as its only content.
+   scripts/indexnow.mjs discovers the key file by name, so nothing else to change.
 8. Generate fresh values for every secret in .env.example and write them to .env.local,
    which you should create by copying .env.example. Each of KEYSTATIC_SECRET,
    KEYSTATIC_SESSION_SECRET, KEYSTATIC_ENROLL_TOKEN and UPLOAD_SECRET must be a new random
@@ -332,7 +354,7 @@ does.
 | Vercel                  | Hosting                           | No hosting                                          |
 | Upstash Redis           | Rate limiting, passkey storage    | Limits are skipped; `/keystatic` still fails closed |
 | Cloudflare R2 (public)  | Image hosting                     | Uploads return 503                                  |
-| Cloudflare R2 (private) | Daily backups, whisper messages   | `backup.yml` and `/api/whisper` fail                |
+| Cloudflare R2 (private) | Daily backups, whisper messages   | the ops Worker's backup run and `/api/whisper` fail |
 | Resend                  | Security alerts and whisper email | Alerts are dropped                                  |
 | proxycheck.io           | VPN detection on `/whisper`       | The call still runs, unkeyed on the free tier       |
 | PostHog                 | Analytics, replays, errors        | Nothing is sent; the client never initialises       |
@@ -380,19 +402,16 @@ Worth knowing before you fork it.
 
 ## Backup
 
-A scheduled GitHub Actions workflow runs daily at 03:17 UTC:
+A Cloudflare Worker, `ops/worker/index.mjs`, runs a backup every day at 03:17 UTC. Full
+schedule, limits and how to run it or read its logs by hand are in
+[docs/ops.md](docs/ops.md). Each run:
 
-- Creates a `backup/YYYY-MM-DD` git tag pointing to the current commit
-- Zips `content/` (and `public/images/` when it exists) and uploads it as a workflow
-  artifact, retained 90 days. `public/images/` is normally **absent**: Keystatic writes
-  uploads there, `sync-images-to-r2.mjs` pushes them to R2 on the next push to `main`, and
-  the local copies are then redundant. The image corpus of record is R2, covered by the
-  bucket mirror below, not by the zip.
-- Copies the same zip off-GitHub to `s3://$R2_BACKUP_BUCKET_NAME/backups/content-YYYY-MM-DD.zip`
-- Mirrors the live asset bucket to `s3://$R2_BACKUP_BUCKET_NAME/r2-assets/`, capturing objects
-  that exist only in R2 (API uploads, whisper messages) and have no copy in the repo
-
-Trigger a manual backup anytime from the Actions tab → "Daily Content Backup" → Run workflow.
+- Fetches the GitHub tarball of `main` and writes it to the private backup bucket as
+  `backups/repo-YYYY-MM-DD.tar.gz`, pruning copies older than 30 days.
+- Mirrors the live asset bucket into `s3://$R2_BACKUP_BUCKET_NAME/r2-assets/`, capturing
+  objects that exist only in R2 (API uploads, whisper messages) and have no copy in the
+  repo. The free Workers plan caps subrequests at 50 a run, so at most 18 objects mirror
+  per day; a large batch converges over the following days instead of failing.
 
 Backups go to a **private** bucket (`R2_BACKUP_BUCKET_NAME`), never to `R2_BUCKET_NAME`. The
 latter is the live asset bucket, fronted by the public domain `assets.vedant.to`. Anything
@@ -401,17 +420,17 @@ separate.
 
 ### Restore
 
-```sh
-scripts/restore.sh path/to/content-backup.zip
-```
-
-Restores `content/` and `public/images/`, moving any existing copies aside to
-`*.bak-<timestamp>` first. It verifies the archive and refuses entries outside those two trees.
-Fetch the zip from an Actions artifact, from the private R2 bucket, or use a git tag directly:
+Hand the tarball straight to `scripts/restore.sh`. It verifies the archive, refuses absolute
+or parent-relative entries, lifts `content/` and `public/images/` out of the nested
+`<owner>-<repo>-<sha>/` directory GitHub tarballs use, and moves any existing copies aside
+to `*.bak-<timestamp>` before restoring:
 
 ```sh
-git checkout backup/YYYY-MM-DD -- content public/images
+scripts/restore.sh repo-YYYY-MM-DD.tar.gz
 ```
+
+A zip holding `content/` and `public/images/` at its root (the old Actions format) still
+works the same way.
 
 R2-only objects restore in the opposite direction, with
 `aws s3 sync s3://$R2_BACKUP_BUCKET_NAME/r2-assets/ s3://$R2_BUCKET_NAME/`.
@@ -420,6 +439,8 @@ R2-only objects restore in the opposite direction, with
 
 - [docs/auth.md](docs/auth.md) — the `/keystatic` gate: WebAuthn design, the break-glass
   password path, every env var it reads, and how to verify the gate is live in production.
+- [docs/ops.md](docs/ops.md), the ops Worker: what runs where, schedules, limits, how to
+  deploy, run a job by hand, and read the logs.
 - [.env.example](.env.example) — every environment variable, with the semantics of the
   awkward ones written next to them. Deliberately the only copy; a table in this file
   would rot against it.

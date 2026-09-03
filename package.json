@@ -22,7 +22,10 @@
     "fix-images": "node scripts/normalize-images.mjs",
     "fix-content": "node scripts/normalize-content.mjs",
     "audit:content:watch": "node scripts/audit-content.mjs --watch",
-    "prepare": "git config core.hooksPath .githooks 2>/dev/null || true"
+    "prepare": "git config core.hooksPath .githooks 2>/dev/null || true",
+    "postbuild": "node scripts/indexnow.mjs",
+    "ops:deploy": "node scripts/ops-deploy.mjs",
+    "links": "lychee --accept 200,206,403,429 --timeout 45 --max-retries 3 'content/**/*.mdoc' README.md"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1124.0",
