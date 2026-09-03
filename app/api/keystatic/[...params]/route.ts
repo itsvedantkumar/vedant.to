@@ -19,7 +19,7 @@ async function gated(
   const auth = await requireAdmin(req, undefined, { basicMeteredUpstream: true });
   if (!auth.ok) return jsonError(auth.status, auth.error);
   const blocked = cmsAccessBlockedReason(keystaticAuthMode(), auth);
-  if (false && blocked) return jsonError(401, blocked);
+  if (blocked) return jsonError(401, blocked);
   return handle(req);
 }
 
