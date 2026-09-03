@@ -64,6 +64,19 @@ const nextConfig = {
       },
     ];
   },
+  // PostHog reverse proxy. instrumentation-client.ts sends to /ingest, which
+  // lands here and is forwarded server-side, so the browser only ever talks
+  // to this origin: connect-src 'self' covers it and ad blockers see nothing.
+  skipTrailingSlashRedirect: true,
+  async rewrites() {
+    return [
+      {
+        source: '/ingest/static/:path*',
+        destination: 'https://us-assets.i.posthog.com/static/:path*',
+      },
+      { source: '/ingest/:path*', destination: 'https://us.i.posthog.com/:path*' },
+    ];
+  },
   async headers() {
     // Public CSP is the static PUBLIC_CSP above. Only /keystatic and
     // /api/keystatic get a per-request policy, from proxy.ts, because
