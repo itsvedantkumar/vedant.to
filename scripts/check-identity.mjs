@@ -11,7 +11,7 @@
 // runs: README, docs, LICENSE, SECURITY.md, content/, package metadata, and
 // the agent configuration directories.
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { site, siteHost, assetsHost } from '../site.config.mjs';
 
 const ALLOW = [
@@ -60,10 +60,42 @@ const needles = [...new Set(values.map((s) => s.toLowerCase()))].map((n) => ({
   re: new RegExp(`(?<![\\p{L}\\p{N}_])${escape(n)}(?![\\p{L}\\p{N}_])`, 'iu'),
 }));
 
-const files = execFileSync('git', ['ls-files', '-z'], { encoding: 'utf8' })
-  .split('\0')
-  .filter(Boolean)
-  .filter((f) => !ALLOW.some((re) => re.test(f)));
+// Vercel builds from an export without .git, so fall back to a directory walk
+// that skips build output and dependencies.
+const WALK_SKIP = new Set([
+  '.git',
+  'node_modules',
+  '.next',
+  '.vercel',
+  '.claude',
+  '.audit',
+  'out',
+  'coverage',
+]);
+function walk(dir) {
+  const out = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (WALK_SKIP.has(entry.name)) continue;
+    const rel = dir === '.' ? entry.name : `${dir}/${entry.name}`;
+    if (entry.isDirectory()) out.push(...walk(rel));
+    else if (entry.isFile()) out.push(rel);
+  }
+  return out;
+}
+function listFiles() {
+  try {
+    return execFileSync('git', ['ls-files', '-z'], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    })
+      .split('\0')
+      .filter(Boolean);
+  } catch {
+    return walk('.');
+  }
+}
+
+const files = listFiles().filter((f) => !ALLOW.some((re) => re.test(f)));
 
 const hits = [];
 for (const file of files) {

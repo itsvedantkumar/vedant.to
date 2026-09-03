@@ -10,13 +10,7 @@ import {
 } from '@/lib/analytics';
 
 test('public pages are tracked', () => {
-  for (const p of [
-    '/',
-    '/blog',
-    '/blog/some-post',
-    '/daily/17-august-2026',
-    '/quotes',
-  ]) {
+  for (const p of ['/', '/blog', '/blog/some-post', '/daily/17-august-2026', '/quotes']) {
     assert.equal(isTrackedPath(p), true, p);
   }
 });
