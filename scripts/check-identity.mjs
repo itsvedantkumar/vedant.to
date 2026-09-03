@@ -53,7 +53,12 @@ if (tooShort.length) {
   process.exit(1);
 }
 
-const needles = new Set(values.map((s) => s.toLowerCase()));
+// Whole-token match: a three-letter name must not fire inside "metadata".
+const escape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const needles = [...new Set(values.map((s) => s.toLowerCase()))].map((n) => ({
+  label: n,
+  re: new RegExp(`(?<![\\p{L}\\p{N}_])${escape(n)}(?![\\p{L}\\p{N}_])`, 'iu'),
+}));
 
 const files = execFileSync('git', ['ls-files', '-z'], { encoding: 'utf8' })
   .split('\0')
@@ -69,10 +74,9 @@ for (const file of files) {
     continue; // deleted in the index but not yet committed, or unreadable
   }
   text.split('\n').forEach((line, i) => {
-    const lower = line.toLowerCase();
-    for (const needle of needles) {
-      if (lower.includes(needle)) {
-        hits.push(`${file}:${i + 1}: "${needle}"`);
+    for (const { label, re } of needles) {
+      if (re.test(line)) {
+        hits.push(`${file}:${i + 1}: "${label}"`);
         break;
       }
     }
@@ -87,5 +91,5 @@ if (hits.length) {
   process.exit(1);
 }
 console.log(
-  `check-identity: ok (${files.length} files scanned, ${needles.size} needles)`
+  `check-identity: ok (${files.length} files scanned, ${needles.length} needles)`
 );
