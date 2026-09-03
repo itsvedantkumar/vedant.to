@@ -142,9 +142,22 @@ function passwordFromBasicHeader(req: HeaderBag): string | null {
  * Denies by default — including when KEYSTATIC_SESSION_SECRET is missing, since
  * no session could be minted or verified anyway.
  */
+export type RequireAdminOptions = {
+  /**
+   * The Basic header was already metered and verified by proxy.ts before the
+   * request reached this handler (true for every path under its matcher:
+   * /keystatic and /api/keystatic). Metering it again here charged the shared
+   * keystatic:pw and keystatic:pw-global buckets twice per request, halving
+   * the break-glass budget. Body passwords and enroll tokens are never
+   * metered upstream, so they are still charged here.
+   */
+  basicMeteredUpstream?: boolean;
+};
+
 export async function requireAdmin(
   req: HeaderBag & CookieBag,
-  body?: { password?: unknown }
+  body?: { password?: unknown },
+  opts: RequireAdminOptions = {}
 ): Promise<AdminAuth> {
   const secret = sessionSecret();
   if (!secret) {
@@ -160,7 +173,8 @@ export async function requireAdmin(
 
   // Meter before any comparison, and only when a secret was actually offered —
   // session-cookie traffic must not consume the budget.
-  if (bodyPassword || headerPassword || headerToken) {
+  const meterBasic = headerPassword && !opts.basicMeteredUpstream;
+  if (bodyPassword || meterBasic || headerToken) {
     if (!(await limitSecretAttempt(req))) {
       return { ok: false, status: 429, error: 'too many attempts' };
     }
