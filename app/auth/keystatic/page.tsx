@@ -10,7 +10,7 @@ type Status = {
   configured: boolean;
   passkeysAvailable: boolean;
   passwordEnabled: boolean;
-  enrolledCount: number;
+  enrolledCount: number | null;
   sessionActive: boolean;
 };
 

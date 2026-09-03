@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { sessionOpensCms } from './lib/auth/enrollment';
 import { SESSION_COOKIE, verifySession } from './lib/auth/session';
 import { makeRatelimit } from './lib/ratelimit';
-import { getIP } from './lib/request';
+import { getIP, getTrustedIP } from './lib/request';
 import { redis } from './lib/redis';
 import { timingSafeEqual } from './lib/timing';
 import { authEnv, isProduction, keystaticAuthMode } from './lib/env';
@@ -139,7 +140,7 @@ export async function proxy(req: NextRequest): Promise<NextResponse> {
       req.cookies.get(SESSION_COOKIE)?.value,
       sessionSecret
     );
-    if (session) return allow(req);
+    if (session && sessionOpensCms('passkey', session.m)) return allow(req);
   }
 
   // 2. Break-glass password over HTTP Basic.
@@ -176,7 +177,7 @@ export async function proxy(req: NextRequest): Promise<NextResponse> {
   // it should raise these buckets deliberately rather than have the live path
   // stay unmetered to keep the fallback comfortable.
   if (password && req.headers.get('authorization')?.startsWith('Basic ')) {
-    const ip = getIP(req);
+    const ip = getTrustedIP(req);
 
     // Fails CLOSED in production, matching limitSecretAttempt in
     // lib/auth/guard.ts, which guards this same credential on
