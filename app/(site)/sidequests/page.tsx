@@ -74,7 +74,7 @@ export default function CrazyPage() {
             friend&apos;s company (iykyk)
           </li>
           <li>
-            Published <ExternalLink href={POETRY}>poetry</ExternalLink> in internationally
+            Published <ExternalLink href={POETRY}>poetry</ExternalLink> in international
             magazines, getting ~150k eyeballs + published hardcopy
           </li>
           <li>
@@ -98,7 +98,7 @@ export default function CrazyPage() {
             Managed a team of ~150 concurrent interns, and ~1100 interns over the course
             of the company
           </li>
-          <li>Almost goes sued by IIM Indore, and Amity Uni Noida</li>
+          <li>Almost got sued by IIM Indore, and Amity Noida</li>
         </Section>
 
         <Section title="In the 12th grade (2024):">
