@@ -31,6 +31,14 @@ export default async function Home() {
       <div>
         <h1 className="font-medium text-2xl tracking-tight mb-2">{SITE_NAME}</h1>
         <p className="text-gray-600 dark:text-zinc-400">{SITE_DESCRIPTION}</p>
+        <p className="mt-2">
+          <Link
+            href="/sidequests"
+            className="text-blue-500 hover:text-blue-700 dark:text-gray-400 dark:hover:text-gray-300 dark:underline dark:underline-offset-2 dark:decoration-gray-800"
+          >
+            Crazy things I&apos;ve done
+          </Link>
+        </p>
       </div>
 
       <div>

@@ -26,6 +26,7 @@ export const site = {
     github: 'itsvedantkumar',
     linkedin: 'itsvedantkumar',
     letterboxd: 'itsvedantkumar',
+    instagram: 'its.vedant.kumar',
   },
   email: {
     /** Public contact in the JSON-LD Person schema. */

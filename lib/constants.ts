@@ -28,6 +28,9 @@ export const SOCIAL_LINKS = {
   letterboxd: site.social.letterboxd
     ? `https://letterboxd.com/${site.social.letterboxd}/`
     : null,
+  instagram: site.social.instagram
+    ? `https://www.instagram.com/${site.social.instagram}`
+    : null,
 } as const;
 
 /** Escapes a literal for use inside a RegExp source. */

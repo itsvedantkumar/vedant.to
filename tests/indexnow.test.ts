@@ -106,6 +106,7 @@ test('collectUrls: static paths first, then posts and daily use the given host',
       'https://example.com/blog',
       'https://example.com/daily',
       'https://example.com/quotes',
+      'https://example.com/sidequests',
       'https://example.com/blog/hello-world',
       'https://example.com/daily/2025-01-01',
     ]);
@@ -152,6 +153,7 @@ test('collectUrls: tolerates a missing collection directory', () => {
       'https://example.com/blog',
       'https://example.com/daily',
       'https://example.com/quotes',
+      'https://example.com/sidequests',
       'https://example.com/blog/only-post',
     ]);
   });
@@ -182,6 +184,7 @@ test('collectUrls: empty content root yields only the static paths', () => {
       'https://example.com/blog',
       'https://example.com/daily',
       'https://example.com/quotes',
+      'https://example.com/sidequests',
     ]);
   });
 });

@@ -17,7 +17,7 @@ import { siteHost } from '../site.config.mjs';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 /** Index-only sections: no per-item route, so only the listing page is submitted. */
-const STATIC_PATHS = ['/', '/blog', '/daily', '/quotes'];
+const STATIC_PATHS = ['/', '/blog', '/daily', '/quotes', '/sidequests'];
 
 const COLLECTIONS = [
   { dir: 'content/posts', route: '/blog' },
