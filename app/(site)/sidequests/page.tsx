@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { createMetadata } from '@/lib/metadata';
-import { ASSETS_URL, SOCIAL_LINKS } from '@/lib/constants';
+import { ASSETS_URL, IAF_PROFILE_URL, SOCIAL_LINKS } from '@/lib/constants';
 
 export const metadata: Metadata = createMetadata({
   title: 'Crazy',
@@ -79,7 +79,10 @@ export default function CrazyPage() {
             Published <ExternalLink href={POETRY}>poetry</ExternalLink> in internationally
             magazines, getting ~150k eyeballs + published hardcopy
           </li>
-          <li>Got a ton of attention for my shit &ldquo;social venture&rdquo; lol</li>
+          <li>
+            Got a <ExternalLink href={IAF_PROFILE_URL}>ton of attention</ExternalLink> for
+            my shit &ldquo;social venture&rdquo; lol
+          </li>
         </Section>
 
         <Section title="In the 11th grade (2023):">

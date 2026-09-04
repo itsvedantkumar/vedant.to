@@ -28,6 +28,10 @@ export const site = {
     letterboxd: 'itsvedantkumar',
     instagram: 'its.vedant.kumar',
   },
+  /** Press and profile pages linked from the site. Full URLs. */
+  links: {
+    iafIndia: 'https://www.iafindia.com/mr-vedant-kumar/',
+  },
   email: {
     /** Public contact in the JSON-LD Person schema. */
     contact: 'vedant@simulacrum.world',

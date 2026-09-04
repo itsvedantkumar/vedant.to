@@ -19,6 +19,8 @@ export const SECURITY_EMAIL = site.email.security;
 export const SECURITY_CONTACT_EMAIL = site.email.securityContact;
 export const WHISPER_EMAIL = site.email.whisper;
 
+export const IAF_PROFILE_URL = site.links.iafIndia;
+
 export const SOCIAL_LINKS = {
   x: site.social.x ? `https://x.com/${site.social.x}` : null,
   github: site.social.github ? `https://github.com/${site.social.github}` : null,
