@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import Image from 'next/image';
 import { createMetadata } from '@/lib/metadata';
 import { ASSETS_URL, SOCIAL_LINKS } from '@/lib/constants';
 
@@ -85,21 +84,10 @@ export default function CrazyPage() {
 
         <Section title="In the 11th grade:">
           <li>
-            Started Dublieu, became the biggest platform for MUNs in India
-            <a
-              href={DUBLIEU_IMAGE}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-3 block w-full max-w-md"
-            >
-              <Image
-                src={DUBLIEU_IMAGE}
-                alt="Google search for MUNs in India ranking Dublieu"
-                width={1280}
-                height={728}
-                className="w-full h-auto rounded-md border border-gray-200 dark:border-zinc-700"
-              />
-            </a>
+            Started Dublieu, became the{' '}
+            <ExternalLink href={DUBLIEU_IMAGE}>
+              biggest platform for MUNs in India
+            </ExternalLink>
           </li>
           <li>
             Got cancelled over fake screenshots from someone cause we parted ways
@@ -108,10 +96,8 @@ export default function CrazyPage() {
           <li>
             Managed a team of ~150 concurrent interns, and ~1100 interns over the course
             of the company
-            <ul className="list-disc pl-5 mt-2 space-y-2">
-              <li>Almost goes sued by IIM Indore, and Amity Uni Noida</li>
-            </ul>
           </li>
+          <li>Almost goes sued by IIM Indore, and Amity Uni Noida</li>
         </Section>
 
         <Section title="In the 12th grade:">
@@ -132,10 +118,8 @@ export default function CrazyPage() {
             )}{' '}
             for a month, got &gt;20k followers, made $1500 per reel (coaching companies
             pay like crazy lol)
-            <ul className="list-disc pl-5 mt-2 space-y-2">
-              <li>Only wore black color clothes since 3 years, like legit, no kidding</li>
-            </ul>
           </li>
+          <li>Only wore black color clothes since 3 years, like legit, no kidding</li>
         </Section>
       </div>
     </div>
