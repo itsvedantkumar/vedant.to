@@ -46,7 +46,7 @@ export default function CrazyPage() {
       </h1>
 
       <div className="space-y-8">
-        <Section title="In the 8th grade:">
+        <Section title="In the 8th grade (2020):">
           <li>
             Spent 6 months researching parts to assemble my first computer (not that
             crazy, I know), in the end literally started crying out of indecision over AMD
@@ -58,7 +58,7 @@ export default function CrazyPage() {
           </li>
         </Section>
 
-        <Section title="In the 9th grade:">
+        <Section title="In the 9th grade (2021):">
           <li>
             Lost ~30 KGs weight in 2 months by starving myself (completely), rigorous
             sports, literally have -ve Vitamin D levels (trust me, lol). This was me
@@ -70,7 +70,7 @@ export default function CrazyPage() {
           </li>
         </Section>
 
-        <Section title="In the 10th grade:">
+        <Section title="In the 10th grade (2022):">
           <li>
             Convinced my, umm, older situationship to get me an Internship at her
             friend&apos;s company (iykyk)
@@ -82,7 +82,7 @@ export default function CrazyPage() {
           <li>Got a ton of attention for my shit &ldquo;social venture&rdquo; lol</li>
         </Section>
 
-        <Section title="In the 11th grade:">
+        <Section title="In the 11th grade (2023):">
           <li>
             Started Dublieu, became the{' '}
             <ExternalLink href={DUBLIEU_IMAGE}>
@@ -100,14 +100,14 @@ export default function CrazyPage() {
           <li>Almost goes sued by IIM Indore, and Amity Uni Noida</li>
         </Section>
 
-        <Section title="In the 12th grade:">
+        <Section title="In the 12th grade (2024):">
           <li>
             Got an investment offer of $200k from the biggest Consumer VC fund in India
           </li>
           <li>Got cancelled again, this time for sorta valid reasons, lol</li>
         </Section>
 
-        <Section title="1st year:">
+        <Section title="1st year (2025):">
           <li>Studied for CUET &amp; got an AIR of &lt;400, got into Hindu College</li>
           <li>
             Made{' '}
