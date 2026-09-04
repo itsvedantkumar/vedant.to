@@ -3,7 +3,7 @@ import { createMetadata } from '@/lib/metadata';
 import { ASSETS_URL, IAF_PROFILE_URL, SOCIAL_LINKS } from '@/lib/constants';
 
 export const metadata: Metadata = createMetadata({
-  title: 'Crazy',
+  title: 'Sidequests',
   description: "Crazy things I've done.",
   path: '/sidequests',
 });
@@ -41,9 +41,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 export default function CrazyPage() {
   return (
     <div>
-      <h1 className="font-medium text-2xl mb-10 tracking-tight">
-        Crazy things I&apos;ve done
-      </h1>
+      <h1 className="font-medium text-2xl mb-10 tracking-tight">Sidequests</h1>
 
       <div className="space-y-8">
         <Section title="In the 8th grade (2020):">
