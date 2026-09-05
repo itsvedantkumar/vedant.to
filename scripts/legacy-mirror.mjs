@@ -395,11 +395,54 @@ const formScript = (endpoint) => `<script>(function(){
  */
 const HINT_BLOCKLIST = ['fonts.gstatic.com', 'fonts.googleapis.com', 'events.framer.com'];
 
+/**
+ * Motion, removed, with one deliberate exception.
+ *
+ * Three mechanisms drove the animation and none of them answered to
+ * `prefers-reduced-motion` (measured against the deployed archive), so each
+ * one gets its own rule:
+ *
+ *  - Scroll reveal. React renders these elements at `will-change:transform;
+ *    opacity:0;transform:none` and the runtime fades them in when they enter
+ *    the viewport. An `!important` rule outranks the inline style the runtime
+ *    keeps rewriting, so the element simply starts and stays visible. The
+ *    selector keys on `will-change`, not on opacity, so it goes on matching
+ *    while the runtime animates the opacity out from under it. Both spellings
+ *    are listed because React serialises without a space and CSSOM with one.
+ *    `transform:none` is safe here: the badge is the only node in any page
+ *    that pairs `will-change:transform` with a real transform, and it is
+ *    already hidden above.
+ *  - Bare `opacity:0` containers, which fade in the same way with no
+ *    `will-change`. Matching on `opacity:0;` and on end-of-attribute avoids
+ *    swallowing `opacity:0.5`, which shares the prefix.
+ *  - CSS transitions, keyframes and smooth scroll, via the catch-all.
+ *
+ * The exception is the Pulse Indicator's ripple, `BG Circle`, which loops
+ * opacity 0 -> 0.23 behind a solid dot. That pulse is the one piece of motion
+ * that says something (the indicator is live) rather than decorating, so it
+ * keeps running. Excluding it from the rules above is not optional: important
+ * declarations outrank animations in the cascade, so pinning its opacity
+ * would freeze the ripple fully opaque instead of leaving it alone, which
+ * looks worse than either the pulse or no pulse at all.
+ */
+const PULSE = ':not([data-framer-name="BG Circle"])';
+
+const NO_MOTION =
+  '<style>' +
+  `[style*="will-change:transform"]${PULSE},[style*="will-change: transform"]${PULSE}` +
+  '{opacity:1!important}' +
+  `[style*="will-change:transform"]${PULSE}{transform:none!important}` +
+  `[style*="opacity:0;"]${PULSE},[style$="opacity:0"]${PULSE}{opacity:1!important}` +
+  `*${PULSE},*::before,*::after` +
+  '{animation:none!important;transition:none!important;scroll-behavior:auto!important}' +
+  '</style>';
+
 const INJECT = [
   '<meta name="robots" content="noindex,nofollow">',
   // The badge markup stays so React hydration still matches; the runtime
   // re-injects it after hydration, so removing the tag alone would not hold.
   '<style>#__framer-badge-container,.__framer-badge{display:none!important}</style>',
+  NO_MOTION,
 ].join('');
 
 /**
