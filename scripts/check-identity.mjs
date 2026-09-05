@@ -29,6 +29,10 @@ const ALLOW = [
   /^\.audit\//,
   // The archived Framer site is the owner's own content, mirrored verbatim.
   /^legacy\//,
+  // A CLI deploy uploads a vercel.json that Vercel synthesised, and that one
+  // carries the project's own name. Ours holds no identity value; the file is
+  // exempt so `vercel deploy` reaches the same gate a git push does.
+  /^vercel\.json$/,
   /^public\/.*\.(png|jpg|jpeg|webp|ico|svg)$/,
 ];
 

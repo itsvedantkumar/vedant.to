@@ -1,0 +1,9 @@
+# `vercel deploy` from a developer machine uploads the working directory, not
+# the git index, so anything generated locally rides along and is scanned by
+# the build gate. Git-integration builds never contain these.
+ops/worker/wrangler.generated.jsonc
+legacy/worker/wrangler.generated.jsonc
+legacy/assets
+.claude
+.conductor
+.audit
