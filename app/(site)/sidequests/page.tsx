@@ -19,6 +19,10 @@ const BEFORE_PHOTOS =
 const POETRY = 'https://drive.google.com/drive/folders/1-IfQiDQ0nrXMA8aKFT5eKJDQrcUA-ftx';
 const PC_BUILD = 'https://pcpartpicker.com/user/vkworkofficial/saved/#view=wWrbwP';
 const BALATRO = 'https://store.steampowered.com/app/2379780/Balatro/';
+const CGPA_IMAGE = `${ASSETS_URL}/i/sidequests/cgpa-sem2.webp`;
+const RAGEBAIT_POST = SOCIAL_LINKS.x
+  ? `${SOCIAL_LINKS.x}/status/2069843036297945598?s=20`
+  : null;
 const INSTAGRAM = SOCIAL_LINKS.instagram;
 
 function ExternalLink({ href, children }: { href: string; children: React.ReactNode }) {
@@ -133,6 +137,24 @@ export default function CrazyPage() {
             Was a linkedin influencer for a while, consistently got 100k views per day for
             2 months (made DU-related content)
           </li>
+        </Section>
+
+        <Section title="2nd year (2026):">
+          <li>Exit process for Dublieu (mainquest)</li>
+          <li>Led growth at a HF0 company</li>
+          <li>
+            {RAGEBAIT_POST ? (
+              <ExternalLink href={RAGEBAIT_POST}>Ragebaited</ExternalLink>
+            ) : (
+              'Ragebaited'
+            )}{' '}
+            Bangalore TT + went viral on IG too
+          </li>
+          <li>Burnt $20k in Anthropic credits in one day lol</li>
+          <li>
+            <ExternalLink href={CGPA_IMAGE}>My CGPA was 1.23</ExternalLink> lol
+          </li>
+          <li>Earned $50k in two weeks in August (ifykyk)</li>
         </Section>
       </div>
     </div>
