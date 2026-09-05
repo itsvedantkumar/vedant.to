@@ -29,7 +29,8 @@ function parseTexts(body: unknown): Record<string, string> | null {
 
 /**
  * A line that only the server can reveal. The ciphertext is not in the page;
- * the password goes to /api/redact, which answers with the text or a 401.
+ * the password goes to /api/redact, which answers with every line that
+ * password opens, or a 401.
  *
  * Every line shares one password, so a single unlock opens all of them: the
  * response carries every line it fits, and lib/redacted-store hands each one
