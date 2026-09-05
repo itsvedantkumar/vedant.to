@@ -137,8 +137,9 @@ The plaintext is not in the repo, the bundle, or the page: it is AES-256-GCM cip
 the `REDACTED_LINES` env var, and `POST /api/redact` decrypts it with a key derived by
 scrypt (128 MiB per guess) from the password the reader sends. Nothing public can be brute
 forced offline, and every guess, right or wrong, costs one of 5 per IP per hour and 60 site-wide;
-without Upstash the route answers 503 rather than run unthrottled. Lines that share a
-password open together, so one unlock reveals the page. Adding or rotating a
+without Upstash the route answers 503 rather than run unthrottled. One password covers
+every line, so it is typed once; the lines the reader did not click stay strips and open
+on a click. Adding or rotating a
 line is three commands, in **[docs/ops.md](docs/ops.md#redacted-lines-sidequests)**.
 
 ## Feeds and SEO

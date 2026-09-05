@@ -1,7 +1,14 @@
 'use client';
 
 import { useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
-import { getRevealed, getSealed, revealAll, subscribe } from '@/lib/redacted-store';
+import {
+  getKnown,
+  getSealed,
+  getShown,
+  learn,
+  show,
+  subscribe,
+} from '@/lib/redacted-store';
 
 type Phase = 'sealed' | 'asking' | 'checking';
 type Miss = 'wrong' | 'slow' | 'down';
@@ -32,15 +39,17 @@ function parseTexts(body: unknown): Record<string, string> | null {
  * the password goes to /api/redact, which answers with every line that
  * password opens, or a 401.
  *
- * Every line shares one password, so a single unlock opens all of them: the
- * response carries every line it fits, and lib/redacted-store hands each one
- * to its instance. Nobody types the password twice.
+ * Every line shares one password, so one unlock pays for all of them. The
+ * others keep their strip, because opening the page in one flash would spoil
+ * it, but they stop asking for the password: a click is enough.
  */
 export function Redacted({ id }: { id: string }) {
   const [phase, setPhase] = useState<Phase>('sealed');
   const [password, setPassword] = useState('');
   const [miss, setMiss] = useState<Miss | null>(null);
-  const text = useSyncExternalStore(subscribe, () => getRevealed(id), getSealed);
+  const text = useSyncExternalStore(subscribe, () => getShown(id), getSealed);
+  // Already paid for by unlocking a sibling: this strip opens on a click.
+  const paid = useSyncExternalStore(subscribe, () => getKnown(id), getSealed);
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -73,8 +82,8 @@ export function Redacted({ id }: { id: string }) {
     setPhase('checking');
     const outcome = await attempt();
     if (outcome.kind === 'opened') {
-      // Reveals this line and every sibling at once.
-      revealAll(outcome.texts);
+      // Banks every line the password opened, shows only this one.
+      learn(outcome.texts, id);
       return;
     }
     setMiss(outcome.miss);
@@ -84,6 +93,22 @@ export function Redacted({ id }: { id: string }) {
 
   if (text !== null) {
     return <span className="redacted-reveal">{text}</span>;
+  }
+
+  // A sibling's unlock pays for this line mid-typing, so this comes before the
+  // phase checks: the form collapses back to a strip and the password the
+  // reader was halfway through is no longer needed.
+  if (paid !== null) {
+    return (
+      <button
+        type="button"
+        onClick={() => show(id)}
+        className="redacted-strip"
+        aria-label="Redacted. Unlocked already. Click to read."
+      >
+        <span className="redacted-strip-label">redacted · click to read</span>
+      </button>
+    );
   }
 
   if (phase === 'sealed') {

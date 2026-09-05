@@ -106,10 +106,12 @@ printf '%s' "$(cat /tmp/lines.json)" | npx --yes vercel@59.1.4 env add REDACTED_
 npx --yes vercel@59.1.4 redeploy <prod url>
 ```
 
-The page references a line by id: `<Redacted id="birthday" />`. Lines sharing a
-password unlock as a group: a correct guess returns every line that password
-opens, so the reader types it once and the whole page reveals. A wrong guess
-still costs exactly one key derivation, so this cannot be used to amplify load.
+The page references a line by id: `<Redacted id="birthday" />`. One password
+covers every line: a correct guess returns all of them, so the password is only
+ever typed once. The lines the reader did not click keep their strip and read
+`click to read` instead of `click to unlock`, opening on a click with no second
+prompt. A wrong guess still costs exactly one key derivation, so this cannot be
+used to amplify load.
 
 ## Legacy archive Worker (old site)
 
