@@ -1,20 +1,30 @@
 'use client';
 
 import { useEffect, useId, useRef, useState } from 'react';
-import { decryptRedacted, type RedactedPayload } from '@/lib/redact';
 
 type Phase = 'sealed' | 'asking' | 'checking' | 'open';
+type Miss = 'wrong' | 'slow' | 'down' | null;
 
-export function Redacted({ payload }: { payload: RedactedPayload }) {
+const MISS_TEXT: Record<NonNullable<Miss>, string> = {
+  wrong: 'nope.',
+  slow: 'too many tries. come back in an hour.',
+  down: 'unavailable right now.',
+};
+
+/**
+ * A line that only the server can reveal. The ciphertext is not in the page;
+ * the password goes to /api/redact, which answers with the text or a 401.
+ */
+export function Redacted({ id }: { id: string }) {
   const [phase, setPhase] = useState<Phase>('sealed');
   const [password, setPassword] = useState('');
-  const [wrong, setWrong] = useState(false);
+  const [miss, setMiss] = useState<Miss>(null);
   const [text, setText] = useState<string | null>(null);
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Focus on open and again after a miss: disabling the input while checking
-  // blurs it, and the reader should not have to click back into it.
+  // Focus on open and again after a miss: the input is read-only (not
+  // disabled) while checking so it never drops focus mid-flow.
   useEffect(() => {
     if (phase === 'asking') inputRef.current?.focus();
   }, [phase]);
@@ -22,15 +32,39 @@ export function Redacted({ payload }: { payload: RedactedPayload }) {
   async function unlock(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setPhase('checking');
-    const plain = await decryptRedacted(payload, password);
-    if (plain === null) {
-      setWrong(true);
-      setPassword('');
-      setPhase('asking');
+    let outcome: Miss | { text: string } = 'down';
+    try {
+      const res = await fetch('/api/redact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, password }),
+      });
+      if (res.ok) {
+        const body: unknown = await res.json();
+        if (
+          typeof body === 'object' &&
+          body !== null &&
+          'text' in body &&
+          typeof body.text === 'string'
+        ) {
+          outcome = { text: body.text };
+        }
+      } else if (res.status === 401) {
+        outcome = 'wrong';
+      } else if (res.status === 429) {
+        outcome = 'slow';
+      }
+    } catch {
+      outcome = 'down';
+    }
+    if (typeof outcome === 'object') {
+      setText(outcome.text);
+      setPhase('open');
       return;
     }
-    setText(plain);
-    setPhase('open');
+    setMiss(outcome);
+    setPassword('');
+    setPhase('asking');
   }
 
   if (phase === 'open' && text !== null) {
@@ -66,13 +100,13 @@ export function Redacted({ payload }: { payload: RedactedPayload }) {
         value={password}
         onChange={(e) => {
           setPassword(e.target.value);
-          setWrong(false);
+          setMiss(null);
         }}
         placeholder="password"
         readOnly={phase === 'checking'}
-        className={`redacted-input ${wrong ? 'redacted-input-wrong' : ''}`}
-        aria-invalid={wrong}
-        aria-describedby={wrong ? `${inputId}-hint` : undefined}
+        className={`redacted-input ${miss === 'wrong' ? 'redacted-input-wrong' : ''}`}
+        aria-invalid={miss === 'wrong'}
+        aria-describedby={miss ? `${inputId}-hint` : undefined}
       />
       <button
         type="submit"
@@ -83,9 +117,9 @@ export function Redacted({ payload }: { payload: RedactedPayload }) {
           {phase === 'checking' ? 'checking…' : 'unlock'}
         </span>
       </button>
-      {wrong && (
+      {miss && (
         <span id={`${inputId}-hint`} className="text-sm text-red-600 dark:text-red-400">
-          nope.
+          {MISS_TEXT[miss]}
         </span>
       )}
     </form>

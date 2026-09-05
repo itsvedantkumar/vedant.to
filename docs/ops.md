@@ -87,3 +87,23 @@ did, and where it lives now:
   `lychee` (`brew install lychee`).
 - IndexNow moved from a push-triggered workflow to a `postbuild` script, so it fires on the
   build that actually goes live rather than on every push to `main`.
+
+## Redacted lines (/sidequests)
+
+Password-gated bullets are served by `POST /api/redact`. The ciphertext lives
+only in the `REDACTED_LINES` env var (Vercel, production, sensitive), never in
+the repo or the page, so there is nothing to brute force offline. scrypt
+(128 MiB per guess) plus Upstash rate limits (5 wrong guesses per IP per hour,
+30 site-wide) bound online guessing; without Redis the route answers 503.
+
+Add or rotate a line:
+
+```sh
+REDACT_PASSWORD='<password>' node scripts/redact.mjs <id> "<text>" > /tmp/lines.json
+# merge into the existing map first if other ids exist: REDACTED_LINES='<current json>'
+cd /tmp/vlink && npx --yes vercel@59.1.4 env rm REDACTED_LINES production -y
+printf '%s' "$(cat /tmp/lines.json)" | npx --yes vercel@59.1.4 env add REDACTED_LINES production --sensitive
+npx --yes vercel@59.1.4 redeploy <prod url>
+```
+
+The page references a line by id: `<Redacted id="birthday" />`.

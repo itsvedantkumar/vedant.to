@@ -1,83 +1,101 @@
-// Client-side redaction. Text is encrypted at build time with a key derived
-// from a password (PBKDF2-SHA256 → AES-256-GCM); only the ciphertext ships in
-// the bundle. The browser derives the same key from whatever the reader types,
-// and AES-GCM's auth tag rejects a wrong password, so there is no oracle to
-// compare against. Node 22 and every evergreen browser expose the same
-// `crypto.subtle`, so this module runs in both.
+// SERVER ONLY. Password-gated lines for /sidequests.
+//
+// The ciphertext never leaves the server: it lives in the REDACTED_LINES env
+// var, and app/api/redact/route.ts decrypts it only when the reader's password
+// derives the right key. A reader who never sees the ciphertext cannot brute
+// force it offline, which turns "how strong is the password" into "how many
+// guesses does the rate limiter allow" (a few per IP, a few dozen globally).
+//
+// KDF is scrypt (memory-hard, ships in node:crypto, so no dependency): 128 MiB
+// per guess makes GPU/ASIC guessing expensive even if the ciphertext leaked.
+// Cipher is AES-256-GCM; the auth tag rejects a wrong password outright, so
+// there is no partial plaintext and no oracle beyond pass/fail.
+import { randomBytes, scrypt, createCipheriv, createDecipheriv } from 'node:crypto';
+import { z } from 'zod';
 
-export type RedactedPayload = {
+export const redactedPayloadSchema = z.object({
   /** base64, 16 bytes */
-  salt: string;
+  salt: z.string().min(1),
   /** base64, 12 bytes */
-  iv: string;
-  /** base64, ciphertext + GCM tag */
-  data: string;
-};
+  iv: z.string().min(1),
+  /** base64, ciphertext + 16-byte GCM tag */
+  data: z.string().min(1),
+});
+export type RedactedPayload = z.output<typeof redactedPayloadSchema>;
 
-const PBKDF2_ITERATIONS = 600_000; // OWASP 2023 floor for PBKDF2-SHA256
+/** `{ [id]: payload }` — the shape of the REDACTED_LINES env var. */
+export const redactedLinesSchema = z.record(
+  z.string().regex(/^[a-z0-9-]{1,64}$/),
+  redactedPayloadSchema
+);
+export type RedactedLines = z.output<typeof redactedLinesSchema>;
 
-function toBase64(bytes: Uint8Array): string {
-  let binary = '';
-  for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary);
+// N=2^17, r=8, p=1 → 128 MiB, ~150 ms on a laptop core. maxmem must exceed
+// 128 * N * r bytes or node refuses.
+const SCRYPT = { N: 1 << 17, r: 8, p: 1, maxmem: 256 * 1024 * 1024 } as const;
+
+function deriveKey(password: string, salt: Buffer): Promise<Buffer> {
+  // util.promisify drops the options overload, so wrap the callback by hand.
+  return new Promise((resolve, reject) => {
+    scrypt(password.normalize('NFKC'), salt, 32, SCRYPT, (err, key) =>
+      err ? reject(err) : resolve(key)
+    );
+  });
 }
 
-function fromBase64(value: string): Uint8Array<ArrayBuffer> {
-  const binary = atob(value);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  return bytes;
-}
-
-async function deriveKey(
-  password: string,
-  salt: Uint8Array<ArrayBuffer>
-): Promise<CryptoKey> {
-  const material = await crypto.subtle.importKey(
-    'raw',
-    new TextEncoder().encode(password),
-    'PBKDF2',
-    false,
-    ['deriveKey']
-  );
-  return crypto.subtle.deriveKey(
-    { name: 'PBKDF2', salt, iterations: PBKDF2_ITERATIONS, hash: 'SHA-256' },
-    material,
-    { name: 'AES-GCM', length: 256 },
-    false,
-    ['encrypt', 'decrypt']
-  );
-}
-
-export async function encryptRedacted(
+export async function encryptLine(
   text: string,
   password: string
 ): Promise<RedactedPayload> {
-  const salt = crypto.getRandomValues(new Uint8Array(16));
-  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const salt = randomBytes(16);
+  const iv = randomBytes(12);
   const key = await deriveKey(password, salt);
-  const data = await crypto.subtle.encrypt(
-    { name: 'AES-GCM', iv },
-    key,
-    new TextEncoder().encode(text)
-  );
-  return { salt: toBase64(salt), iv: toBase64(iv), data: toBase64(new Uint8Array(data)) };
+  const cipher = createCipheriv('aes-256-gcm', key, iv);
+  const data = Buffer.concat([
+    cipher.update(text, 'utf8'),
+    cipher.final(),
+    cipher.getAuthTag(),
+  ]);
+  return {
+    salt: salt.toString('base64'),
+    iv: iv.toString('base64'),
+    data: data.toString('base64'),
+  };
 }
 
 /** Resolves to the plaintext, or null when the password (or payload) is wrong. */
-export async function decryptRedacted(
+export async function decryptLine(
   payload: RedactedPayload,
   password: string
 ): Promise<string | null> {
   try {
-    const key = await deriveKey(password, fromBase64(payload.salt));
-    const plain = await crypto.subtle.decrypt(
-      { name: 'AES-GCM', iv: fromBase64(payload.iv) },
-      key,
-      fromBase64(payload.data)
-    );
-    return new TextDecoder().decode(plain);
+    const salt = Buffer.from(payload.salt, 'base64');
+    const iv = Buffer.from(payload.iv, 'base64');
+    const data = Buffer.from(payload.data, 'base64');
+    if (salt.length !== 16 || iv.length !== 12 || data.length < 17) return null;
+    const key = await deriveKey(password, salt);
+    const decipher = createDecipheriv('aes-256-gcm', key, iv);
+    decipher.setAuthTag(data.subarray(data.length - 16));
+    const plain = Buffer.concat([
+      decipher.update(data.subarray(0, data.length - 16)),
+      decipher.final(),
+    ]);
+    return plain.toString('utf8');
   } catch {
     return null;
+  }
+}
+
+/**
+ * Parse a REDACTED_LINES value. Malformed input yields an empty map, so the
+ * route fails closed (every id unknown → 401) rather than throwing.
+ */
+export function parseRedactedLines(raw: string | undefined): RedactedLines {
+  if (!raw) return {};
+  try {
+    const result = redactedLinesSchema.safeParse(JSON.parse(raw));
+    return result.success ? result.data : {};
+  } catch {
+    return {};
   }
 }

@@ -2,7 +2,6 @@ import type { Metadata } from 'next';
 import { createMetadata } from '@/lib/metadata';
 import { ASSETS_URL, IAF_PROFILE_URL, OLD_BLOG_URL, SOCIAL_LINKS } from '@/lib/constants';
 import { Redacted } from '@/components/redacted';
-import type { RedactedPayload } from '@/lib/redact';
 
 export const metadata: Metadata = createMetadata({
   title: 'Sidequests',
@@ -27,13 +26,6 @@ const RAGEBAIT_POST = SOCIAL_LINKS.x
   : null;
 const INSTAGRAM = SOCIAL_LINKS.instagram;
 const YOUTUBE = SOCIAL_LINKS.youtube;
-
-// Encrypted with scripts/redact.mjs; the password never enters the repo.
-const BIRTHDAY: RedactedPayload = {
-  salt: '[purged]',
-  iv: '[purged]',
-  data: '[purged]',
-};
 
 function ExternalLink({ href, children }: { href: string; children: React.ReactNode }) {
   return (
@@ -179,7 +171,7 @@ export default function CrazyPage() {
           </li>
           <li>Earned $50k in two weeks in August (ifykyk)</li>
           <li>
-            <Redacted payload={BIRTHDAY} />
+            <Redacted id="birthday" />
           </li>
         </Section>
       </div>

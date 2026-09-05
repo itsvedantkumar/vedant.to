@@ -201,6 +201,18 @@ export function whisperEnv(): z.output<typeof whisperSchema> {
   return parseGroup('whisper', whisperSchema);
 }
 
+// --- redacted lines ----------------------------------------------------------
+
+const redactSchema = z.object({
+  /** JSON map of id → { salt, iv, data }; produced by scripts/redact.mjs. */
+  REDACTED_LINES: optional(z.string().min(2).max(65536)),
+});
+
+/** Raw JSON (validated for shape in lib/redact.ts). Undefined when unset. */
+export function rawRedactedLines(): string | undefined {
+  return parseGroup('redact', redactSchema).REDACTED_LINES;
+}
+
 /**
  * The question bank. Answers are personal data, which is why they live in an
  * env var and not in the repo; a malformed bank yields an empty one and the
