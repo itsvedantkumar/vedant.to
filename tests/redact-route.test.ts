@@ -24,8 +24,13 @@ delete process.env.UPSTASH_REDIS_REST_TOKEN;
 const { encryptLine } = await import('@/lib/redact');
 const PASSWORD = 'misery loves tests';
 const TEXT = 'secret line';
+const OTHER_TEXT = 'the other secret line';
+const OTHER_PASSWORD = 'a different key entirely';
+const OTHER_TEXT_ALONE = 'not part of the group';
 process.env.REDACTED_LINES = JSON.stringify({
   birthday: await encryptLine(TEXT, PASSWORD),
+  interns: await encryptLine(OTHER_TEXT, PASSWORD),
+  loner: await encryptLine(OTHER_TEXT_ALONE, OTHER_PASSWORD),
 });
 
 const { POST } = await import('@/app/api/redact/route');
@@ -47,11 +52,25 @@ function post(
   });
 }
 
-test('right password returns the text, uncached', async () => {
+test('right password returns every line it opens, uncached', async () => {
   const res = await POST(post({ id: 'birthday', password: PASSWORD }));
   assert.equal(res.status, 200);
   assert.equal(res.headers.get('cache-control'), 'no-store');
-  assert.deepEqual(await res.json(), { text: TEXT });
+  // One password, one prompt: the page reveals as a group, and a line locked
+  // with a different password is not in it.
+  assert.deepEqual(await res.json(), { texts: { birthday: TEXT, interns: OTHER_TEXT } });
+});
+
+test('unlocking any member of the group opens the same set', async () => {
+  const res = await POST(post({ id: 'interns', password: PASSWORD }));
+  assert.equal(res.status, 200);
+  assert.deepEqual(await res.json(), { texts: { birthday: TEXT, interns: OTHER_TEXT } });
+});
+
+test('a line with its own password opens only itself', async () => {
+  const res = await POST(post({ id: 'loner', password: OTHER_PASSWORD }));
+  assert.equal(res.status, 200);
+  assert.deepEqual(await res.json(), { texts: { loner: OTHER_TEXT_ALONE } });
 });
 
 test('wrong password and unknown id are the same 401', async () => {

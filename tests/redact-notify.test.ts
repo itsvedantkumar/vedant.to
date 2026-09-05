@@ -52,8 +52,21 @@ test('the first unlock sends, and names the line', async () => {
   assert.equal(outcome, 'sent');
   assert.equal(mail.sent.length, 1);
   assert.match(mail.sent[0].subject, /unlocked/);
-  assert.match(mail.sent[0].text, /line: birthday/);
+  assert.match(mail.sent[0].text, /lines: birthday/);
   assert.match(mail.sent[0].text, /203\.0\.113\.7/);
+});
+
+test('one notice names every line the password opened', async () => {
+  const store = fakeStore();
+  const mail = recorder();
+  const outcome = await announceUnlock(
+    { store, send: mail.send },
+    { ...event, opened: ['birthday', 'interns'] }
+  );
+
+  assert.equal(outcome, 'sent');
+  assert.equal(mail.sent.length, 1);
+  assert.match(mail.sent[0].text, /lines: birthday, interns/);
 });
 
 test('a repeat unlock of the same line by the same address is silent', async () => {

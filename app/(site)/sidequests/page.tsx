@@ -108,6 +108,9 @@ export default function CrazyPage() {
             Managed a team of ~150 concurrent interns, and ~1100 interns over the course
             of the company
           </li>
+          <li>
+            <Redacted id="interns" />
+          </li>
           <li>Almost got sued by IIM Indore, and Amity Noida</li>
         </Section>
 

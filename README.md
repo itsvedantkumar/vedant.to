@@ -137,7 +137,8 @@ The plaintext is not in the repo, the bundle, or the page: it is AES-256-GCM cip
 the `REDACTED_LINES` env var, and `POST /api/redact` decrypts it with a key derived by
 scrypt (128 MiB per guess) from the password the reader sends. Nothing public can be brute
 forced offline, and every guess, right or wrong, costs one of 5 per IP per hour and 60 site-wide;
-without Upstash the route answers 503 rather than run unthrottled. Adding or rotating a
+without Upstash the route answers 503 rather than run unthrottled. Lines that share a
+password open together, so one unlock reveals the page. Adding or rotating a
 line is three commands, in **[docs/ops.md](docs/ops.md#redacted-lines-sidequests)**.
 
 ## Feeds and SEO
@@ -358,7 +359,8 @@ Do this:
    its lines in public/robots.txt, and its env vars in .env.example (WHISPER_TOKEN_SECRET,
    WHISPER_QUIZ, WHISPER_BUCKET_NAME, WHISPER_TO_EMAIL) and in .github/workflows/setup-env.yml.
    Delete /sidequests and its password gate: app/(site)/sidequests/, app/api/redact/,
-   components/redacted.tsx, lib/redact.ts, scripts/redact.mjs, tests/redact*.test.ts, the
+   components/redacted.tsx, lib/redact.ts, lib/redacted-store.ts, scripts/redact.mjs,
+   tests/redact*.test.ts, the
    `.redacted-*` block in app/globals.css, the link on app/(site)/page.tsx, the
    `/sidequests` entry in scripts/indexnow.mjs, and REDACTED_LINES in .env.example.
 5. Delete the easter eggs: components/easter-egg.tsx and components/post-console-art.tsx,

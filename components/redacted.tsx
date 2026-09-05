@@ -1,25 +1,45 @@
 'use client';
 
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
+import { getRevealed, getSealed, revealAll, subscribe } from '@/lib/redacted-store';
 
-type Phase = 'sealed' | 'asking' | 'checking' | 'open';
-type Miss = 'wrong' | 'slow' | 'down' | null;
+type Phase = 'sealed' | 'asking' | 'checking';
+type Miss = 'wrong' | 'slow' | 'down';
 
-const MISS_TEXT: Record<NonNullable<Miss>, string> = {
+/** What one round trip to /api/redact came back with. */
+type Attempt =
+  { kind: 'opened'; texts: Record<string, string> } | { kind: 'missed'; miss: Miss };
+
+const MISS_TEXT: Record<Miss, string> = {
   wrong: 'nope.',
   slow: 'too many tries. come back in an hour.',
   down: 'unavailable right now.',
 };
 
+/** `{ texts: { id: line } }` — every line the password opened. */
+function parseTexts(body: unknown): Record<string, string> | null {
+  if (typeof body !== 'object' || body === null || !('texts' in body)) return null;
+  const { texts } = body;
+  if (typeof texts !== 'object' || texts === null) return null;
+  const entries = Object.entries(texts).filter(
+    (entry): entry is [string, string] => typeof entry[1] === 'string'
+  );
+  return entries.length > 0 ? Object.fromEntries(entries) : null;
+}
+
 /**
  * A line that only the server can reveal. The ciphertext is not in the page;
  * the password goes to /api/redact, which answers with the text or a 401.
+ *
+ * Every line shares one password, so a single unlock opens all of them: the
+ * response carries every line it fits, and lib/redacted-store hands each one
+ * to its instance. Nobody types the password twice.
  */
 export function Redacted({ id }: { id: string }) {
   const [phase, setPhase] = useState<Phase>('sealed');
   const [password, setPassword] = useState('');
-  const [miss, setMiss] = useState<Miss>(null);
-  const [text, setText] = useState<string | null>(null);
+  const [miss, setMiss] = useState<Miss | null>(null);
+  const text = useSyncExternalStore(subscribe, () => getRevealed(id), getSealed);
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -29,45 +49,39 @@ export function Redacted({ id }: { id: string }) {
     if (phase === 'asking') inputRef.current?.focus();
   }, [phase]);
 
-  async function unlock(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setPhase('checking');
-    let outcome: Miss | { text: string } = 'down';
+  async function attempt(): Promise<Attempt> {
     try {
       const res = await fetch('/api/redact', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, password }),
       });
-      if (res.ok) {
-        const body: unknown = await res.json();
-        if (
-          typeof body === 'object' &&
-          body !== null &&
-          'text' in body &&
-          typeof body.text === 'string'
-        ) {
-          outcome = { text: body.text };
-        }
-      } else if (res.status === 401) {
-        outcome = 'wrong';
-      } else if (res.status === 429) {
-        outcome = 'slow';
-      }
+      if (res.status === 401) return { kind: 'missed', miss: 'wrong' };
+      if (res.status === 429) return { kind: 'missed', miss: 'slow' };
+      if (!res.ok) return { kind: 'missed', miss: 'down' };
+      const texts = parseTexts(await res.json());
+      // A 200 the client cannot read is as good as no answer.
+      return texts ? { kind: 'opened', texts } : { kind: 'missed', miss: 'down' };
     } catch {
-      outcome = 'down';
+      return { kind: 'missed', miss: 'down' };
     }
-    if (typeof outcome === 'object') {
-      setText(outcome.text);
-      setPhase('open');
+  }
+
+  async function unlock(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setPhase('checking');
+    const outcome = await attempt();
+    if (outcome.kind === 'opened') {
+      // Reveals this line and every sibling at once.
+      revealAll(outcome.texts);
       return;
     }
-    setMiss(outcome);
+    setMiss(outcome.miss);
     setPassword('');
     setPhase('asking');
   }
 
-  if (phase === 'open' && text !== null) {
+  if (text !== null) {
     return <span className="redacted-reveal">{text}</span>;
   }
 

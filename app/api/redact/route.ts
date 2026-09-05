@@ -32,6 +32,9 @@ const bodySchema = z.object({
 });
 
 const MAX_BODY_BYTES = 1024;
+// A right password opens the whole group, one scrypt per line. The cap keeps
+// that success path bounded no matter how long REDACTED_LINES grows.
+const MAX_GROUP_LINES = 8;
 const NO_STORE = { 'Cache-Control': 'no-store' } as const;
 
 function isLocalhost(origin: string): boolean {
@@ -98,10 +101,27 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const text = payload ? await decryptLine(payload, password) : null;
   if (text === null) return json({ error: 'wrong' }, 401);
 
+  // The password is now known good, so open every other line it fits: the
+  // reader typed it once and the page reveals as one. Order matters — trying
+  // all ids up front would let a WRONG guess cost one scrypt per line, which
+  // is an amplifier a single request could point at the server. A right guess
+  // pays for the extra lines, and only sequentially, so peak memory stays at
+  // one 128 MiB derivation.
+  const texts: Record<string, string> = { [id]: text };
+  for (const [otherId, other] of Object.entries(lines).slice(0, MAX_GROUP_LINES)) {
+    if (otherId === id) continue;
+    const opened = await decryptLine(other, password);
+    if (opened !== null) texts[otherId] = opened;
+  }
+
   // Read the headers now: by the time the notice runs the request is gone.
   const context = requestContext(req);
+  const opened = Object.keys(texts);
   afterResponse(() =>
-    announceUnlock({ store: redis, send: notifySecurityEvent }, { id, ip, context })
+    announceUnlock(
+      { store: redis, send: notifySecurityEvent },
+      { id, ip, context, opened }
+    )
   );
-  return json({ text }, 200);
+  return json({ texts }, 200);
 }

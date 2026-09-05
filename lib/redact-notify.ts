@@ -24,12 +24,18 @@ export type NoticeDeps = {
 };
 
 export type UnlockEvent = {
-  /** Which redacted line was opened. */
+  /** The line the reader clicked, and the half of the dedup key that is not the address. */
   id: string;
-  /** Caller address, the half of the dedup key that is not the line. */
+  /** Caller address, the other half of the dedup key. */
   ip: string;
   /** Preformatted request context: address, user agent, timestamp. */
   context: string;
+  /**
+   * Every line the password opened, the clicked one included. One password
+   * covers the whole page, so an unlock is one event and one mail, not one
+   * per line. Defaults to just `id`.
+   */
+  opened?: string[];
 };
 
 export type NoticeOutcome = 'sent' | 'deduped' | 'failed';
@@ -54,7 +60,8 @@ export async function announceUnlock(
       );
       if (claimed !== 'OK') return 'deduped';
     }
-    await deps.send(SUBJECT, `line: ${event.id}\n${event.context}`);
+    const lines = event.opened?.length ? event.opened : [event.id];
+    await deps.send(SUBJECT, `lines: ${lines.join(', ')}\n${event.context}`);
     return 'sent';
   } catch (err) {
     // Never surface: the reader has already been given the line, and failing

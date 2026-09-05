@@ -106,7 +106,10 @@ printf '%s' "$(cat /tmp/lines.json)" | npx --yes vercel@59.1.4 env add REDACTED_
 npx --yes vercel@59.1.4 redeploy <prod url>
 ```
 
-The page references a line by id: `<Redacted id="birthday" />`.
+The page references a line by id: `<Redacted id="birthday" />`. Lines sharing a
+password unlock as a group: a correct guess returns every line that password
+opens, so the reader types it once and the whole page reveals. A wrong guess
+still costs exactly one key derivation, so this cannot be used to amplify load.
 
 ## Legacy archive Worker (old site)
 
