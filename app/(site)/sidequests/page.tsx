@@ -17,6 +17,8 @@ const DUBLIEU_IMAGE = `${ASSETS_URL}/i/crazy/dublieu-mun-ranking.webp`;
 const BEFORE_PHOTOS =
   'https://drive.google.com/drive/folders/1hIA09EQo1_rO6OPlQ1VsJ_8Ms6PDBAzn?usp=sharing';
 const POETRY = 'https://drive.google.com/drive/folders/1-IfQiDQ0nrXMA8aKFT5eKJDQrcUA-ftx';
+const PC_BUILD = 'https://pcpartpicker.com/user/vkworkofficial/saved/#view=wWrbwP';
+const BALATRO = 'https://store.steampowered.com/app/2379780/Balatro/';
 const INSTAGRAM = SOCIAL_LINKS.instagram;
 
 function ExternalLink({ href, children }: { href: string; children: React.ReactNode }) {
@@ -46,7 +48,8 @@ export default function CrazyPage() {
       <div className="space-y-8">
         <Section title="In the 8th grade (2020):">
           <li>
-            Spent 6 months researching parts to assemble my first computer (not that
+            Spent 6 months researching parts to assemble{' '}
+            <ExternalLink href={PC_BUILD}>my first computer</ExternalLink> (not that
             crazy, I know), in the end literally started crying out of indecision over AMD
             (Ryzen 3600) or Intel, lol
           </li>
@@ -63,14 +66,15 @@ export default function CrazyPage() {
             before: <ExternalLink href={BEFORE_PHOTOS}>Link</ExternalLink>
           </li>
           <li>
-            Convinced my e-relationship to fly from Europe to come spend a month with me
-            in Delhi (iykwim) 👀
+            Convinced my e-relationship to fly from Europe to come <em>spend a month</em>{' '}
+            with me in Delhi (iykwim)
           </li>
+          <li>Became madly obsessed with chess, got 1800 ELO in Blitz</li>
         </Section>
 
         <Section title="In the 10th grade (2022):">
           <li>
-            Convinced my, umm, older situationship to get me an Internship at her
+            Convinced my, umm, <em>older</em> situationship to get me an Internship at her
             friend&apos;s company (iykyk)
           </li>
           <li>
@@ -121,6 +125,14 @@ export default function CrazyPage() {
             pay like crazy lol)
           </li>
           <li>Only wore black color clothes since 3 years, like legit, no kidding</li>
+          <li>
+            0.1% <ExternalLink href={BALATRO}>Balatro</ExternalLink> Player Globally (by
+            high score)
+          </li>
+          <li>
+            Was a linkedin influencer for a while, consistently got 100k views per day for
+            2 months (made DU-related content)
+          </li>
         </Section>
       </div>
     </div>
