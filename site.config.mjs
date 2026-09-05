@@ -27,10 +27,13 @@ export const site = {
     linkedin: 'itsvedantkumar',
     letterboxd: 'itsvedantkumar',
     instagram: 'its.vedant.kumar',
+    youtube: 'itsvedantkumar',
   },
   /** Press and profile pages linked from the site. Full URLs. */
   links: {
     iafIndia: 'https://www.iafindia.com/mr-vedant-kumar/',
+    /** The previous blog, kept online. */
+    oldBlog: 'https://old.vedant.to',
   },
   email: {
     /** Public contact in the JSON-LD Person schema. */

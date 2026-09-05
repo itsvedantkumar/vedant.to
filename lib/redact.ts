@@ -14,7 +14,7 @@ export type RedactedPayload = {
   data: string;
 };
 
-const PBKDF2_ITERATIONS = 200_000;
+const PBKDF2_ITERATIONS = 600_000; // OWASP 2023 floor for PBKDF2-SHA256
 
 function toBase64(bytes: Uint8Array): string {
   let binary = '';

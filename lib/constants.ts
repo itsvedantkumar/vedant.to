@@ -20,6 +20,7 @@ export const SECURITY_CONTACT_EMAIL = site.email.securityContact;
 export const WHISPER_EMAIL = site.email.whisper;
 
 export const IAF_PROFILE_URL = site.links.iafIndia;
+export const OLD_BLOG_URL = site.links.oldBlog;
 
 export const SOCIAL_LINKS = {
   x: site.social.x ? `https://x.com/${site.social.x}` : null,
@@ -32,6 +33,9 @@ export const SOCIAL_LINKS = {
     : null,
   instagram: site.social.instagram
     ? `https://www.instagram.com/${site.social.instagram}`
+    : null,
+  youtube: site.social.youtube
+    ? `https://www.youtube.com/@${site.social.youtube}/videos`
     : null,
 } as const;
 

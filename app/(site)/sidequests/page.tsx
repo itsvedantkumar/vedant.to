@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { createMetadata } from '@/lib/metadata';
-import { ASSETS_URL, IAF_PROFILE_URL, SOCIAL_LINKS } from '@/lib/constants';
+import { ASSETS_URL, IAF_PROFILE_URL, OLD_BLOG_URL, SOCIAL_LINKS } from '@/lib/constants';
 import { Redacted } from '@/components/redacted';
 import type { RedactedPayload } from '@/lib/redact';
 
@@ -26,6 +26,7 @@ const RAGEBAIT_POST = SOCIAL_LINKS.x
   ? `${SOCIAL_LINKS.x}/status/2069843036297945598?s=20`
   : null;
 const INSTAGRAM = SOCIAL_LINKS.instagram;
+const YOUTUBE = SOCIAL_LINKS.youtube;
 
 // Encrypted with scripts/redact.mjs; the password never enters the repo.
 const BIRTHDAY: RedactedPayload = {
@@ -145,6 +146,18 @@ export default function CrazyPage() {
           <li>
             Was a linkedin influencer for a while, consistently got 100k views per day for
             2 months (made DU-related content)
+          </li>
+          <li>
+            Made a very <ExternalLink href={OLD_BLOG_URL}>emo blog</ExternalLink> (yes, I
+            had an <em>even more</em> emo blog)
+          </li>
+          <li>
+            Published some dumb{' '}
+            {YOUTUBE ? (
+              <ExternalLink href={YOUTUBE}>YouTube videos</ExternalLink>
+            ) : (
+              'YouTube videos'
+            )}
           </li>
         </Section>
 
