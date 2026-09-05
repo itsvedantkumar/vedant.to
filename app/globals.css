@@ -155,3 +155,155 @@ input[type='email'] {
 table {
   text-align: left;
 }
+
+/* Redacted strip (components/redacted.tsx): ink bar the inverse of the page
+   background (black on light, white on dark), swept by a fluorescent shimmer
+   and neon sparkles. */
+@keyframes redacted-shimmer {
+  to {
+    background-position: -200% center;
+  }
+}
+@keyframes redacted-sparkle {
+  0%,
+  100% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes redacted-reveal {
+  from {
+    opacity: 0;
+    filter: blur(6px);
+  }
+  to {
+    opacity: 1;
+    filter: none;
+  }
+}
+@keyframes redacted-shake {
+  25% {
+    transform: translateX(-3px);
+  }
+  75% {
+    transform: translateX(3px);
+  }
+}
+.redacted-strip {
+  --redacted-ink: #0a0a0a;
+  --redacted-label: #ffffff;
+  position: relative;
+  display: inline-block;
+  padding: 0.1rem 0.6rem;
+  border-radius: 0.25rem;
+  overflow: hidden;
+  cursor: pointer;
+  vertical-align: baseline;
+  isolation: isolate;
+  background: var(--redacted-ink);
+  box-shadow:
+    0 0 6px rgba(57, 255, 20, 0.55),
+    0 0 14px rgba(255, 43, 214, 0.35);
+}
+@media (prefers-color-scheme: dark) {
+  .redacted-strip {
+    --redacted-ink: #fafafa;
+    --redacted-label: #0a0a0a;
+  }
+}
+/* shimmer sweep */
+.redacted-strip::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    110deg,
+    transparent 0%,
+    transparent 30%,
+    rgba(57, 255, 20, 0.75) 42%,
+    rgba(0, 240, 255, 0.85) 50%,
+    rgba(255, 43, 214, 0.75) 58%,
+    transparent 70%,
+    transparent 100%
+  );
+  background-size: 200% auto;
+  animation: redacted-shimmer 2.2s linear infinite;
+}
+/* sparkles */
+.redacted-strip::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle, #39ff14 0 1px, transparent 1.6px),
+    radial-gradient(circle, #ff2bd6 0 1px, transparent 1.6px),
+    radial-gradient(circle, #00f0ff 0 0.8px, transparent 1.4px),
+    radial-gradient(circle, #fff200 0 1.2px, transparent 1.8px);
+  background-size:
+    23px 11px,
+    31px 17px,
+    17px 13px,
+    41px 19px;
+  background-position:
+    2px 1px,
+    9px 6px,
+    14px 3px,
+    5px 9px;
+  animation: redacted-sparkle 1.3s ease-in-out infinite;
+}
+.redacted-strip-label {
+  position: relative;
+  z-index: 1;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.78em;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--redacted-label);
+}
+.redacted-strip-sm {
+  padding: 0.15rem 0.5rem;
+}
+.redacted-strip:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.redacted-input {
+  padding: 0.15rem 0.5rem;
+  border-radius: 0.25rem;
+  border: 1px solid var(--color-gray-300);
+  background: transparent;
+  font-size: 0.9em;
+  outline: none;
+}
+.redacted-input:focus {
+  border-color: #39ff14;
+  box-shadow: 0 0 0 2px rgba(57, 255, 20, 0.3);
+}
+.redacted-input-wrong {
+  border-color: var(--color-red-600);
+  animation: redacted-shake 0.3s;
+}
+.redacted-reveal {
+  animation: redacted-reveal 0.6s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .redacted-strip::before,
+  .redacted-strip::after,
+  .redacted-input-wrong,
+  .redacted-reveal {
+    animation: none;
+  }
+  .redacted-strip::before {
+    display: none;
+  }
+  .redacted-strip::after {
+    opacity: 0.7;
+  }
+}
