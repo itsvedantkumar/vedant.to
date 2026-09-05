@@ -12,14 +12,17 @@ import { decryptLine, parseRedactedLines } from '@/lib/redact';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// Wrong guesses only. A correct password never spends a slot, so the owner's
-// friends can retry a typo; an attacker gets 5 tries per IP per hour.
+// Every attempt spends a slot, right or wrong, and it is spent BEFORE the
+// key derivation: `.limit()` is one atomic Redis call, whereas a
+// getRemaining() peek followed by a spend-on-miss lets N concurrent requests
+// all read the same count and all run scrypt (proxy.ts documents the same
+// trap). 5 per IP per hour is plenty for a friend with a typo.
 const ipRatelimit = makeRatelimit('redact', 5, '1 h');
-// Backstop for IP rotation: 30 wrong guesses per hour across the whole site.
-// Real traffic here is a handful of humans, so this only trips under a
-// distributed brute force — and then it closes the gate for everyone until
-// the window passes, which is the intended failure mode.
-const globalRatelimit = makeRatelimit('redact-global', 30, '1 h');
+// Backstop for IP rotation: 60 attempts per hour across the whole site. Real
+// traffic here is a handful of humans, so this only trips under a distributed
+// brute force — and then it closes the gate for everyone until the window
+// passes, which is the intended failure mode.
+const globalRatelimit = makeRatelimit('redact-global', 60, '1 h');
 
 const bodySchema = z.object({
   id: z.string().regex(/^[a-z0-9-]{1,64}$/),
@@ -27,8 +30,15 @@ const bodySchema = z.object({
 });
 
 const MAX_BODY_BYTES = 1024;
-const LOCALHOST_RE = /^https?:\/\/localhost(:\d+)?$/;
 const NO_STORE = { 'Cache-Control': 'no-store' } as const;
+
+function isLocalhost(origin: string): boolean {
+  try {
+    return new URL(origin).hostname === 'localhost';
+  } catch {
+    return false;
+  }
+}
 
 function json(body: Record<string, unknown>, status: number): NextResponse {
   return NextResponse.json(body, { status, headers: NO_STORE });
@@ -43,22 +53,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // Same-origin only: the page is the sole legitimate caller.
   const origin = req.headers.get('origin') ?? '';
   const validOrigin =
-    SITE_ORIGIN_RE.test(origin) || (!isProduction() && LOCALHOST_RE.test(origin));
+    SITE_ORIGIN_RE.test(origin) || (!isProduction() && isLocalhost(origin));
   if (!validOrigin) return json({ error: 'forbidden' }, 403);
 
   // Fail closed: without Redis there is no limiter, and an unthrottled
   // password check is an online brute-force oracle. Dev degrades to open.
   if (!redis && isProduction()) return json({ error: 'unavailable' }, 503);
-
-  const ip = getIP(req);
-  // Check both limiters BEFORE the scrypt call: a blocked IP must not be able
-  // to burn 128 MiB of server memory per request either.
-  if (ipRatelimit && (await ipRatelimit.getRemaining(ip)).remaining <= 0) {
-    return json({ error: 'slow down' }, 429);
-  }
-  if (globalRatelimit && (await globalRatelimit.getRemaining('all')).remaining <= 0) {
-    return json({ error: 'slow down' }, 429);
-  }
 
   const parsed = await parseJson(req, bodySchema, {
     invalid: { status: 400, error: 'bad request', includeIssues: false },
@@ -66,15 +66,21 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   if (!parsed.ok) return parsed.response;
   const { id, password } = parsed.data;
 
+  // Spend both budgets atomically BEFORE the scrypt call, so a blocked or
+  // flooding client can neither guess nor burn 128 MiB per request.
+  const ip = getIP(req);
+  if (ipRatelimit && !(await ipRatelimit.limit(ip)).success) {
+    return json({ error: 'slow down' }, 429);
+  }
+  if (globalRatelimit && !(await globalRatelimit.limit('all')).success) {
+    return json({ error: 'slow down' }, 429);
+  }
+
   const lines = parseRedactedLines(rawRedactedLines());
   const payload = lines[id];
   // Unknown id and wrong password are the same answer, and both cost a guess,
   // so the id space cannot be enumerated any faster than the password.
   const text = payload ? await decryptLine(payload, password) : null;
-  if (text === null) {
-    if (ipRatelimit) await ipRatelimit.limit(ip);
-    if (globalRatelimit) await globalRatelimit.limit('all');
-    return json({ error: 'wrong' }, 401);
-  }
+  if (text === null) return json({ error: 'wrong' }, 401);
   return json({ text }, 200);
 }

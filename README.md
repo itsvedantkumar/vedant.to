@@ -64,12 +64,12 @@ too. `npm run fix-images` rewrites it, and `npm run check` fails if one was miss
 | path                         | what it is                                                                           |
 | ---------------------------- | ------------------------------------------------------------------------------------ |
 | `app/(site)/`                | the public pages                                                                     |
-| `app/api/`                   | 12 route handlers: the auth endpoints, OG images, upload, whisper                    |
+| `app/api/`                   | 13 route handlers: the auth endpoints, OG images, upload, whisper, redact            |
 | `app/keystatic/`             | the CMS UI                                                                           |
 | `app/auth/keystatic/`        | the login and device-management screens                                              |
 | `lib/`                       | content readers (`posts.ts`, `daily.ts`, `reader.ts`) and the feed/SEO helpers       |
 | `lib/auth/`, `lib/webauthn/` | the `/keystatic` gate                                                                |
-| `components/`                | the two client components that have to be client components                          |
+| `components/`                | the three client components that have to be client components                        |
 | `content/`                   | the three collections above: 9 posts, 17 daily entries, 51 quotes                    |
 | `public/`                    | static assets, including a hand-written `robots.txt`                                 |
 | `scripts/`                   | the content normalisers, the auditor, the R2 image sync, `restore.sh`                |
@@ -128,6 +128,16 @@ the passkey code is deliberately a no-op until you opt in.
 If the passkey gate is the only part you want, it lives standalone as a runnable Next.js
 app at **[itsvedantkumar/keystatic-passkeys](https://github.com/itsvedantkumar/keystatic-passkeys)**,
 same code, none of this site around it.
+
+## Redacted lines
+
+`/sidequests` has bullets that render as a sealed strip until the reader types a password.
+The plaintext is not in the repo, the bundle, or the page: it is AES-256-GCM ciphertext in
+the `REDACTED_LINES` env var, and `POST /api/redact` decrypts it with a key derived by
+scrypt (128 MiB per guess) from the password the reader sends. Nothing public can be brute
+forced offline, and every guess, right or wrong, costs one of 5 per IP per hour and 60 site-wide;
+without Upstash the route answers 503 rather than run unthrottled. Adding or rotating a
+line is three commands, in **[docs/ops.md](docs/ops.md#redacted-lines-sidequests)**.
 
 ## Feeds and SEO
 
@@ -207,7 +217,7 @@ purpose, so a formatting typo fails in seconds rather than after a full build.
 | `audit-content.mjs`                             | a content rule is broken                                                                              | CDN references that are not `.webp`, and the other checks in `scripts/audit-content.mjs`                                                                                                      |
 | `format:check`                                  | Prettier would rewrite a file                                                                         | formatting drift                                                                                                                                                                              |
 | `typecheck`                                     | `tsc --noEmit` reports an error                                                                       | type regressions. There is no ESLint here, so this and Prettier are the whole static gate                                                                                                     |
-| `npm test`                                      | any of the 104 cases fails                                                                            | the `draft: true` invariant (`tests/draft-invariant.test.ts`), the auth gate (`guard`, `session`, `enrollment`, `counter`, `timing`), the whisper route and its quiz, and metadata generation |
+| `npm test`                                      | any of the 204 cases fails                                                                            | the `draft: true` invariant (`tests/draft-invariant.test.ts`), the auth gate (`guard`, `session`, `enrollment`, `counter`, `timing`), the whisper route and its quiz, and metadata generation |
 | `next build`                                    | the build errors                                                                                      | a route that only breaks at build time. Runs with placeholder Keystatic secrets; Vercel rebuilds with the real ones                                                                           |
 | Lighthouse CI                                   | performance, accessibility or SEO scores below 0.90 on `/`, `/blog`, `/daily`, `/quotes`, over 3 runs | a regression in any of the three. Best-practices is a warning, not an error. Thresholds live in `lighthouserc.json`                                                                           |
 
@@ -278,7 +288,9 @@ What is still yours to change by hand, because it is not a string:
 
 **Rip out what is not yours.** `/whisper` is an anonymous-message endpoint gated by a
 personal-trivia quiz. The questions live in the `WHISPER_QUIZ` env var, deliberately not in
-the repo, so it fails closed with a 503 until you write your own. `components/` holds two
+the repo, so it fails closed with a 503 until you write your own. `/sidequests` is my
+timeline, and its password-gated lines read `REDACTED_LINES`, which fails the same way when
+unset. `components/` holds two
 easter eggs: `easter-egg.tsx` prints a line to the devtools console site-wide, and
 `post-console-art.tsx` prints ASCII art on every post and daily entry, hand-drawn for four
 slugs and generated from the slug for the rest. `CLAUDE.md`, `.claude/` and `.conductor/`
@@ -320,6 +332,10 @@ Do this:
 4. Delete the /whisper feature: app/(site)/whisper/, app/api/whisper/, lib/whisper-quiz.ts,
    its lines in public/robots.txt, and its env vars in .env.example (WHISPER_TOKEN_SECRET,
    WHISPER_QUIZ, WHISPER_BUCKET_NAME, WHISPER_TO_EMAIL) and in .github/workflows/setup-env.yml.
+   Delete /sidequests and its password gate: app/(site)/sidequests/, app/api/redact/,
+   components/redacted.tsx, lib/redact.ts, scripts/redact.mjs, tests/redact*.test.ts, the
+   `.redacted-*` block in app/globals.css, the link on app/(site)/page.tsx, the
+   `/sidequests` entry in scripts/indexnow.mjs, and REDACTED_LINES in .env.example.
 5. Delete the easter eggs: components/easter-egg.tsx and components/post-console-art.tsx,
    plus their imports in app/layout.tsx, app/(site)/blog/[slug]/page.tsx AND
    app/(site)/daily/[slug]/page.tsx. Both page files import PostConsoleArt.

@@ -20,8 +20,7 @@
  * 2. **Optional stays optional.** Most of these are genuinely absent in a valid
  *    deployment and the code already degrades (no Redis → no rate limiting; no
  *    R2 → 503; no password → password login disabled). Schemas therefore
- *    validate *shape*, and only `requireEnv()` — used where the caller already
- *    fails hard — throws, naming the variable.
+ *    validate *shape*, and nothing here throws on an absent variable.
  *
  * Not listed: KEYSTATIC_GITHUB_CLIENT_ID / KEYSTATIC_GITHUB_CLIENT_SECRET /
  * KEYSTATIC_SECRET, which @keystatic/next reads itself, and NEXT_PUBLIC_*,
@@ -56,13 +55,6 @@ function parseGroup<S extends z.ZodType>(name: string, schema: S): z.output<S> {
     .map((i) => `${i.path.join('.') || '(root)'}: ${i.message}`)
     .join('; ');
   throw new Error(`Invalid environment for ${name} — ${detail}`);
-}
-
-/** For the few places where a missing var is already a hard failure. */
-export function requireEnv(name: string): string {
-  const value = process.env[name];
-  if (!value) throw new Error(`Missing required environment variable: ${name}`);
-  return value;
 }
 
 // --- runtime mode ------------------------------------------------------------

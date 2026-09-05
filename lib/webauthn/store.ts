@@ -206,12 +206,6 @@ export async function bumpCounter(
   return 'error';
 }
 
-export async function deleteCredential(id: string): Promise<void> {
-  const client = db();
-  await client.del(credKey(id), ctrKey(id), suspKey(id));
-  await client.srem(CREDS_SET, id);
-}
-
 /**
  * Atomically remove an id from the index, returning 1 if it was present.
  * Callers that need a "never delete the last credential" guard must remove

@@ -27,7 +27,8 @@ is supported. There are no released versions to back-port fixes to.
   signed, 12h, and revoked en masse by rotating the signing secret. See
   [docs/auth.md](docs/auth.md).
 - **Rate limiting** (Upstash Redis) on every abusable endpoint: admin login,
-  passkey enrollment, image upload, OG rendering, and `/api/whisper`.
+  passkey enrollment, image upload, OG rendering, `/api/whisper`, and `/api/redact`
+  (5 attempts per IP per hour, 60 site-wide, spent atomically before key derivation).
 - **Whisper anti-abuse:** submissions need an HMAC proof-of-page-load token
   (30min TTL, 3s minimum age, burned on use), are capped at 3 per IP per 24h,
   and are screened for proxy/VPN origin via proxycheck.io.

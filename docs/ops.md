@@ -93,8 +93,8 @@ did, and where it lives now:
 Password-gated bullets are served by `POST /api/redact`. The ciphertext lives
 only in the `REDACTED_LINES` env var (Vercel, production, sensitive), never in
 the repo or the page, so there is nothing to brute force offline. scrypt
-(128 MiB per guess) plus Upstash rate limits (5 wrong guesses per IP per hour,
-30 site-wide) bound online guessing; without Redis the route answers 503.
+(128 MiB per guess) plus Upstash rate limits (5 attempts per IP per hour,
+60 site-wide, spent atomically before the key derivation) bound online guessing; without Redis the route answers 503.
 
 Add or rotate a line:
 
