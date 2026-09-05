@@ -50,7 +50,7 @@ export default function CrazyPage() {
       <h1 className="font-medium text-2xl mb-10 tracking-tight">Sidequests</h1>
 
       <div className="space-y-8">
-        <Section title="In the 8th grade (2020):">
+        <Section title="In 8th grade (2020):">
           <li>
             Spent 6 months researching parts to assemble{' '}
             <ExternalLink href={PC_BUILD}>my first computer</ExternalLink> (not that
@@ -63,7 +63,7 @@ export default function CrazyPage() {
           </li>
         </Section>
 
-        <Section title="In the 9th grade (2021):">
+        <Section title="In 9th grade (2021):">
           <li>
             Lost ~30 KGs weight in 2 months by starving myself (completely), rigorous
             sports, literally have -ve Vitamin D levels (trust me, lol). This was{' '}
@@ -76,7 +76,7 @@ export default function CrazyPage() {
           <li>Became madly obsessed with chess, got 1800 ELO in Blitz</li>
         </Section>
 
-        <Section title="In the 10th grade (2022):">
+        <Section title="In 10th grade (2022):">
           <li>
             Convinced my, umm, <em>older</em> situationship to get me an Internship at her
             friend&apos;s company (iykyk)
@@ -91,7 +91,7 @@ export default function CrazyPage() {
           </li>
         </Section>
 
-        <Section title="In the 11th grade (2023):">
+        <Section title="In 11th grade (2023):">
           <li>
             Started Dublieu, became the{' '}
             <ExternalLink href={DUBLIEU_IMAGE}>
@@ -109,14 +109,14 @@ export default function CrazyPage() {
           <li>Almost got sued by IIM Indore, and Amity Noida</li>
         </Section>
 
-        <Section title="In the 12th grade (2024):">
+        <Section title="In 12th grade (2024):">
           <li>
             Got an investment offer of $200k from the biggest Consumer VC fund in India
           </li>
           <li>Got cancelled again, this time for sorta valid reasons, lol</li>
         </Section>
 
-        <Section title="1st year (2025):">
+        <Section title="In Freshman Year (2025):">
           <li>Studied for CUET &amp; got an AIR of &lt;400, got into Hindu College</li>
           <li>
             Made{' '}
@@ -139,7 +139,7 @@ export default function CrazyPage() {
           </li>
         </Section>
 
-        <Section title="2nd year (2026):">
+        <Section title="In Sophomore Year (2026):">
           <li>Exit process for Dublieu (mainquest)</li>
           <li>Led growth at a HF0 company</li>
           <li>
