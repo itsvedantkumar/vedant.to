@@ -210,6 +210,15 @@ export function rawRedactedLines(): string | undefined {
  * env var and not in the repo; a malformed bank yields an empty one and the
  * route fails closed with a 503 rather than serving an ungated form.
  */
+/**
+ * Reserved: app/api/whisper/route.ts mints tokens carrying this id for the
+ * archived site's quiz-free forms. A real question sharing it would be handed
+ * to main-site visitors whose answer is then never checked, locking that
+ * question out. Kept here rather than imported to leave lib/env.ts free of a
+ * route dependency; the two must be changed together.
+ */
+const RESERVED_QUIZ_ID = '!legacy';
+
 export const quizQuestionSchema = z.object({
   id: z.string().min(1),
   question: z.string().min(1),
@@ -223,6 +232,10 @@ export const quizBankSchema = z
   .refine(
     (qs) => new Set(qs.map((q) => q.id)).size === qs.length,
     'WHISPER_QUIZ has duplicate ids'
+  )
+  .refine(
+    (qs) => qs.every((q) => q.id !== RESERVED_QUIZ_ID),
+    `WHISPER_QUIZ uses the reserved id ${RESERVED_QUIZ_ID}`
   );
 
 export function rawQuizBank(): string | undefined {

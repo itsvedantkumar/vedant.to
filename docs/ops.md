@@ -107,3 +107,116 @@ npx --yes vercel@59.1.4 redeploy <prod url>
 ```
 
 The page references a line by id: `<Redacted id="birthday" />`.
+
+## Legacy archive Worker (old site)
+
+The site that preceded this one was built in Framer. It is preserved verbatim at
+`site.legacyUrl` by a second Cloudflare Worker, `legacy/worker/index.mjs`, deployed as
+`<site-host>-legacy`. It shares nothing with the Next.js app. It has its own Worker, its own
+domain, and its own copy of every asset, and Framer is not in the serving path at all.
+
+| Piece          | Where                      | Notes                                                                         |
+| -------------- | -------------------------- | ----------------------------------------------------------------------------- |
+| Rewritten HTML | `legacy/site/**` (tracked) | One file per route, served by the Worker's static-assets binding.             |
+| Framer runtime | R2, `fr-mirr/` prefix      | JS chunks, fonts, images, CMS blobs. Built into `legacy/assets/`, gitignored. |
+| Worker         | `legacy/worker/index.mjs`  | Static assets + R2 reads + the `?range=` slicing below.                       |
+
+### Rebuild and deploy
+
+```sh
+npm run legacy:mirror                          # re-fetch, rewrite, write legacy/
+R2_BUCKET_NAME=<assets bucket> npm run legacy:upload
+R2_BUCKET_NAME=<assets bucket> npm run legacy:deploy
+npm run legacy:verify -- --runtime          # against the deployed origin
+```
+
+`legacy:verify` is the acceptance test, and it runs against the live origin rather than
+`legacy/` on disk, because the failures worth catching are the ones the Worker introduces: a
+mirror key that never got uploaded, a `?range=` answer of the wrong length, a page that still
+reaches Framer once hydrated. The static pass checks every route for a 200, the `noindex`
+meta and header, and any third-party host; then it checks a real CMS blob byte for byte,
+including the malformed-range 400s. `--runtime` adds the slow headless-browser pass, which is
+the only one that can see a request made after hydration.
+
+`legacy:upload` goes through `wrangler r2 object put`, not the S3 client
+`scripts/sync-images-to-r2.mjs` uses, because wrangler authenticates with the Cloudflare API
+token this machine already has and the S3-compatible R2 credentials are empty here. It skips
+a file whose hash is unchanged in `legacy/assets-manifest.json`; pass `--force` if the bucket
+and the manifest ever disagree. That manifest is gitignored, like `legacy/assets/` itself, so
+a fresh clone starts with neither and `legacy:mirror` rebuilds both.
+
+`legacy:mirror` drives a headless browser (`npx agent-browser`) over every route to discover
+assets, because Framer builds some URLs at runtime that appear in no file you can fetch. The
+icon components are the ones that bit me. It caches that list in `legacy/runtime-assets.txt`, so
+`npm run legacy:mirror -- --no-runtime` reuses it and skips the slow pass.
+
+### The things that will bite you
+
+**`?range=` is not HTTP Range.** Framer's CMS reader fetches slices of a binary `.framercms`
+blob with its own query parameter and rejects anything that is not a `200` whose body is
+exactly the concatenated slices:
+
+```js
+if (res.status !== 200) throw Error(...)
+if (bytes.length !== expectedTotal) throw Error(...)
+```
+
+R2's native range support answers `206`, so it cannot serve these directly. The Worker reads
+the whole object and slices it instead. A blank blog or poetry page almost always means this
+broke. Check that `GET /fr-mirr/cms/.../<name>-indexes-default-0.framercms?range=6159-8792`
+returns 200 with exactly 2634 bytes.
+
+**Mirrored URLs must keep their byte length.** Those blobs address themselves by absolute
+byte offset, and they contain asset URLs. Rewriting `https://framerusercontent.com/` to
+anything of a different length shifts every offset after it and the archive renders blank.
+The replacement is `<legacyUrl>/fr-mirr/`, which is 30 bytes, the same as the original.
+`scripts/legacy-mirror.mjs` asserts this and refuses to run otherwise. Changing `legacyUrl`
+in `site.config.mjs` means changing the `fr-mirr` segment to compensate.
+
+**The archive still had a way to reach Framer that no string search could find.** The
+rewrite replaces literal URLs, and every `framerusercontent.com` string in `legacy/**` is
+gone, verified. But `script_main.*.mjs` did
+`await import('https://framer.com/edit/init.mjs')`, Framer's on-page editor bar. That module
+loads `framer.com/m/phosphor-icons/<Icon>.js`, and those fetch the real icon components
+straight from `framerusercontent.com`. So every route reached Framer through code that
+exists in no file you can rewrite. `scripts/legacy-mirror.mjs` now swaps that import for a
+`data:` URL exporting a no-op `createEditorBar`, and swaps the `api.framer.com/forms/v1/`
+form action for a dead path on our own origin. Only the network view catches this class of
+leak, which is why `npm run legacy:verify -- --runtime` exists and why its request blocklist
+is wider than its HTML one. `framer.com` has to stay legal in the markup (the hidden badge
+links to it) while staying illegal on the wire.
+
+**Re-mirroring is not enough on its own; the edge has to be told.** Framer hash-names each
+file after its own content, the mirror rewrites that content under the same name, and the
+Worker serves it with `max-age=31536000, immutable`. A fix therefore sits in R2 while the
+edge keeps serving the pre-fix bytes. This is not hypothetical: the editor-bar fix above
+uploaded cleanly and `curl` still returned the old chunk. `scripts/legacy-deploy.mjs` sets
+`MIRROR_VERSION` to a digest of `legacy/assets-manifest.json`, and the Worker folds it into
+its `caches.default` key, so a deploy after a re-mirror invalidates exactly what changed.
+This account's API token cannot purge cache, so do not go looking for that button.
+
+### The archive's forms, and what that costs
+
+The two Framer forms post to this site's `/api/whisper`. They have a single Message textarea
+and nowhere to render the quiz question that endpoint normally asks, so tokens minted for
+the legacy origin carry the sentinel quiz id `!legacy` and `POST` skips the quiz for them.
+`!legacy` is reserved in `quizBankSchema` (`lib/env.ts`) so a real question can never collide
+with it.
+
+Be clear about the guarantee. `Origin` is unforgeable inside a browser and freely forged
+everywhere else, and the archive's URL is public. That makes this CSRF protection, not
+authentication. **Any scripted client can mint an `!legacy` token and skip the quiz.** The
+HMAC only stops a token minted for one origin being replayed at the other. It does not make
+the origin claim trustworthy. The quiz is this endpoint's real bot gate and this path does
+not have one.
+
+What bounds abuse on that path instead: the `whisper-legacy` limiter (2 per trusted IP per
+24h) charged _on top of_ the normal `whisper` limiter (3/24h), the VPN/datacenter block, the
+single-use token burn, the 3-second minimum token age, the honeypot, and the message dedup.
+An unverifiable `trustedIp` is refused outright in production on this path, unlike the gated
+one, because nothing else would stand in its way. Ceiling: two whispers per real egress IP
+per day.
+
+This is the tradeoff the owner accepted to keep the archive pixel-identical. If it stops
+being enough, add a quiz field to the two forms in `scripts/legacy-mirror.mjs` and accept a
+visibly different archive.

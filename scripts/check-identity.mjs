@@ -27,6 +27,8 @@ const ALLOW = [
   /^\.claude\//,
   /^\.conductor\//,
   /^\.audit\//,
+  // The archived Framer site is the owner's own content, mirrored verbatim.
+  /^legacy\//,
   /^public\/.*\.(png|jpg|jpeg|webp|ico|svg)$/,
 ];
 

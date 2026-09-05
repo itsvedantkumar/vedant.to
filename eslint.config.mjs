@@ -4,7 +4,7 @@ import security from 'eslint-plugin-security';
 
 const config = [
   {
-    ignores: ['.next/**', 'node_modules/**', 'public/**', 'content/**'],
+    ignores: ['.next/**', 'node_modules/**', 'public/**', 'content/**', 'legacy/**'],
   },
   ...nextVitals,
   ...nextTs,

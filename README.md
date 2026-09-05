@@ -73,7 +73,8 @@ too. `npm run fix-images` rewrites it, and `npm run check` fails if one was miss
 | `content/`                   | the three collections above: 9 posts, 17 daily entries, 51 quotes                    |
 | `public/`                    | static assets, including a hand-written `robots.txt`                                 |
 | `scripts/`                   | the content normalisers, the auditor, the R2 image sync, `restore.sh`                |
-| `tests/`                     | 13 `node:test` files, 104 cases. `tests/manual/` needs a live Redis; CI skips it     |
+| `tests/`                     | 24 `node:test` files, 212 cases. `tests/manual/` needs a live Redis; CI skips it     |
+| `legacy/`                    | the archived Framer site that came before this one. Its own Worker, no app code      |
 | `docs/`                      | the long-form design notes. One so far: [docs/auth.md](docs/auth.md)                 |
 | `.github/workflows/`         | CI and the seven scheduled or triggered jobs (see [Deployment](#deployment))         |
 | `proxy.ts`                   | the `/keystatic` auth gate. Node.js runtime, and in Next 16 that is not configurable |
@@ -198,6 +199,30 @@ npx wrangler dev --config ops/worker/wrangler.generated.jsonc --test-scheduled
 curl 'http://localhost:8787/__scheduled?cron=17+3+*+*+*'
 ```
 
+#### Legacy archive
+
+The site that came before this one was built in Framer. It is preserved verbatim on a
+second Worker, `legacy/worker/index.mjs`, at its own subdomain, with Framer removed from
+the serving path entirely: the rewritten HTML is in `legacy/site/` and the runtime it needs
+(JS chunks, fonts, images, CMS blobs) is mirrored into R2 under `fr-mirr/`.
+
+```sh
+npm run legacy:mirror                                  # re-fetch and rewrite
+R2_BUCKET_NAME=<assets bucket> npm run legacy:upload   # push the runtime to R2
+R2_BUCKET_NAME=<assets bucket> npm run legacy:deploy   # deploy the Worker
+npm run legacy:verify -- --runtime                     # acceptance test, against the live origin
+```
+
+Three things make this harder than a `wget` mirror, all covered in
+[docs/ops.md](docs/ops.md#legacy-archive-worker-old-site). Framer's CMS reader uses its own
+`?range=` query parameter and rejects anything but a `200` of exactly the right length. The
+mirrored asset prefix has to be the same byte length as the Framer one it replaces, or every
+byte offset inside those binary blobs shifts. And two JS chunks fetched from Framer at
+runtime through URLs that no string search of the mirror could find, which is why
+`legacy:verify --runtime` drives a real browser and bans more hosts on the wire than it does
+in the markup. None of this touches the Next.js app. If you fork the repo, delete `legacy/`,
+the four `legacy:*` scripts and `legacyUrl` in `site.config.mjs`.
+
 GitHub Actions handles validation and support jobs only:
 
 | Workflow        | Name                  | Trigger                                  | Does                                                                                                                                                                                      |
@@ -217,7 +242,7 @@ purpose, so a formatting typo fails in seconds rather than after a full build.
 | `audit-content.mjs`                             | a content rule is broken                                                                              | CDN references that are not `.webp`, and the other checks in `scripts/audit-content.mjs`                                                                                                      |
 | `format:check`                                  | Prettier would rewrite a file                                                                         | formatting drift                                                                                                                                                                              |
 | `typecheck`                                     | `tsc --noEmit` reports an error                                                                       | type regressions. There is no ESLint here, so this and Prettier are the whole static gate                                                                                                     |
-| `npm test`                                      | any of the 204 cases fails                                                                            | the `draft: true` invariant (`tests/draft-invariant.test.ts`), the auth gate (`guard`, `session`, `enrollment`, `counter`, `timing`), the whisper route and its quiz, and metadata generation |
+| `npm test`                                      | any of the 212 cases fails                                                                            | the `draft: true` invariant (`tests/draft-invariant.test.ts`), the auth gate (`guard`, `session`, `enrollment`, `counter`, `timing`), the whisper route and its quiz, and metadata generation |
 | `next build`                                    | the build errors                                                                                      | a route that only breaks at build time. Runs with placeholder Keystatic secrets; Vercel rebuilds with the real ones                                                                           |
 | Lighthouse CI                                   | performance, accessibility or SEO scores below 0.90 on `/`, `/blog`, `/daily`, `/quotes`, over 3 runs | a regression in any of the three. Best-practices is a warning, not an error. Thresholds live in `lighthouserc.json`                                                                           |
 

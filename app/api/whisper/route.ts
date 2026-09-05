@@ -8,7 +8,12 @@ import { makeRatelimit } from '@/lib/ratelimit';
 import { timingSafeEqual } from '@/lib/timing';
 import { r2Env, isProduction, whisperEnv } from '@/lib/env';
 import { parseInput, whisperBodySchema } from '@/lib/validation';
-import { SITE_ORIGIN_RE, WHISPER_EMAIL } from '@/lib/constants';
+import {
+  LEGACY_ORIGIN_RE,
+  LEGACY_URL,
+  SITE_ORIGIN_RE,
+  WHISPER_EMAIL,
+} from '@/lib/constants';
 import {
   findQuestion,
   isCorrectAnswer,
@@ -43,6 +48,57 @@ const globalQuizRatelimit = makeRatelimit('whisper-quiz-global', 100, '10 m');
 // 10 min per IP: a human reloading the page a few times is nowhere near it,
 // while bulk token minting and question probing now cost real IPs.
 const getRatelimit = makeRatelimit('whisper-get', 20, '10 m');
+
+// --- The archived site's forms ---
+// The archive at LEGACY_URL is a byte-for-byte mirror of the previous Framer
+// site. Its two forms are a single Message textarea with nowhere to render a
+// quiz question, so tokens minted for that origin carry a sentinel question id
+// and POST skips the quiz for them.
+//
+// Be honest about what this path is worth. `Origin` is unforgeable inside a
+// browser and freely forged everywhere else, and LEGACY_URL is public. So this
+// is CSRF protection, not authentication: any scripted client can mint an
+// `!legacy` token and skip the quiz. The HMAC only stops a token minted for
+// the main site from being replayed here, and vice versa — it does not make the
+// origin claim trustworthy. The quiz is this endpoint's real bot gate and this
+// path does not have one. That is the accepted tradeoff for keeping the
+// archive's forms pixel-identical.
+//
+// What actually bounds abuse here, then: the trustedIp-keyed quotas below
+// (2/24h on this path, charged on top of the normal 3/24h), the VPN/datacenter
+// block, the single-use token burn, the 3-second minimum token age, the
+// honeypot, and the message dedup. Ceiling is two whispers per real egress IP
+// per day. If that stops being enough, the fix is a quiz field in the two forms
+// and a visibly different archive — see docs/ops.md.
+// Reserved in lib/env.ts (RESERVED_QUIZ_ID); the two must change together.
+const LEGACY_QUIZ_ID = '!legacy';
+const legacyRatelimit = makeRatelimit('whisper-legacy', 2, '24 h');
+
+type OriginKind = 'site' | 'legacy' | null;
+
+function classifyOrigin(req: NextRequest): OriginKind {
+  const origin = req.headers.get('origin') ?? '';
+  if (SITE_ORIGIN_RE.test(origin)) return 'site';
+  if (LEGACY_ORIGIN_RE.test(origin)) return 'legacy';
+  if (!isProduction() && /^https?:\/\/localhost(:\d+)?$/.test(origin)) return 'site';
+  return null;
+}
+
+/** The archive is a separate origin, so it needs CORS. Nothing else does. */
+function withCors(req: NextRequest, res: NextResponse): NextResponse {
+  if (classifyOrigin(req) === 'legacy') {
+    res.headers.set('access-control-allow-origin', LEGACY_URL);
+    res.headers.set('access-control-allow-methods', 'GET, POST, OPTIONS');
+    res.headers.set('access-control-allow-headers', 'content-type');
+    res.headers.set('access-control-max-age', '600');
+  }
+  res.headers.append('vary', 'Origin');
+  return res;
+}
+
+export async function OPTIONS(req: NextRequest) {
+  return withCors(req, new NextResponse(null, { status: 204 }));
+}
 
 // --- Submission proof token (HMAC-SHA256, 30-minute TTL) ---
 // GET /api/whisper issues a token; POST validates it.
@@ -283,6 +339,10 @@ async function msgHash(msg: string): Promise<string> {
 // --- GET: issue a submission proof token + the question to ask ---
 // Only the question TEXT and its opaque id go out. Answers never leave the server.
 export async function GET(req: NextRequest) {
+  return withCors(req, await handleGet(req));
+}
+
+async function handleGet(req: NextRequest) {
   const ip = getIP(req); // rate limiting only — spoofable by design
   // Skip when IP is 'unknown': one shared bucket would lock out every visitor.
   // Fails OPEN when redis is null or errors — a limiter outage must not take the
@@ -297,6 +357,21 @@ export async function GET(req: NextRequest) {
     } catch (err) {
       console.error('[whisper] GET rate limit failed:', err);
     }
+  }
+
+  // The archive's forms cannot render a quiz, so they get a token that attests
+  // to skipping it. Minted only for that exact origin, and only ever honoured
+  // by a POST from that same origin.
+  if (classifyOrigin(req) === 'legacy') {
+    const ts = Date.now().toString(36);
+    if (!TOKEN_SECRET) {
+      if (isProduction()) {
+        return NextResponse.json({ error: 'misconfigured' }, { status: 503 });
+      }
+      return NextResponse.json({ token: `${ts}.${LEGACY_QUIZ_ID}.dev` });
+    }
+    const sig = await hmac(TOKEN_SECRET, `${ts}.${LEGACY_QUIZ_ID}`);
+    return NextResponse.json({ token: `${ts}.${LEGACY_QUIZ_ID}.${sig}` });
   }
 
   const q = await questionForClient(getTrustedIP(req));
@@ -321,6 +396,10 @@ export async function GET(req: NextRequest) {
 
 // --- POST: receive a whisper ---
 export async function POST(req: NextRequest) {
+  return withCors(req, await handlePost(req));
+}
+
+async function handlePost(req: NextRequest) {
   if (!WHISPER_BUCKET) {
     return NextResponse.json({ error: 'storage not configured' }, { status: 503 });
   }
@@ -333,14 +412,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'too large' }, { status: 413 });
   }
 
-  // Origin check — require a valid origin; reject missing or cross-origin
-  const origin = req.headers.get('origin');
-  const validOrigin = isProduction()
-    ? SITE_ORIGIN_RE.test(origin ?? '')
-    : new RegExp(`^(${SITE_ORIGIN_RE.source}|https?://localhost(:\\d+)?)$`).test(
-        origin ?? ''
-      );
-  if (!validOrigin) {
+  // Origin check — require a known origin; reject missing or cross-origin.
+  // The archived site at LEGACY_URL is the only other origin allowed here, and
+  // only it can cash in a LEGACY_QUIZ_ID token (checked again below).
+  const originKind = classifyOrigin(req);
+  if (!originKind) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   }
 
@@ -397,8 +473,16 @@ export async function POST(req: NextRequest) {
 
   // The question is recovered from the signed payload, never from the body,
   // so the client can't answer a different question than the one it was asked.
-  const question = findQuestion(verified.quizId);
-  if (!question) {
+  // A quiz-free token is only worth anything to the origin it was minted for.
+  const isLegacyToken = verified.quizId === LEGACY_QUIZ_ID;
+  if (isLegacyToken && originKind !== 'legacy') {
+    return NextResponse.json(
+      { error: 'invalid token', code: 'invalid' },
+      { status: 403 }
+    );
+  }
+  const question = isLegacyToken ? undefined : findQuestion(verified.quizId);
+  if (!isLegacyToken && !question) {
     return NextResponse.json({ error: 'invalid token' }, { status: 403 });
   }
 
@@ -408,7 +492,7 @@ export async function POST(req: NextRequest) {
   const ip = getIP(req);
   const trustedIp = getTrustedIP(req);
 
-  if (!isCorrectAnswer((body.quizAnswer ?? '').slice(0, 200), question)) {
+  if (question && !isCorrectAnswer((body.quizAnswer ?? '').slice(0, 200), question)) {
     // Throttle only wrong guesses: keeps typos free while capping brute force
     // over a small answer space. Skip when IP is 'unknown' (see below).
     if (quizRatelimit && ip !== 'unknown') {
@@ -487,6 +571,30 @@ export async function POST(req: NextRequest) {
   // a spoofed header would otherwise let anyone pick an IP the lookup clears.
   if (await isVpnOrProxy(trustedIp)) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+  }
+
+  // The archive's quiz-free path buys a smaller quota than the gated one, and
+  // pays it on top: a legacy submission spends both this and the limiter below.
+  //
+  // Unlike the gated path, an unverifiable IP is refused outright rather than
+  // waved through. Elsewhere 'unknown' costs a caller only its quota, because
+  // the quiz still stands between it and a stored message. Here nothing would.
+  if (isLegacyToken && trustedIp === 'unknown' && isProduction()) {
+    return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+  }
+  if (isLegacyToken && legacyRatelimit && trustedIp !== 'unknown') {
+    try {
+      const { success } = await legacyRatelimit.limit(trustedIp);
+      if (!success) {
+        return NextResponse.json({ error: 'slow down' }, { status: 429 });
+      }
+    } catch (err) {
+      console.error('[whisper] legacy rate limit failed:', err);
+      // Fail closed in prod: with no limiter, the quiz-free path has no quota.
+      if (isProduction()) {
+        return NextResponse.json({ error: 'storage unavailable' }, { status: 503 });
+      }
+    }
   }
 
   // Rate limit before storing — every real submission counts against the quota,

@@ -18,6 +18,14 @@ export const site = {
   url: 'https://vedant.to',
   /** Public host for uploaded images (Cloudflare R2 behind a custom domain). */
   assetsUrl: 'https://assets.vedant.to',
+  /**
+   * Frozen archive of the previous (Framer-built) site, served by its own
+   * Cloudflare Worker. Mirrored Framer assets live under `<legacyUrl>/fr-mirr/`,
+   * and that prefix must be exactly as long as `https://framerusercontent.com/`
+   * (30 bytes) because the archive's binary CMS blobs address themselves by
+   * absolute byte offset. scripts/legacy-mirror.mjs asserts this.
+   */
+  legacyUrl: 'https://old.vedant.to',
   /** Keystatic writes to this repo in production. */
   github: { owner: 'itsvedantkumar', repo: 'vedant.to' },
   /** Handles only, no URLs. Leave a handle empty to drop the link. */
@@ -49,3 +57,4 @@ export const site = {
 
 export const siteHost = new URL(site.url).host;
 export const assetsHost = new URL(site.assetsUrl).host;
+export const legacyHost = new URL(site.legacyUrl).host;

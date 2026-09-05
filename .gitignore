@@ -55,3 +55,12 @@ content/posts/zz-test-fixture-*.mdoc
 .wrangler/
 ops/worker/wrangler.generated.jsonc
 ops/worker/.dev.vars
+
+# Legacy Framer archive: binaries live in R2, not git (scripts/legacy-upload-r2.mjs).
+# The upload manifest is local scratch state too: it maps asset path -> md5, and
+# since legacy/assets/ is not tracked, a fresh clone has nothing to upload until
+# it re-runs legacy:mirror, which recomputes every hash anyway. Tracking it also
+# trips gitleaks, whose generic-api-key rule reads a 32-hex digest as a secret.
+legacy/assets/
+legacy/assets-manifest.json
+legacy/worker/wrangler.generated.jsonc

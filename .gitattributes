@@ -1,1 +1,6 @@
 * text=auto eol=lf
+
+# The archived Framer site is a verbatim mirror. Framer serves CRLF, and
+# normalising it would mean a fresh clone no longer matches what
+# scripts/legacy-mirror.mjs produced, so every re-mirror would show a diff.
+legacy/site/** -text

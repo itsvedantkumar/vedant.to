@@ -1,13 +1,15 @@
 // Derived from site.config.mjs, the one file a fork edits. Keep this module
 // free of literals: `npm run check` (scripts/check-identity.mjs) fails the
 // build if the owner's name, domain or handles appear anywhere else.
-import { site, siteHost, assetsHost } from '@/site.config.mjs';
+import { site, siteHost, assetsHost, legacyHost } from '@/site.config.mjs';
 
 export { site };
 export const SITE_URL = site.url;
 export const SITE_HOST = siteHost;
 export const ASSETS_URL = site.assetsUrl;
 export const ASSETS_HOST = assetsHost;
+export const LEGACY_URL = site.legacyUrl;
+export const LEGACY_HOST = legacyHost;
 export const SITE_NAME = site.name;
 export const AUTHOR = site.author;
 export const SITE_DESCRIPTION = site.description;
@@ -46,3 +48,13 @@ export function escapeRegExp(value: string): string {
 
 /** Matches exactly the canonical origin (no subdomains, no trailing path). */
 export const SITE_ORIGIN_RE = new RegExp(`^${escapeRegExp(SITE_URL)}$`);
+
+/**
+ * Matches exactly the archived Framer site's origin.
+ *
+ * Deliberately a separate constant rather than a widening of SITE_ORIGIN_RE:
+ * that one gates CSRF on every auth and admin route (lib/auth/guard.ts), and
+ * the subdomain wildcard was removed from it on purpose. Only /api/whisper
+ * consults this one.
+ */
+export const LEGACY_ORIGIN_RE = new RegExp(`^${escapeRegExp(LEGACY_URL)}$`);
