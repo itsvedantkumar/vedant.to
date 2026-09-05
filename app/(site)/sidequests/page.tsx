@@ -142,6 +142,7 @@ export default function CrazyPage() {
         <Section title="In Sophomore Year (2026):">
           <li>Exit process for Dublieu (mainquest)</li>
           <li>Led growth at a HF0 company</li>
+          <li>Was backed by an a16z scout for a project, got 2 term sheets for $500k</li>
           <li>
             {RAGEBAIT_POST ? (
               <ExternalLink href={RAGEBAIT_POST}>Ragebaited</ExternalLink>
