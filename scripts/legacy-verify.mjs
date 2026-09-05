@@ -223,10 +223,52 @@ async function checkRange() {
   ok('malformed, inverted, over-length and over-count ranges all 400');
 }
 
+// --- icon modules ------------------------------------------------------------
+
+/**
+ * Framer's icon loader imports `House.js@0.0.57`, so the version suffix sits
+ * where the extension normally would. Type one of these `application/octet-
+ * stream` and the browser, holding `nosniff`, refuses to execute it: the import
+ * rejects, the icon never renders, and every other check here still passes.
+ * That shipped once, and every social icon and the email button were missing
+ * until someone looked at the page.
+ */
+async function checkIconModules() {
+  console.log('\nicon modules');
+  const modules = walk(ASSETS_DIR).filter((f) => /\.js@[\d.]+$/.test(f));
+  if (modules.length === 0) {
+    return fail('icon modules', 'none found in legacy/assets; run legacy:mirror');
+  }
+  let bad = 0;
+  for (const file of modules) {
+    const key = file
+      .slice(ASSETS_DIR.length + 1)
+      .split(/[\\/]/)
+      .join('/');
+    const res = await fetch(`${ORIGIN}/fr-mirr/${key}`);
+    const type = res.headers.get('content-type') ?? '';
+    if (res.status !== 200) {
+      bad++;
+      fail(key, `status ${res.status}`);
+    } else if (!/^(text|application)\/javascript/.test(type)) {
+      bad++;
+      fail(key, `content-type ${type}, so the browser will refuse the import`);
+    }
+  }
+  if (bad === 0) ok(`${modules.length} icon modules served as JavaScript`);
+}
+
 // --- runtime -----------------------------------------------------------------
 
 function checkRuntime(list) {
   console.log(`\nruntime pass (${list.length} routes)`);
+  // The request log is per session and survives navigation, so anything opened
+  // before this point, by checkForms or by hand, would be read as the first
+  // route's traffic. Start from empty or the first route inherits it.
+  spawnSync('npx', ['--yes', 'agent-browser', 'close', '--all'], { stdio: 'ignore' });
+  spawnSync('npx', ['--yes', 'agent-browser', 'network', 'requests', '--clear'], {
+    stdio: 'ignore',
+  });
   const offenders = new Map();
   const rendered = new Map();
   list.forEach((route, i) => {
@@ -288,6 +330,36 @@ function checkRuntime(list) {
   }
 }
 
+// --- forms -------------------------------------------------------------------
+
+/**
+ * The submit handler is injected as one inline script. A single syntax error in
+ * it is silent: the page renders, every other check passes, and the forms just
+ * quietly stop submitting. That is exactly how a stray newline inside a string
+ * literal shipped once. So assert the handler ran and claimed every form.
+ */
+function checkForms() {
+  console.log('\nforms');
+  spawnSync('npx', ['--yes', 'agent-browser', 'open', `${ORIGIN}/`], { stdio: 'ignore' });
+  const probe =
+    '(async()=>{await new Promise(r=>setTimeout(r,2500));' +
+    'var f=[...document.querySelectorAll("form")];' +
+    'return JSON.stringify({total:f.length,wired:f.filter(x=>x.dataset.legacyWired).length})})()';
+  const res = spawnSync('npx', ['--yes', 'agent-browser', 'eval', probe], {
+    encoding: 'utf8',
+  });
+  // agent-browser prints the eval result as a JSON-encoded string, so the
+  // payload needs unwrapping twice.
+  const match = (res.stdout ?? '').match(/"\{.*\}"/s);
+  if (!match) return fail('forms', 'could not read the page');
+  const { total, wired } = JSON.parse(JSON.parse(match[0]));
+  if (total === 0) return fail('forms', 'no form on the homepage');
+  if (wired !== total) {
+    return fail('forms', `${wired}/${total} wired; the injected handler did not run`);
+  }
+  ok(`${total} forms wired to the endpoint`);
+}
+
 // --- run ---------------------------------------------------------------------
 
 const list = routes();
@@ -295,8 +367,11 @@ console.log(`legacy-verify: ${ORIGIN}`);
 await checkPages(list);
 await checkRobotsAnd404();
 await checkRange();
-if (RUNTIME) checkRuntime(list);
-else console.log('\nruntime pass skipped (pass --runtime to run it)');
+await checkIconModules();
+if (RUNTIME) {
+  checkForms();
+  checkRuntime(list);
+} else console.log('\nruntime pass skipped (pass --runtime to run it)');
 
 console.log(
   failures === 0

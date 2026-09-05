@@ -121,7 +121,8 @@ async function upload(file) {
     '--file',
     file,
     '--content-type',
-    CONTENT_TYPES[path.extname(file).toLowerCase()] ?? 'application/octet-stream',
+    CONTENT_TYPES[path.extname(file.replace(/@[\d.]+$/, '')).toLowerCase()] ??
+      'application/octet-stream',
     '--cache-control',
     'public, max-age=31536000, immutable',
     '--remote',

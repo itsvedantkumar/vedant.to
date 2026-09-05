@@ -41,7 +41,15 @@ const CONTENT_TYPES = {
   framercms: 'application/octet-stream',
 };
 
-const contentType = (key) => CONTENT_TYPES[key.split('.').pop().toLowerCase()] ?? 'application/octet-stream';
+/**
+ * Framer's icon loader asks for `House.js@0.0.57`, so the version suffix, not
+ * the extension, ends up last. Strip it before the lookup or every icon module
+ * is typed `application/octet-stream`, and a module served as octet-stream with
+ * `nosniff` is refused by the browser: the import rejects and the icon silently
+ * never renders.
+ */
+const contentType = (key) =>
+  CONTENT_TYPES[key.replace(/@[\d.]+$/, '').split('.').pop().toLowerCase()] ?? 'application/octet-stream';
 
 const bad = (message) => new Response(message, { status: 400, headers: { 'content-type': 'text/plain' } });
 
@@ -100,7 +108,10 @@ async function serveMirror(request, env, url) {
   const response = new Response(payload, {
     status: 200,
     headers: {
-      'content-type': object.httpMetadata?.contentType ?? contentType(key),
+      // Computed from the key rather than read from R2: the uploader mistyped
+      // the versioned icon modules the same way this Worker once did, so the
+      // stored metadata is not trustworthy for them.
+      'content-type': contentType(key),
       'content-length': String(payload.length),
       'cache-control': IMMUTABLE,
       'x-content-type-options': 'nosniff',

@@ -40,10 +40,19 @@ if (!existsSync(siteDir)) {
  * serve pre-rewrite bytes for a year after a fix. This changes exactly when the
  * mirrored bytes change.
  */
+/**
+ * Keys the edge cache. The cached body is a function of the mirrored bytes and
+ * of the Worker that serves them, so both go into the digest: a Worker fix that
+ * changes a response header while the assets stay put still has to reach
+ * visitors, and `immutable` means it otherwise would not for a year.
+ */
 function mirrorVersion() {
   const manifest = resolve(root, 'legacy/assets-manifest.json');
-  if (!existsSync(manifest)) return '0';
-  return createHash('sha256').update(readFileSync(manifest)).digest('hex').slice(0, 12);
+  const worker = resolve(root, 'legacy/worker/index.mjs');
+  const digest = createHash('sha256');
+  if (existsSync(manifest)) digest.update(readFileSync(manifest));
+  digest.update(readFileSync(worker));
+  return digest.digest('hex').slice(0, 12);
 }
 
 const config = {

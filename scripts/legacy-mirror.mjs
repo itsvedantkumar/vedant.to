@@ -337,22 +337,28 @@ const SCRIPT_BLOCKLIST = [
  */
 const formScript = (endpoint) => `<script>(function(){
   var ENDPOINT = ${JSON.stringify(endpoint)};
-  var token = null, pending = null;
+  var token = null, pending = null, mintedAt = 0;
   function mintToken(){
     if (pending) return pending;
     pending = fetch(ENDPOINT, { credentials: 'omit' })
       .then(function(r){ return r.ok ? r.json() : null; })
-      .then(function(j){ token = j && j.token; return token; })
+      .then(function(j){ token = j && j.token; mintedAt = Date.now(); return token; })
       .catch(function(){ return null; });
     return pending;
   }
   function say(form, text){
-    var note = form.querySelector('[data-legacy-note]');
+    var note = form._legacyNote;
     if (!note) {
       note = document.createElement('p');
       note.setAttribute('data-legacy-note', '');
-      note.style.cssText = 'margin-top:8px;font-size:13px;opacity:.75';
-      form.appendChild(note);
+      note.style.cssText = 'margin:8px 0 0;font-size:13px;opacity:.75';
+      // Framer sizes the form to its content and clips it with overflow:hidden,
+      // so a note appended inside is laid out past the bottom edge and never
+      // painted. Every success and failure message was invisible. Put it after
+      // the form, in the parent, which does not clip.
+      if (form.parentElement) form.parentElement.insertBefore(note, form.nextSibling);
+      else form.appendChild(note);
+      form._legacyNote = note;
     }
     note.textContent = text;
   }
@@ -367,14 +373,33 @@ const formScript = (endpoint) => `<script>(function(){
       event.stopImmediatePropagation();
       var message = (field.value || '').trim();
       if (message.length < 5) { say(form, 'A little longer, please.'); return; }
+      // The footer form asks for a name and an email as well, and the endpoint
+      // takes a single anonymous message, so fold them in rather than drop what
+      // the visitor typed. Framer renders one input per breakpoint under the
+      // same name, so take the first that was actually filled in.
+      var who = [];
+      ['Name', 'Email'].forEach(function(label){
+        var filled = null;
+        form.querySelectorAll('input[name="' + label + '"]').forEach(function(input){
+          if (!filled && (input.value || '').trim()) filled = input.value.trim();
+        });
+        if (filled) who.push(label + ': ' + filled);
+      });
+      var payload = who.length ? who.join('\\n') + '\\n\\n' + message : message;
       var trap = form.querySelector('input[name="website"]');
       say(form, 'Sending…');
       mintToken().then(function(t){
+        // The endpoint refuses a token younger than three seconds. Someone who
+        // pastes a message and clicks straight away would otherwise be told it
+        // did not go through, so wait out the remainder instead.
+        var wait = mintedAt ? Math.max(0, 3200 - (Date.now() - mintedAt)) : 0;
+        return new Promise(function(resolve){ setTimeout(function(){ resolve(t); }, wait); });
+      }).then(function(t){
         return fetch(ENDPOINT, {
           method: 'POST',
           credentials: 'omit',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ message: message, token: t || '', _trap: trap ? trap.value : '' })
+          body: JSON.stringify({ message: payload, token: t || '', _trap: trap ? trap.value : '' })
         });
       }).then(function(res){
         if (res && res.ok) { field.value = ''; token = null; pending = null; say(form, 'Sent. Thank you.'); }
