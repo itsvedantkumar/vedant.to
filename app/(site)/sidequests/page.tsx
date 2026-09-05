@@ -62,8 +62,8 @@ export default function CrazyPage() {
         <Section title="In the 9th grade (2021):">
           <li>
             Lost ~30 KGs weight in 2 months by starving myself (completely), rigorous
-            sports, literally have -ve Vitamin D levels (trust me, lol). This was me
-            before: <ExternalLink href={BEFORE_PHOTOS}>Link</ExternalLink>
+            sports, literally have -ve Vitamin D levels (trust me, lol). This was{' '}
+            <ExternalLink href={BEFORE_PHOTOS}>me before</ExternalLink>
           </li>
           <li>
             Convinced my e-relationship to fly from Europe to come <em>spend a month</em>{' '}
